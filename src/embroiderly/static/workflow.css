@@ -1,0 +1,139 @@
+/* Same design tokens and settings owners; only disclosure and placement.
+   !important protects hidden panels/legacy action proxies from older flex CSS. */
+.clear-workflow [hidden]{display:none!important}
+.clear-workflow #stitchLink,.clear-workflow [data-view=stitched],.clear-workflow #exportDst,.clear-workflow #exportPes,
+.native-text-workspace #nativeCheck,.native-text-workspace #nativeApprove,.native-text-workspace #nativeDownloads,
+.clear-workflow #stitchEmptyGenerate,.clear-workflow #stitchEmpty label{display:none!important}
+#workflowSteps{display:flex;gap:8px;padding:8px 22px;background:var(--ui-surface);border-bottom:1px solid var(--ui-line)}
+#workflowSteps button{border-color:transparent;background:transparent;padding:7px 16px}
+#workflowSteps [aria-current=step]{background:var(--ui-hover);border-color:var(--ui-primary);color:var(--ui-primary);font-weight:650}
+#workflowSaved{font-size:12px;color:var(--ui-muted)}
+.clear-workflow .workbench{height:calc(100dvh - 153px);min-height:0}
+.clear-workflow .inspector{padding:14px 16px}
+.clear-workflow .inspector h1{margin:0 0 12px}
+.clear-workflow .panels{min-height:180px}
+.clear-workflow .canvas-area{overflow:auto}
+.clear-workflow[data-workflow=edit] .surface-toolbar{display:none!important}
+.clear-workflow:not([data-workflow=edit]) .viewbar [data-view]:not([data-view=compare]){display:none}
+.clear-workflow:not([data-workflow=edit]) #toolHint{display:none}
+.clear-workflow:not([data-workflow=edit]) .tools [data-tool]:not([data-tool=pan]):not([data-tool=measure]){display:none}
+#workflowEdit label{font-size:12px;margin:8px 0 4px;display:block}
+#workflowEdit input:not([type=checkbox]):not([type=range]):not([type=color]),#workflowEdit select{width:100%;box-sizing:border-box;min-height:34px;padding:5px;border:1px solid var(--ui-line);background:var(--ui-surface);color:var(--ui-ink);border-radius:var(--ui-radius)}
+#workflowEdit textarea{width:100%;box-sizing:border-box;height:80px;min-height:80px;padding:8px;resize:none;font:inherit;border:1px solid var(--ui-line);border-radius:var(--ui-radius);background:var(--ui-background);color:var(--ui-ink)}
+#workflowSizeFields,#workflowTextExtras{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#workflowEdit p,#workflowCheck p,#workflowDownloadPanel p{font-size:12px;line-height:1.45;margin:8px 0}
+#workflowMeasuredSize{font-weight:650}
+#workflowLetterTip{border-left:3px solid var(--ui-primary);padding-left:8px}
+#workflowLetterTip[data-level=amber]{border-color:#996314}
+#workflowLetterTip[data-level=red]{border-color:var(--ui-danger)}
+#workflowExpert,#workflowTextDetails{margin-top:12px;padding:10px 0;border-top:1px solid var(--ui-line)}
+#workflowExpert summary,#workflowTextDetails summary{font-size:13px;font-weight:600}
+#workflowExpert .topic-nav{padding-top:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+#workflowSafety{border-left:3px solid var(--ui-primary);padding-left:10px}
+#workflowCheck .health{margin:10px 0;padding:10px}
+#workflowCheck .health summary{font-size:13px}
+#workflowCheck .health p{font-size:12px}
+.clear-workflow .health.has-generation-blockers p{color:var(--ui-ink);font-size:12px;line-height:1.45}
+.clear-workflow .health.has-generation-blockers #healthIssues{max-height:none}
+#workflowCheck li{font-size:12px;margin:7px 0;overflow-wrap:anywhere}
+#workflowCheck ul{padding-left:18px}
+#workflowDownloadPanel select{width:100%;padding:8px;margin:6px 0 14px;white-space:normal;background:var(--ui-surface);color:var(--ui-ink);border:1px solid var(--ui-line);border-radius:var(--ui-radius)}
+#workflowDownload{width:100%}
+.clear-workflow .surface-toolbar{min-height:38px}
+.clear-workflow .surface-toolbar span{flex-basis:100%}
+@media(max-width:900px){.clear-workflow .workbench{height:auto}#workflowSteps{padding:8px;gap:2px}#workflowSteps button{padding:6px;font-size:12px}.clear-workflow .canvas-area{min-height:440px;height:65dvh}.clear-workflow .inspector{overflow:visible}}
+@media(forced-colors:active){#workflowSteps [aria-current=step]{outline:2px solid Highlight}}
+
+/* Beginner editor: existing fields and tokens, with one active tool panel. */
+#workflowSizeFields label{min-width:0}
+#workflowSizeFields input{font-size:17px;font-variant-numeric:tabular-nums}
+#workflowProportions{color:var(--ui-muted)}
+#workflowChoices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--ui-unit);margin:12px 0}
+#workflowChoices button{display:flex;align-items:center;flex-direction:column;justify-content:center;text-align:center;min-width:0;min-height:64px;padding:7px 4px;gap:5px;font-size:12px}
+#workflowChoices button span{line-height:1.25;overflow-wrap:anywhere}
+#workflowChoices #workflowAskAI{grid-column:1/-1;flex-direction:row;min-height:44px;border-color:var(--ui-primary);color:var(--ui-primary);background:var(--ui-hover);font-weight:650}
+#workflowChoices .ui-icon{flex-shrink:0;width:24px;height:24px}
+#workflowBack{margin-bottom:8px;min-height:40px}
+#workflowToolPanel .topic-panel h2{margin-top:8px}
+#workflowToolPanel .topic-hint{margin-bottom:12px}
+#workflowCanvasSize{margin:8px 0;font-size:12px;text-align:center;color:var(--ui-muted);font-variant-numeric:tabular-nums}
+#canvasResize{display:flex;gap:8px}
+#canvasResize button{flex:1;min-height:36px}
+#designReview{padding:12px 0;border-top:1px solid var(--ui-line)}
+#checkMyDesign{min-height:40px;width:100%}
+#designReviewFindings article{padding:12px 0;border-bottom:1px solid var(--ui-line)}
+#designReviewFindings figcaption{font-size:12px;font-weight:600;margin:6px 0 10px}
+#designReviewFindings strong{display:block;margin-top:6px}
+#designReviewFindings button{min-height:36px}
+#designReview > details{margin-top:14px}
+#designReviewStatus{min-height:4.5em}
+#workflowDownloadError{border-left:3px solid var(--ui-danger);padding:12px;margin:12px 0;overflow-wrap:anywhere}
+#workflowDownloadError li{margin:10px 0}
+#workflowDownload{min-height:44px}
+#workflowBasics details:not([open]){margin:8px 0}
+@media(max-width:900px){#workflowCanvasSize{line-height:1.6}.clear-workflow .tools button{min-height:44px}}
+.native-text-workspace #workflowEdit textarea{height:64px;min-height:64px}
+.native-text-workspace #workflowSizeFields input{font-size:15px}
+.native-text-workspace #workflowEdit #workflowExpert{margin-top:8px;padding:8px 0}
+
+/* The single existing player stays discoverable in every workflow step. */
+#workflowPlaybackHeading{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap;margin:6px 0;flex-shrink:0}
+#workflowPlaybackHeading h2{font-size:13px;margin:0;color:var(--ui-ink)}
+#workflowPlaybackHint{font-size:12px;color:var(--ui-muted);margin:0}
+.clear-workflow .transport{flex-shrink:0}
+
+/* AI assistant uses the existing inspector, theme and inline status pattern. */
+#askAiPanel{min-width:0}
+#askAiExamples,#askAiActions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+#askAiExamples button{flex:1;min-height:40px}
+#askAiActions #askAiSend{flex:1;min-height:44px}
+#askAiPanel #askAiPermission{display:flex;align-items:flex-start;gap:8px;line-height:1.5}
+#askAiPermission input{flex-shrink:0;margin-top:3px}
+#askAiAvailability{min-height:1.5em;color:var(--ui-muted);overflow-wrap:anywhere}
+#askAiStatus{min-height:3em}
+#askAiMessages{overflow-wrap:anywhere}
+#askAiMessages p{white-space:pre-wrap}
+.ask-ai-message{padding:12px 8px;border-top:1px solid var(--ui-line)}
+.ask-ai-message[data-speaker=assistant]{border-left:3px solid var(--ui-primary);background:var(--ui-background)}
+#askAiPanel #askAiQuestion{min-height:96px;max-height:200px}
+#askAiHelp,#askAiRetention{color:var(--ui-muted)}
+#askAiQuestion[aria-invalid=true]{border-color:var(--ui-danger)}
+
+/* AI draft: one prompt, one comparison in the existing canvas region. */
+#askAiModes{display:flex;gap:8px;margin-bottom:12px}
+#askAiModes button{flex:1;min-height:40px}
+#askAiModes [aria-pressed=true],#aiDraftHeading [aria-pressed=true]{border:2px solid var(--ui-primary);color:var(--ui-primary)}
+#askAiAvailability{font-size:12px;color:var(--ui-muted);overflow-wrap:anywhere}
+#askAiMessages>button{width:100%;margin:4px 0;min-height:40px}
+#askAiDetails{margin-top:12px}
+#aiDraftPreview{min-height:240px;flex:1;display:flex;flex-direction:column;overflow:auto;background:var(--ui-surface);border:1px solid var(--ui-muted);border-radius:8px}
+#aiDraftPreview[hidden]{display:none}
+#aiDraftHeading{display:flex;align-items:center;gap:8px;padding:12px;flex-wrap:wrap}
+#aiDraftHeading strong{margin-right:auto}
+#aiDraftPair{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;flex:1;min-height:0}
+#aiDraftPair figure{margin:0;min-width:0;min-height:0;display:flex;flex-direction:column}
+#aiDraftPair img{width:100%;height:0;min-height:120px;flex:1;object-fit:contain;background:repeating-conic-gradient(var(--ui-background) 0% 25%,var(--ui-surface) 0% 50%) 0/16px 16px}
+#aiDraftPair figcaption{padding:8px 0;font-weight:600}
+/* Temporary draft replaces only canvas tools, never warnings or playback.
+   !important overrides existing per-view inline display until the draft closes. */
+body.ai-draft-visible .panels,body.ai-draft-visible #stitchEmpty,body.ai-draft-visible #surfaceToolbar,
+body.ai-draft-visible #knockoutWipeBar,body.ai-draft-visible #toolHint,body.ai-draft-visible .viewbar{display:none!important}
+#askAiPanel.has-draft>#askAiModes,#askAiPanel.has-draft>#askAiLabel,
+#askAiPanel.has-draft>#askAiQuestion,#askAiPanel.has-draft>#askAiExamples,
+#askAiPanel.has-draft>#askAiPermission,#askAiPanel.has-draft>#askAiActions,
+#askAiPanel.has-draft>#askAiClear,#askAiPanel.has-draft>#askAiDetails,
+#askAiPanel.has-draft>#askAiAvailability,#askAiPanel.has-draft>#askAiStatus{display:none}
+#askAiPanel.has-draft.is-waiting>#askAiActions,#askAiPanel.has-draft.is-waiting>#askAiStatus{display:block}
+#askAiPanel.has-draft.is-waiting #askAiSend{display:none}
+@media(max-width:600px){#aiDraftPair{grid-template-columns:1fr;flex:none}#aiDraftPair img{height:220px;flex:none}}
+
+/* Task navigation moves original controls; approval remains legible in both themes. */
+#workflowToolPanel .topic-panel:focus-visible{outline:2px solid var(--ui-primary);outline-offset:2px}
+#workflowBasics>#workflowSizeFields{margin-top:12px}
+#workflowBasics>.confirm{display:flex;gap:8px;align-items:flex-start;margin-top:10px;background:var(--ui-hover);color:var(--ui-ink);border-radius:var(--ui-radius)}
+
+/* Result state is separate from prepared artwork and from export approval. */
+#workflowResult{display:flex;flex-wrap:wrap;gap:4px 12px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--ui-line);border-left:4px solid var(--ui-primary);border-radius:var(--ui-radius);background:var(--ui-surface);color:var(--ui-ink);font-size:13px;line-height:1.5}
+#workflowResult span{min-width:0;overflow-wrap:anywhere}
+#workflowResult[data-state=error],#workflowResult[data-state=blocked]{border-left-color:var(--ui-danger)}
+.clear-workflow .health p{color:var(--ui-ink)}

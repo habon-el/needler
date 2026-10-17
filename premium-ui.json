@@ -1,0 +1,18 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["src"],
+  "locale": "en",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": ["Select/Listbox", "Form", "Scrollbar", "Toast", "CRUD"],
+  "ownership": {"Select/Listbox": "native"},
+  "requiredCommands": ["unit", "syntax", "browser"],
+  "commands": {
+    "unit": "PYTHONPATH=src:work/deps python3 -m pytest -q",
+    "syntax": "node --check src/embroiderly/static/workspace-ui.js && node --check src/embroiderly/static/preparation.js",
+    "browser": "PYTHONPATH=src:work/deps python3 tests/browser_workspace.py && PYTHONPATH=src:work/deps python3 tests/browser_workspace_states.py"
+  },
+  "evidence": {
+    "crudFullFlow": "tests/test_artwork_preparation.py",
+    "failurePaths": "tests/browser_workspace_states.py"
+  }
+}

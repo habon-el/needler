@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-14",
+  "scope": "Restore discoverable existing stitch playback; no generation/export changes",
+  "cause": "workflow.css hid transport, thread information and colour stops in Edit and Download",
+  "changes": [
+    "Persistent Watch it stitch heading and existing controls on all steps",
+    "Plain empty-state instruction; unavailable/stale playback stays disabled",
+    "Existing controller handles canvas switching, play/pause, cursor and speed"
+  ],
+  "verification": {
+    "old_code_regression": "browser_playback_visibility.py before failed: Play hidden in Edit",
+    "browser": "image and text: all three steps, keyboard Play, advancing timeline, pause, resume, rewind, single-step, seek, finish, invalidation, empty, 390px, dark, reduced motion passed",
+    "pytest": "440 passed in 98.64s",
+    "syntax": "workflow.js, workspace-ui.js and preparation.js passed node --check",
+    "exports": "3 designs x DST/PES downloaded through app; decoded commands identical to existing pre-UI baseline",
+    "export_evidence": ".simple-ui-evidence/ui-after-exports.json",
+    "screenshots": ".simple-ui-evidence/playback-{before,after}-*.png",
+    "audit": "89 existing findings remain; see playback-ui-audit.json. No claim of whole-app audit compliance.",
+    "legacy_browser_commands": "Substituted scoped browser_playback_visibility.py and browser_simple_editor.py: older configured browser scripts write output folders forbidden by AGENTS.md."
+  },
+  "ai": "Live API testing remains pending a configured server-side key and agreed spend caps. No paid calls made in this playback repair.",
+  "physical_sewout": "Not performed; preview is not a guarantee of machine safety."
+}

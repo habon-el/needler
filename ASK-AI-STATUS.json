@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-15",
+  "feature": "Ask AI in the uploaded-image workspace",
+  "scope": "Advice only. No design edits, stitch generation, export or safety-check changes. Native typed-text chat is not included.",
+  "provider": "Existing budget-gated provider; gpt-5.4-mini-2026-03-17",
+  "privacy": "Explicit consent per send; two artwork images, question and at most three previous exchanges. No API keys in the browser. Conversation is page-memory only.",
+  "verification": {
+    "full_suite": "462 passed in 83.66 seconds",
+    "new_question_tests": "22 passed",
+    "prompt_browser": "Passed isolated browser checks, including loading, errors, consent, cancellation, stale responses, follow-ups, narrow/dark layout and keyboard input. Synthetic replies; not a live model test.",
+    "existing_review_browser": "Passed",
+    "javascript_syntax": "Passed for ask-ai.js, workflow.js and workspace-ui.js",
+    "static_audit": "89 existing findings, zero new findings compared with playback-ui-audit.json; existing findings are not claimed resolved.",
+    "legacy_workspace_browser_commands": "Not run: existing wrapper writes to output folders excluded by AGENTS.md. Scoped isolated browser tests used instead.",
+    "live_question": "Pending. On checking after the reported restart, port 5050 still served the old backend without questions_supported. An ask request returned HTTP 400 before contacting the provider. User asked to restart the listening process.",
+    "machine_sew_out": "Not tested; this is an advisory UI feature."
+  },
+  "design": "Reuses the existing inspector, topic navigation and design tokens; keeps advice distinct from proposed editing actions.",
+  "restore_point": "6ebcd78 (local only)"
+}

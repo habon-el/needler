@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Embroiderly · Your designs</title>
+<link rel="stylesheet" href="/static/workspace-ui.css"><link rel="stylesheet" href="/static/settings.css"><link rel="stylesheet" href="/static/library.css"><link rel="stylesheet" href="/static/start-choices.css">
+<header class="library-header"><a class="brand" href="/">Embroiderly</a><div class="actions"></div></header>
+<main class="library-main">
+<div class="library-heading"><div><p class="eyebrow">YOUR WORKSPACE</p><h1>Your designs</h1><p>Keep creating. Pick up where you left off.</p></div>
+<div><div class="start-choices"><a class="button" href="/text/new">Type text</a><button type="button" id="chooseUpload" class="button">Upload image</button></div><form id="newDesign" novalidate action="/upload" method="post" enctype="multipart/form-data"><input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/bmp" aria-label="Choose an image to upload" aria-describedby="uploadHelp" hidden><button type="submit" hidden>Upload image</button><p id="uploadHelp">PNG, JPG, WebP or BMP · up to 12 MB</p><p id="uploadError" role="alert"></p></form></div></div>
+<nav class="library-tabs" aria-label="Design library"><button type="button" data-library-view="recent">Recent</button><button type="button" data-library-view="all">All designs</button><button type="button" data-library-view="trash">Trash</button></nav>
+<div class="library-controls"><div class="library-selection" hidden><strong id="selectionCount"></strong><button type="button" data-bulk="remove_recent">Remove from recent</button><button type="button" data-bulk="delete" class="danger">Delete</button><button type="button" data-bulk="restore">Restore</button><button type="button" id="cancelSelection">Cancel</button></div>
+<div class="library-filters"><span id="libraryCount"></span><label>Sort by <select id="librarySort"><option value="opened">Last opened</option><option value="changed">Last changed</option><option value="name">Name</option><option value="size">Size</option></select></label><div id="librarySearchWrap" hidden><label>Search designs<input id="librarySearch" type="search"></label><button type="button" id="clearSearch" hidden>Clear search</button></div></div></div>
+<p id="libraryStatus" role="status" aria-live="polite"></p><button type="button" id="libraryReload" hidden>Reload library</button>
+<p id="trashNote" hidden>Designs can be restored here. Permanent deletion and automatic 30-day cleanup are not enabled yet; your files are retained.</p>
+<div id="designGrid" class="design-grid" aria-label="Saved designs"></div>
+<noscript><p>Enable JavaScript to manage designs. Your saved work is still available:</p><ul>{% for file in files %}<li><a href="/artwork/{{ file.source|urlencode }}">{{ file.name }}</a></li>{% endfor %}</ul></noscript>
+<p class="library-footnote">Cards show original artwork. “Ready” means saved stitch data is available, not a sew-out guarantee.</p>
+</main>
+<div id="libraryToast" role="status" aria-live="polite" hidden><span></span><button type="button">Undo</button></div>
+<dialog id="renameDesign" aria-labelledby="renameTitle"><form novalidate><h2 id="renameTitle">Rename design</h2><label>Design name<input id="designName" maxlength="120" autocomplete="off" required></label><p id="renameError" role="alert"></p><div><button type="button" data-cancel>Cancel</button><button type="submit">Save name</button></div></form></dialog>
+<script src="/static/library.js"></script><script src="/static/settings.js"></script></html>

@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-14",
+  "restore_tag": "restore-before-simple-editor-20261014",
+  "scope": "Simplify existing image/text workspace and detail review. No new stitching capability, machine settings or automatic corrections.",
+  "changes": [
+    "Existing start choices and Edit / Check stitches / Save and download workflow retained, not rebuilt.",
+    "Width and height together, proportional resize controls retained, both canvas dimensions echoed beneath the picture with empty-margin explanation.",
+    "Background, Thread colours and Picture details open existing controls directly with Back to size; remaining topics stay under Expert settings.",
+    "Same detail-review crops shown before descriptions, with Your picture / Before stitching labels and plain questions. No fabricated fix or approval buttons.",
+    "Optional AI help and older detail tools open only on request, not automatically through the explanation preference. Safety blockers remain visible.",
+    "Native text panel made more compact; nominal font size remains separate from measured finished width/height. No automatic text shrinking.",
+    "Image download failures shown inside the workspace, with a grouped summary and every server issue location retained. The exact existing checked URL is fetched; native download controller unchanged.",
+    "Pending image downloads cannot return a file after an edit invalidates their request. No automatic retry or safety bypass."
+  ],
+  "verification": {
+    "unit_tests_before": 440,
+    "export_readback": {
+      "result": "Identical decoded stitch commands before/after for all six downloads; not just header or file-size comparison.",
+      "text_Hello_World_5_mm": {
+        "dst_commands": 871,
+        "pes_commands": 870
+      },
+      "small_text_tiny_4_mm": {
+        "dst_commands": 259,
+        "pes_commands": 259
+      },
+      "image_rectangle": {
+        "dst_commands": 886,
+        "pes_commands": 885
+      },
+      "evidence": [
+        ".simple-ui-evidence/ui-before-exports.json",
+        ".simple-ui-evidence/ui-after-exports.json"
+      ]
+    },
+    "syntax": "Node syntax checks passed for workflow.js, workspace-ui.js, preparation.js, design-review.js and settings.js.",
+    "static_audit": "89 existing findings remain: 88 literal-button action heuristics and 1 textarea resize heuristic; same totals as previous audit. Not a clean full-software audit.",
+    "legacy_browser_commands": "The two premium-ui.json legacy scripts write into forbidden outputs/. Not run; dedicated synthetic browser scripts substitute for this scope.",
+    "screenshots": "Before/after start, image edit, check, download, text edit, narrow and dark; after background, colours, picture review, Expert and download refusal in .simple-ui-evidence/.",
+    "scope_note": "No novice participant test or real sew-out; ease of use and physical accuracy are not certified. AI remains off in the customer app.",
+    "unit_tests_after": "440 passed in 80.10 seconds",
+    "browser_simple_editor": "PASS before/after screenshots; image/text essentials fit 1366x768; direct topics; same controls/options; resize and Undo; keyboard; 390px reflow; dark/reduced motion; grouped export refusal, all locations, real nonempty download, offline and stale-response suppression.",
+    "browser_design_review": "PASS with synthetic AI only: unchanged control, three removed details, consent/cache, offline, stale review, narrow/dark/reduced motion."
+  },
+  "decisions": [
+    "Reuse existing palette, icons, options, history and native selects; no new theme or duplicate settings owner.",
+    "UI-only GET handling is now allowed in workflow.js specifically for the existing image download link. Updated the old blanket no-fetch test to require exactly that GET, no method override, no second generation/approval API, and stale-response protection.",
+    "No garment-placement chooser or unified text/image library added: these require separate data integration, not decorative controls.",
+    "No new repairs, per-region acceptance state, font capabilities or machine-safety guarantees introduced."
+  ]
+}

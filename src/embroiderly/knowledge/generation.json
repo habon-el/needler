@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "seed_data": true,
+  "rows": [{
+    "id": "fill.twill",
+    "fabric": "twill",
+    "row_spacing_mm": 0.4,
+    "verified_by_user": false,
+    "source_note": "User-approved source-generation correction, 2026-10-08. Twill starting preset; physical sew-out pending. Other fabric presets are not inferred from rendering textures.",
+    "previous_value": {"value": 0.25, "unit": "mm", "file": "src/embroiderly/engine.py", "line": 93, "date": "2026-10-08", "note": "No row spacing passed; Ink/Stitch v3.2.2 fill_stitch.py default was 0.25 mm."}
+  }]
+}

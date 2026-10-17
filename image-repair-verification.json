@@ -1,0 +1,37 @@
+{
+  "status": 200,
+  "passed": true,
+  "error": null,
+  "physical_sew_out": "pending",
+  "files": {
+    "dst": {
+      "readback": {
+        "stitches": 1758,
+        "trims": 2,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.4,
+        "maximum_mm": 3.5,
+        "width_mm": 63.4,
+        "height_mm": 33.4
+      },
+      "sha256": "a053a0a4052159fd76186150a0e80024be4e136621995493eb0b87ad2e6d1a97",
+      "repeated_downloads_identical": true
+    },
+    "pes": {
+      "readback": {
+        "stitches": 1758,
+        "trims": 2,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.4,
+        "maximum_mm": 3.5,
+        "width_mm": 63.4,
+        "height_mm": 33.4
+      },
+      "sha256": "126f96c2f5a73e48e0c66f4d7391bec027689919df92a27efa24f037ba9bea5c",
+      "repeated_downloads_identical": true
+    }
+  },
+  "seconds": 6.57
+}

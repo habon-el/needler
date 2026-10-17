@@ -1,0 +1,309 @@
+{
+  "version": 1,
+  "seed_data": true,
+  "rows": [
+    {
+      "id": "assistance.01",
+      "text": "The smallest region would require {v0} mm canvas height (above the 400 mm editor limit). Isolate the subject or remove unwanted detail instead.",
+      "source_note": "Existing implementation at src/embroiderly/assistance.py:203, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "The smallest region would require {v0} mm canvas height (above the 400 mm editor limit). Isolate the subject or remove unwanted detail instead.",
+        "numeric_literals": [
+          400
+        ],
+        "file": "src/embroiderly/assistance.py",
+        "line": 203,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "borders.02",
+      "text": "Border width must be 0.8–6 mm.",
+      "source_note": "Existing implementation at src/embroiderly/borders.py:16, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Border width must be 0.8–6 mm.",
+        "numeric_literals": [
+          0.8,
+          6
+        ],
+        "file": "src/embroiderly/borders.py",
+        "line": 16,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "borders.03",
+      "text": "Use at least 1.6 mm for satin, or choose a running border.",
+      "source_note": "Existing implementation at src/embroiderly/borders.py:17, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Use at least 1.6 mm for satin, or choose a running border.",
+        "numeric_literals": [
+          1.6
+        ],
+        "file": "src/embroiderly/borders.py",
+        "line": 17,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "borders.04",
+      "text": "Satin spacing must be 0.3–0.8 mm.",
+      "source_note": "Existing implementation at src/embroiderly/borders.py:18, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Satin spacing must be 0.3–0.8 mm.",
+        "numeric_literals": [
+          0.3,
+          0.8
+        ],
+        "file": "src/embroiderly/borders.py",
+        "line": 18,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "detail_loss.05",
+      "text": "Local-contrast warning, not anatomical recognition. Box width and nominal 0.4 mm thread are only size screens.",
+      "source_note": "Existing implementation at src/embroiderly/detail_loss.py:72, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Local-contrast warning, not anatomical recognition. Box width and nominal 0.4 mm thread are only size screens.",
+        "numeric_literals": [
+          0.4
+        ],
+        "file": "src/embroiderly/detail_loss.py",
+        "line": 72,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "photo_stitch.06",
+      "text": "Experimental thread painting. Coverage assumes 0.4 mm thread width. No automatic underlay/tie-off; tension, density, stability and likeness require sew-out. Direction lines set one angle per connected region, not automatic facial flow.",
+      "source_note": "Existing implementation at src/embroiderly/photo_stitch.py:222, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Experimental thread painting. Coverage assumes 0.4 mm thread width. No automatic underlay/tie-off; tension, density, stability and likeness require sew-out. Direction lines set one angle per connected region, not automatic facial flow.",
+        "numeric_literals": [
+          0.4
+        ],
+        "file": "src/embroiderly/photo_stitch.py",
+        "line": 222,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "photo_stitch.07",
+      "text": "Penetration relative to sampled colour boundary. Written values use snapped coordinates verified unchanged in PES and DST. Boundary sampling is 0.1 mm.",
+      "source_note": "Existing implementation at src/embroiderly/photo_stitch.py:146, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Penetration relative to sampled colour boundary. Written values use snapped coordinates verified unchanged in PES and DST. Boundary sampling is 0.1 mm.",
+        "numeric_literals": [
+          0.1
+        ],
+        "file": "src/embroiderly/photo_stitch.py",
+        "line": 146,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "preparation.08",
+      "text": "Regenerated canvas height must be between 1 and 10000 mm.",
+      "source_note": "Existing implementation at src/embroiderly/preparation.py:195, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Regenerated canvas height must be between 1 and 10000 mm.",
+        "numeric_literals": [
+          1,
+          10000
+        ],
+        "file": "src/embroiderly/preparation.py",
+        "line": 195,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "preparation.09",
+      "text": "Portrait area floor cannot be below 0.16 mm²; narrow details still require review.",
+      "source_note": "Existing implementation at src/embroiderly/preparation.py:191, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Portrait area floor cannot be below 0.16 mm²; narrow details still require review.",
+        "numeric_literals": [
+          0.16
+        ],
+        "file": "src/embroiderly/preparation.py",
+        "line": 191,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "refinement.10",
+      "text": "This warning patch is {v0:.3f} mm across, below the 1 mm shape-width screen. Enlarge the design; a click cannot certify sewability.",
+      "source_note": "Existing implementation at src/embroiderly/refinement.py:140, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "This warning patch is {v0:.3f} mm across, below the 1 mm shape-width screen. Enlarge the design; a click cannot certify sewability.",
+        "numeric_literals": [
+          1
+        ],
+        "file": "src/embroiderly/refinement.py",
+        "line": 140,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "regions.11",
+      "text": "Closed area: tatami fill with a running outline is the conservative default.",
+      "source_note": "Existing implementation at src/embroiderly/regions.py:156, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Closed area: tatami fill with a running outline is the conservative default.",
+        "numeric_literals": [],
+        "file": "src/embroiderly/regions.py",
+        "line": 156,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "regions.12",
+      "text": "White is interpreted as unstitched fabric for this black line-art design.",
+      "source_note": "Existing implementation at src/embroiderly/regions.py:149, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "White is interpreted as unstitched fabric for this black line-art design.",
+        "numeric_literals": [],
+        "file": "src/embroiderly/regions.py",
+        "line": 149,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "regions.13",
+      "text": "Dark linework: black running-stitch contour only.",
+      "source_note": "Existing implementation at src/embroiderly/regions.py:151, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Dark linework: black running-stitch contour only.",
+        "numeric_literals": [],
+        "file": "src/embroiderly/regions.py",
+        "line": 151,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "regions.14",
+      "text": "Too narrow for a stable satin or fill at the provisional size.",
+      "source_note": "Existing implementation at src/embroiderly/regions.py:153, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Too narrow for a stable satin or fill at the provisional size.",
+        "numeric_literals": [],
+        "file": "src/embroiderly/regions.py",
+        "line": 153,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "regions.15",
+      "text": "Long, narrow shape: satin is the recommended coverage method.",
+      "source_note": "Existing implementation at src/embroiderly/regions.py:155, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Long, narrow shape: satin is the recommended coverage method.",
+        "numeric_literals": [],
+        "file": "src/embroiderly/regions.py",
+        "line": 155,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "size_sets.16",
+      "text": "Choose a subject width or height from 10 to 400 mm.",
+      "source_note": "Existing implementation at src/embroiderly/size_sets.py:26, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Choose a subject width or height from 10 to 400 mm.",
+        "numeric_literals": [
+          10,
+          400
+        ],
+        "file": "src/embroiderly/size_sets.py",
+        "line": 26,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "size_sets.17",
+      "text": "Estimate: 600 stitches/min, 3000 mm/min jumps, 2 s/trim, 15 s/colour change. No acceleration or operator variability.",
+      "source_note": "Existing implementation at src/embroiderly/size_sets.py:63, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Estimate: 600 stitches/min, 3000 mm/min jumps, 2 s/trim, 15 s/colour change. No acceleration or operator variability.",
+        "numeric_literals": [
+          600,
+          3000,
+          2,
+          15
+        ],
+        "file": "src/embroiderly/size_sets.py",
+        "line": 63,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "web.18",
+      "text": "Choose a height from 10 to 300 mm.",
+      "source_note": "Existing implementation at src/embroiderly/web.py:271, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Choose a height from 10 to 300 mm.",
+        "numeric_literals": [
+          10,
+          300
+        ],
+        "file": "src/embroiderly/web.py",
+        "line": 271,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    },
+    {
+      "id": "web.19",
+      "text": "Invalid path or size. Height must be 5–500 mm.",
+      "source_note": "Existing implementation at src/embroiderly/web.py:104, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
+      "verified_by_user": false,
+      "previous_value": {
+        "value": "Invalid path or size. Height must be 5–500 mm.",
+        "numeric_literals": [
+          5,
+          500
+        ],
+        "file": "src/embroiderly/web.py",
+        "line": 104,
+        "date_of_swap": "2026-09-22"
+      },
+      "notes": "Text lookup only; original algorithm thresholds and export behavior unchanged."
+    }
+  ]
+}

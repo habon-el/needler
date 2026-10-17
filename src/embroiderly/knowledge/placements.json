@@ -1,0 +1,52 @@
+{
+  "version": 2,
+  "seed_data": true,
+  "rows": [
+    {
+      "id": "polo.left_chest",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "garment": "polo",
+      "position": "left chest",
+      "width_range_mm": [
+        90,
+        100
+      ],
+      "height_range_mm": null,
+      "seam": "shoulder seam",
+      "distance_range_mm": [
+        180,
+        230
+      ],
+      "notes": "Starting placement only; check garment construction and customer specification."
+    },
+    {
+      "id": "cap.front",
+      "source_note": "Existing 55 mm target from src/embroiderly/assistance.py:78 at b8ead61; retained during the 2026-09-21 knowledge swap. The brief's 50 mm seed conflicts with this value and has not been confirmed. Neither value is shop-verified.",
+      "verified_by_user": false,
+      "garment": "cap",
+      "position": "front",
+      "width_range_mm": null,
+      "height_range_mm": [
+        0,
+        55
+      ],
+      "seam": null,
+      "distance_range_mm": null,
+      "notes": "Preserves the existing 55 mm cap-height target. The conflicting 50 mm seed is not applied. Cap-specific stitch order and hoop fit are not verified.",
+      "previous_value": {
+        "value": 55,
+        "unit": "mm",
+        "file": "src/embroiderly/assistance.py",
+        "line": 78,
+        "revision": "b8ead61",
+        "date_of_swap": "2026-09-21"
+      },
+      "proposed_seed_value": {
+        "value": 50,
+        "unit": "mm",
+        "confirmed_by_user": false
+      }
+    }
+  ]
+}

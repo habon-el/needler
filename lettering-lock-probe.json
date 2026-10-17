@@ -1,0 +1,139 @@
+[
+  {
+    "text": "tiny i .",
+    "size": 3.8,
+    "status": 200,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.6,
+        "long": 0,
+        "maximum_mm": 2.4,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 289,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 19.2
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.6,
+        "long": 0,
+        "maximum_mm": 2.4,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 289,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 19.2
+      }
+    },
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "error": null,
+    "passed": true
+  },
+  {
+    "text": "Jesus is King",
+    "size": 3.8,
+    "status": 200,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.8,
+        "long": 0,
+        "maximum_mm": 2.476,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 699,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 39.4
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.8,
+        "long": 0,
+        "maximum_mm": 2.476,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 699,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 39.4
+      }
+    },
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "error": null,
+    "passed": true
+  },
+  {
+    "text": "Jesus is King",
+    "size": 8,
+    "status": 200,
+    "reports": {
+      "dst": {
+        "crossings": 1,
+        "height_mm": 11.8,
+        "long": 0,
+        "maximum_mm": 2.55,
+        "minimum_mm": 0.51,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1278,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 81.8
+      },
+      "pes": {
+        "crossings": 1,
+        "height_mm": 11.8,
+        "long": 0,
+        "maximum_mm": 2.55,
+        "minimum_mm": 0.51,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1278,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 81.8
+      }
+    },
+    "issues": {
+      "dst": [
+        {
+          "code": "crossing",
+          "location": {
+            "command": 860,
+            "x_mm": 17.7,
+            "y_mm": -1.5
+          },
+          "reason": "a stitch crosses a removed area"
+        }
+      ],
+      "pes": [
+        {
+          "code": "crossing",
+          "location": {
+            "command": 857,
+            "x_mm": 17.7,
+            "y_mm": -1.5
+          },
+          "reason": "a stitch crosses a removed area"
+        }
+      ]
+    },
+    "error": null,
+    "passed": false
+  }
+]

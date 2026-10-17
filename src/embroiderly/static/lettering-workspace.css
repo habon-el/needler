@@ -1,0 +1,12 @@
+/* Same workbench tokens, with photo-only controls excluded for native text. */
+.native-text-workspace [hidden] {display:none !important}
+.native-text-workspace #nativeLettering .lettering-preview {display:none}
+.native-text-workspace #workspaceText textarea {box-sizing:border-box;width:100%;min-height:100px;resize:none;font:inherit;color:var(--ui-ink);background:var(--ui-background);border:1px solid var(--ui-line);border-radius:.5rem;padding:.5rem}
+.native-text-workspace #workspaceText label {display:block;margin:.75rem 0 .25rem}
+.native-text-workspace #workspaceText input,.native-text-workspace #workspaceText select {max-width:100%;box-sizing:border-box}
+.native-text-workspace #workspaceText a {color:var(--ui-primary);text-decoration:underline}
+.native-text-workspace #nativeResult {font-size:.85rem;line-height:1.5}
+.native-text-workspace .transport {background:var(--ui-surface);color:var(--ui-ink)}
+.native-text-workspace .thread-info {color:var(--ui-muted)}
+.native-text-workspace header a:not(.brand) {color:var(--ui-ink);text-decoration:underline}
+.native-text-workspace #workspaceText label {display:grid;gap:.35rem}

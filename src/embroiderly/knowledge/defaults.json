@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "seed_data": true,
+  "rows": [
+    {
+      "id": "advisory.limits",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "max_requests_per_design": 3,
+      "max_output_tokens": 900,
+      "max_input_pixels": 1500000,
+      "notes": "Application resource limits, not embroidery measurements. No cloud requests without explicit consent."
+    }
+  ]
+}

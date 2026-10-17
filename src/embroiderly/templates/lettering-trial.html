@@ -1,0 +1,15 @@
+<details id="smallLetteringTrial">
+<summary>Try small embroidery lettering — experimental</summary>
+<p>Uses “Your words” above, but rebuilds embroidery-font stitches instead of tracing a picture. This trial does not change your design or provide a machine download.</p>
+<label>Embroidery font<select id="smallLetteringFont"><option value="small_font">Ink/Stitch Small Font</option><option value="glacial_tiny">Glacial Tiny 60 AGS</option></select></label>
+<label>Nominal font height (mm)<input id="smallLetteringHeight" type="number" min="4" max="6" step=".1" value="4" aria-describedby="smallLetteringStatus"></label>
+<label>Available width on your item (mm)<input id="smallLetteringWidth" type="number" min="5" max="400" step=".1" value="50" aria-describedby="smallLetteringStatus smallLetteringFit"></label>
+<p id="smallLetteringFit">Checks whether your words fit. It never shrinks, clips or changes them automatically.</p>
+<p>Actual stitched height is measured below. The outline font, block height, extra spacing and colour controls above do not apply to this black-thread trial. Font-authored spacing and underlay are retained.</p>
+<button id="smallLetteringRun" type="button">Rebuild trial stitches</button>
+<p id="smallLetteringStatus" role="status" aria-live="polite">Not checked. No machine file will be released by this trial.</p>
+<div class="lettering-preview"><img id="smallLetteringImage" alt="Experimental needle paths read from the generated DST; not a sew-out" hidden></div>
+<p id="smallLetteringResult"></p>
+<p>Length checks alone cannot establish needle safety. Letter holes, density, punctuation, machine fit and a physical sew-out still need verification.</p>
+</details>
+<script defer src="/static/lettering-trial.js"></script>

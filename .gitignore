@@ -1,0 +1,38 @@
+work/
+outputs/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.orig
+*.rej
+.venv/
+# Local UI verification evidence and isolated test/browser state (not customer code).
+.ui-review-browser/
+.ui-pytest-before/
+.ui-pytest-after/
+.ui-pytest-final/
+ui-*.png
+ui-before-*.dst
+ui-before-*.pes
+ui-after-*.dst
+ui-after-*.pes
+# Local synthetic verification data, never customer source or committed artwork.
+.repair-*/
+# Synthetic simple-editor verification screenshots and machine-file pairs.
+.simple-ui-evidence/
+.simple-browser-*/
+# Secrets and local credentials must never enter the Needler repository.
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+credentials.json
+secrets.json
+# Isolated runtimes, model weights and browser test sessions stay local.
+*.pt
+*.pth
+*.onnx
+*.safetensors
+.*-browser-*/

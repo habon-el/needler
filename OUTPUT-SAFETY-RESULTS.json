@@ -1,0 +1,265 @@
+{
+  "scope": "Exact old six hashes verified; fresh generation from original audit images; custom explicit-trim DST readback. No physical sew-out.",
+  "fixtures": [
+    {
+      "fixture": "shape",
+      "files": {
+        "pes": {
+          "old_sha256": "67dd18df752b5462b18ff31347adcb09ac9a427e4ec23bf4409500ce9f732a55",
+          "new_sha256": "bf19265116bf65b84922e645c531a4a33cbb69d0ff46f402ca3f6a5248adbebe",
+          "changed": true,
+          "before_trims": 2,
+          "after_trims": 1
+        },
+        "dst": {
+          "old_sha256": "5e49ca242b0f73b3a47a4f42e63b0c3009200c3e9b6691b4c4cc1fd45a736e6e",
+          "new_sha256": "5f62fe9a8765f166cb62434b66a5060213a010c7814072a3a4ed77f2c69a0c2a",
+          "changed": true,
+          "before_trims": 0,
+          "after_trims": 1
+        }
+      }
+    },
+    {
+      "fixture": "text-L",
+      "files": {
+        "pes": {
+          "old_sha256": "70c7bbcbc76ebd11e6bcd0adb16eb7bc0c9ef39be52e09d9fb387bd16e9bbf17",
+          "new_sha256": "70c7bbcbc76ebd11e6bcd0adb16eb7bc0c9ef39be52e09d9fb387bd16e9bbf17",
+          "changed": false,
+          "before_trims": 0,
+          "after_trims": 0
+        },
+        "dst": {
+          "old_sha256": "31f10182f61a094cc005282bf281ca1461cb8c63f164bb6c9c73ef75f0eaa039",
+          "new_sha256": "31f10182f61a094cc005282bf281ca1461cb8c63f164bb6c9c73ef75f0eaa039",
+          "changed": false,
+          "before_trims": 0,
+          "after_trims": 0
+        }
+      }
+    },
+    {
+      "fixture": "photographic",
+      "files": {
+        "pes": {
+          "old_sha256": "d211ed0e712a798ae333ae304dd995b60f9c00a339d77982eee41ab0ce70b0f0",
+          "new_sha256": "d211ed0e712a798ae333ae304dd995b60f9c00a339d77982eee41ab0ce70b0f0",
+          "changed": false,
+          "before_trims": 162,
+          "after_trims": 162
+        },
+        "dst": {
+          "old_sha256": "a165fdd5af7372fda50e43e66827f8b1cad8f785a4bf09291f2f69988eeed385",
+          "new_sha256": "b48221dff5af7802c33f7af238cbb774ff0f41f8a9292d0532381b3711e09124",
+          "changed": true,
+          "before_trims": 157,
+          "after_trims": 162
+        }
+      }
+    },
+    {
+      "fixture": "two-circles-normal",
+      "files": {
+        "pes": {
+          "old_sha256": "fe2c0b910b42e9fbba5c2016d008d555a0597beafb680f0a8c88576d607c878e",
+          "new_sha256": "fe2c0b910b42e9fbba5c2016d008d555a0597beafb680f0a8c88576d607c878e",
+          "changed": false,
+          "before_trims": 1,
+          "after_trims": 1
+        },
+        "dst": {
+          "old_sha256": "a3e400b11c16f9308c357cb835afec82132cd9a12bfcd227a3f2c49219925030",
+          "new_sha256": "8c2165f08b1826739dc07f53561fa8dd4b42cb1e79b0ea4779843e234169ac4a",
+          "changed": true,
+          "before_trims": 0,
+          "after_trims": 1
+        }
+      },
+      "release": {
+        "pes": {
+          "blocked": "Export blocked: stitch length 0.22 mm is outside 0.3–7 mm at x 3.70, y 1.50 mm (command 10).",
+          "location": {
+            "x_mm": 3.7,
+            "y_mm": 1.5,
+            "command": 10
+          }
+        },
+        "dst": {
+          "blocked": "Export blocked: stitch length 0.22 mm is outside 0.3–7 mm at x 3.70, y 1.50 mm (command 10).",
+          "location": {
+            "x_mm": 3.7,
+            "y_mm": 1.5,
+            "command": 10
+          }
+        }
+      }
+    },
+    {
+      "fixture": "two-circles-knockout",
+      "files": {
+        "pes": {
+          "old_sha256": "5d5c046a6986bac12aa5903a9afc9fe238516fcfb5001deaf02e3ce436f2dd86",
+          "new_sha256": "5d5c046a6986bac12aa5903a9afc9fe238516fcfb5001deaf02e3ce436f2dd86",
+          "changed": false,
+          "before_trims": 1,
+          "after_trims": 1
+        },
+        "dst": {
+          "old_sha256": "47909dfd72f9a36716de1dcbaa8f5becffaf6a9c62b05d34da91ad827c2338d1",
+          "new_sha256": "47909dfd72f9a36716de1dcbaa8f5becffaf6a9c62b05d34da91ad827c2338d1",
+          "changed": false,
+          "before_trims": 1,
+          "after_trims": 1
+        }
+      },
+      "release": {
+        "pes": {
+          "blocked": "Export blocked: stitch length 0.22 mm is outside 0.3–7 mm at x 3.70, y 1.50 mm (command 10).",
+          "location": {
+            "x_mm": 3.7,
+            "y_mm": 1.5,
+            "command": 10
+          }
+        },
+        "dst": {
+          "blocked": "Export blocked: stitch length 0.22 mm is outside 0.3–7 mm at x 3.70, y 1.50 mm (command 10).",
+          "location": {
+            "x_mm": 3.7,
+            "y_mm": 1.5,
+            "command": 10
+          }
+        }
+      }
+    },
+    {
+      "fixture": "hello-world-normal",
+      "files": {
+        "pes": {
+          "old_sha256": "7694f736d6e305cd850d5462a55180daac33de853614e50c55e18ff72e5024ae",
+          "new_sha256": "7694f736d6e305cd850d5462a55180daac33de853614e50c55e18ff72e5024ae",
+          "changed": false,
+          "before_trims": 4,
+          "after_trims": 4
+        },
+        "dst": {
+          "old_sha256": "7f2456d892040806e2163f5a052731d6c1970c672236423e63313be252b2f914",
+          "new_sha256": "d70a1863dd1ff5e7c45ba83a24e9f3a042c989717f1025ad4fcc4d7da83e5a7f",
+          "changed": true,
+          "before_trims": 1,
+          "after_trims": 4
+        }
+      },
+      "release": {
+        "pes": {
+          "blocked": "Export blocked: stitch length 0.20 mm is outside 0.3–7 mm at x 50.60, y -3.70 mm (command 32).",
+          "location": {
+            "x_mm": 50.6,
+            "y_mm": -3.7,
+            "command": 32
+          }
+        },
+        "dst": {
+          "blocked": "Export blocked: stitch length 0.20 mm is outside 0.3–7 mm at x 50.60, y -3.70 mm (command 32).",
+          "location": {
+            "x_mm": 50.6,
+            "y_mm": -3.7,
+            "command": 32
+          }
+        }
+      }
+    },
+    {
+      "fixture": "hello-world-knockout",
+      "generation_blocked": "Machine-file verification found a stitch across a removed area. Export was not approved.",
+      "before_error": "Machine-file verification found a stitch across a removed area. Export was not approved."
+    },
+    {
+      "fixture": "preview-tatami",
+      "files": {
+        "pes": {
+          "old_sha256": "312e573106a992eb1dab56be014eb65580ca4e8b308758db116cc99a053db43c",
+          "new_sha256": "312e573106a992eb1dab56be014eb65580ca4e8b308758db116cc99a053db43c",
+          "changed": false,
+          "before_trims": 0,
+          "after_trims": 0
+        },
+        "dst": {
+          "old_sha256": "809a61b9b9edcd43a92071f92ea8ebd7d79f7f4ba90c0009ef6afb2b1d313b14",
+          "new_sha256": "809a61b9b9edcd43a92071f92ea8ebd7d79f7f4ba90c0009ef6afb2b1d313b14",
+          "changed": false,
+          "before_trims": 0,
+          "after_trims": 0
+        }
+      },
+      "release": {
+        "pes": {
+          "blocked": "Export blocked: stitch length 0.20 mm is outside 0.3–7 mm at x 1.70, y -10.00 mm (command 15).",
+          "location": {
+            "x_mm": 1.7,
+            "y_mm": -10,
+            "command": 15
+          }
+        },
+        "dst": {
+          "blocked": "Export blocked: stitch length 0.20 mm is outside 0.3–7 mm at x 1.70, y -10.00 mm (command 15).",
+          "location": {
+            "x_mm": 1.7,
+            "y_mm": -10,
+            "command": 15
+          }
+        }
+      }
+    },
+    {
+      "fixture": "preview-satin",
+      "files": {
+        "pes": {
+          "old_sha256": "e746a0a166bd4d6a4e52d2047291e4730186cbaa2bb10a285712c6f7f19d2fa4",
+          "new_sha256": "e746a0a166bd4d6a4e52d2047291e4730186cbaa2bb10a285712c6f7f19d2fa4",
+          "changed": false,
+          "before_trims": 0,
+          "after_trims": 0
+        },
+        "dst": {
+          "old_sha256": "3b344bd355695dcf33148a3732296877c34fde963bd4cdd41a566615af579455",
+          "new_sha256": "3b344bd355695dcf33148a3732296877c34fde963bd4cdd41a566615af579455",
+          "changed": false,
+          "before_trims": 0,
+          "after_trims": 0
+        }
+      },
+      "release": {
+        "pes": "released",
+        "dst": "released"
+      }
+    },
+    {
+      "fixture": "preview-raised_satin",
+      "files": {
+        "pes": {
+          "old_sha256": "5027dfdacadb49d5c66d3e64c6c1ee441c1cc887904d55ece6ec29e0a91b5ba8",
+          "new_sha256": "5027dfdacadb49d5c66d3e64c6c1ee441c1cc887904d55ece6ec29e0a91b5ba8",
+          "changed": false,
+          "before_trims": 0,
+          "after_trims": 0
+        },
+        "dst": {
+          "old_sha256": "dc160c1f3d8a6cf0f3909f2ca6ff4374ad9870965f3c2025f908f96451180c78",
+          "new_sha256": "dc160c1f3d8a6cf0f3909f2ca6ff4374ad9870965f3c2025f908f96451180c78",
+          "changed": false,
+          "before_trims": 0,
+          "after_trims": 0
+        }
+      },
+      "release": {
+        "pes": "released",
+        "dst": "released"
+      }
+    }
+  ],
+  "original_circles_warm_cold_identical": {
+    "pes": true,
+    "dst": true
+  }
+}

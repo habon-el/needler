@@ -1,0 +1,141 @@
+/* Saved values belong to preparation options; selection and disclosure are UI-only. */
+(() => {
+ 'use strict';
+ const studio=window.embroideryStudio,$=id=>document.getElementById(id);
+ if(!studio||!$('topic-styles'))return;
+ const workbench=document.querySelector('.workbench'),panel=$('topic-styles');
+ const layers=document.createElement('aside');layers.className='piece-layers';layers.setAttribute('aria-label','Pieces');
+ layers.innerHTML='<h2>Pieces</h2><p class="muted">Select a part. Ctrl/⌘-click to select several.</p><div id="pieceList"></div>';
+ document.querySelector('.tools').after(layers);workbench.classList.add('with-pieces');
+ const properties=document.createElement('section');properties.className='piece-properties';
+ properties.innerHTML=`<div class="piece-header"><span id="pieceSwatch" class="piece-swatch"></span><label class="sr-only" for="pieceName">Piece name</label><input id="pieceName" maxlength="100" placeholder="Select a piece"><button id="pieceEye" type="button" title="Show or hide piece" aria-label="Show or hide piece"></button><button id="pieceLock" type="button" title="Lock piece" aria-label="Lock piece"></button></div>
+ <div class="piece-modes"><button type="button" id="pieceSimple" aria-pressed="true">Simple</button><button type="button" id="pieceAdvanced" aria-pressed="false">Advanced</button></div>
+ <p id="pieceSize"></p><p id="pieceAudit" role="status"></p>
+ <fieldset id="pieceTransform"><legend>Transform</legend><div class="piece-fields">
+ <label class="piece-advanced">X <span class="piece-unit"></span><input id="pieceX" inputmode="decimal" data-field="x_mm" title="Centre relative to hoop centre; positive X is right."></label>
+ <label class="piece-advanced">Y <span class="piece-unit"></span><input id="pieceY" inputmode="decimal" data-field="y_mm" title="Centre relative to hoop centre; positive Y is down, like the canvas ruler."></label>
+ <label>Width <span class="piece-unit"></span><input id="pieceW" inputmode="decimal" data-field="width_mm" title="Actual outline bounding-box width. Enter applies; Esc cancels."></label>
+ <label>Height <span class="piece-unit"></span><input id="pieceH" inputmode="decimal" data-field="height_mm" title="Actual outline bounding-box height. Enter applies; Esc cancels."></label>
+ </div><button id="pieceLink" type="button" aria-pressed="true">Keep proportions</button>
+ <label class="piece-advanced">Rotation °<input id="pieceRotation" inputmode="decimal" data-field="rotation" title="Clockwise around the selected piece centre. A multi-selection rotates as a group."></label>
+ <p id="pieceNodes" class="piece-advanced"></p>
+ </fieldset><div class="piece-modes"><button id="pieceMove" type="button" aria-pressed="true">Drag to move</button><button id="pieceRotate" type="button" aria-pressed="false">Drag to rotate</button></div>
+ <label class="piece-advanced">Group / subgroup<input id="pieceGroup" maxlength="100" placeholder="For example: Head / Eyes"></label>
+ <p id="pieceFeedback" role="status" aria-live="polite">Select a piece to edit its measurements.</p>
+ <details class="piece-advanced"><summary>Stitch settings and limitations</summary><p>Stitches rebuild from the outline after a transform. Fill angle follows rotation. Density and underlay retain the existing style preset.</p><p>Individual row spacing, stitch length, staggers, underlay, pull compensation, entry/exit and tie-in/tie-off editors are not available here. Sew-order reordering is not yet supported.</p></details>`;
+ panel.insertBefore(properties,$('stitchStyles'));$('stitchStyles').querySelector('summary').textContent='Stitch type';
+ $('stitchRegion').closest('label').hidden=true;$('regionStyleStatus').hidden=true;
+ const total=document.createElement('output');total.id='pieceStitchTotal';total.textContent='0 total stitches';document.querySelector('.thread-info').append(total);
+ let report={pieces:[]},selected=new Set(),advanced=false,linked=true,active=false,pending=false,drag=null,rotate=false;
+ const icon=(kind)=>{const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.classList.add('ui-icon');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',kind==='lock'?'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0v4':kind==='unlock'?'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0':kind==='eye'?'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6':'M3 3l18 18M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z');svg.append(path);return svg};
+ function targets(){return report.pieces.filter(p=>selected.has(p.id))}
+ function aggregate(items=targets()){
+  if(!items.length)return null;
+  const left=Math.min(...items.map(p=>p.x_mm-p.width_mm/2)),right=Math.max(...items.map(p=>p.x_mm+p.width_mm/2)),top=Math.min(...items.map(p=>p.y_mm-p.height_mm/2)),bottom=Math.max(...items.map(p=>p.y_mm+p.height_mm/2));
+  return {x_mm:(left+right)/2,y_mm:(top+bottom)/2,width_mm:right-left,height_mm:bottom-top,rotation:items.every(p=>p.rotation===items[0].rotation)?items[0].rotation:null};
+ }
+ function units(){return document.documentElement.dataset.units==='in'?'in':'mm'}
+ function format(value,angle=false){return value===null?'—':(value/(units()==='in'&&!angle?25.4:1)).toFixed(units()==='in'&&!angle?3:1)}
+ function feedback(message){$('pieceFeedback').textContent=message}
+ async function commit(field,value,ids=[...selected]){
+  if(pending||!ids.length)return;
+  pending=true;sync();feedback('Saving piece and rebuilding stitches when needed…');
+  try{const ok=await studio.pieceEdit({ids,field,value,linked:advanced?linked:true});feedback(ok?(studio.hasPlayback()?'Saved. Stitches use the updated outline.':'Piece saved. No current stitch plan; review the design before generating.'):'Not applied. See the workspace message; the previous piece is unchanged.')}
+  catch(error){feedback(error.message)}finally{pending=false;sync()}
+ }
+ function choose(ids,toggle=false){if(!toggle)selected.clear();for(const id of ids){if(toggle&&selected.has(id))selected.delete(id);else selected.add(id)}studio.pieceView();document.querySelector('[data-topic="styles"]').click();sync();renderRows()}
+ function sync(){
+  const items=targets(),box=aggregate(items),locked=items.some(p=>p.locked),disabled=!box||locked||pending||studio.isBusy();
+  properties.dataset.mode=advanced?'advanced':'simple';
+  $('pieceSimple').setAttribute('aria-pressed',String(!advanced));$('pieceAdvanced').setAttribute('aria-pressed',String(advanced));
+  $('pieceName').value=items.length===1?items[0].name:items.length?`${items.length} pieces`:'';
+  $('pieceName').disabled=disabled||items.length!==1;
+  $('pieceGroup').value=items.length&&items.every(p=>p.group===items[0].group)?items[0].group:'';$('pieceGroup').disabled=disabled;
+  $('pieceSwatch').style.background=items.length===1?items[0].colour:'transparent';
+  $('pieceEye').replaceChildren(icon(items.length&&items.every(p=>p.visible)?'eye':'hidden'));
+  $('pieceEye').disabled=disabled;
+  $('pieceLock').replaceChildren(icon(locked?'lock':'unlock'));$('pieceLock').disabled=!box||pending||studio.isBusy();$('pieceLock').setAttribute('aria-label',locked?'Unlock piece':'Lock piece');$('pieceLock').title=locked?'Unlock before editing':'Lock against manual and automatic changes';
+  $('pieceSize').textContent=box?`Size ${format(box.width_mm)} × ${format(box.height_mm)} ${units()}`:'No piece selected';
+  $('pieceNodes').textContent=items.length?`Nodes ${items.reduce((n,p)=>n+p.nodes,0)} · outline points`:'';
+  $('pieceTransform').title='Reference hoop '+(report.hoop_mm||[]).join(' × ')+' mm. Rectangular reference, not a validated machine profile.';
+  $('pieceAudit').textContent=items.length?`${items.some(p=>p.audit.level==='red')?'RED — check size':items.some(p=>p.audit.level==='yellow')?'YELLOW — check thin span':'GREEN — area check'} · ${[...new Set(items.flatMap(p=>p.audit.messages))].join(' ')}`:'';
+  $('pieceAudit').dataset.level=items.some(p=>p.audit.level==='red')?'red':items.some(p=>p.audit.level==='yellow')?'yellow':'green';
+  properties.querySelectorAll('[data-field]').forEach(input=>{input.setAttribute('aria-describedby','pieceFeedback');input.disabled=disabled;input.value=box?format(box[input.dataset.field],input.dataset.field==='rotation'):'';input.removeAttribute('aria-invalid')});
+  properties.querySelectorAll('.piece-unit').forEach(node=>node.textContent=units());
+  $('pieceLink').disabled=disabled||!advanced;$('pieceLink').setAttribute('aria-pressed',String(!advanced||linked));
+  $('pieceMove').disabled=$('pieceRotate').disabled=disabled;
+  window.stitchRegionSelection=active&&items.length?{rings:items.flatMap(p=>p.rings)}:null;
+  const target=$('stitchRegion');target.value=items.length===1?items[0].id:'';target.dispatchEvent(new Event('change'));
+  studio.redraw();
+ }
+ function groupActions(items,label){
+  const actions=document.createElement('div');actions.className='piece-group-actions';
+  const select=document.createElement('button');select.type='button';select.textContent='Select group';select.onclick=()=>choose(items.map(p=>p.id));
+  const eye=document.createElement('button');eye.type='button';eye.replaceChildren(icon(items.some(p=>p.visible)?'eye':'hidden'));eye.setAttribute('aria-label','Show or hide '+label);eye.disabled=pending||items.some(p=>p.locked);eye.onclick=()=>commit('visible',!items.some(p=>p.visible),items.map(p=>p.id));
+  actions.append(select,eye);return actions;
+ }
+ function renderRows(){
+  const list=$('pieceList'),open=new Set([...list.querySelectorAll('details[open]')].map(d=>d.dataset.group));list.replaceChildren();
+  if(!report.pieces.length){const p=document.createElement('p');p.textContent=report.unavailable||'Prepare a colour artwork to see its pieces.';list.append(p);return}
+  const groups=new Map();
+  for(const p of report.pieces){const fallback=p.y_mm< -report.origin_mm[1]/3?'Upper parts':p.y_mm>report.origin_mm[1]/3?'Lower parts':'Middle parts';const group=p.group||fallback;if(!groups.has(group))groups.set(group,[]);groups.get(group).push(p)}
+  const containers=new Map();
+  for(const [group,items] of groups){
+   let parent=list,path='';
+   for(const token of group.split('/').map(s=>s.trim()).filter(Boolean)){
+    path+=(path?'/':'')+token;
+    if(!containers.has(path)){const d=document.createElement('details');d.dataset.group=path;d.open=open.has(path);const summary=document.createElement('summary');summary.textContent=token;d.append(summary);parent.append(d);containers.set(path,d)}parent=containers.get(path);
+   }
+   parent.append(groupActions(items,group));
+   for(const p of items){const row=document.createElement('div');row.className='piece-row';row.dataset.id=p.id;const select=document.createElement('button');select.type='button';select.className='piece-select';select.setAttribute('aria-pressed',String(selected.has(p.id)));select.title=p.name;const order=document.createElement('span');order.textContent=p.order;order.className='piece-order';const thumb=document.createElementNS('http://www.w3.org/2000/svg','svg');thumb.setAttribute('viewBox',`${p.x_mm-p.width_mm/2} ${p.y_mm-p.height_mm/2} ${Math.max(p.width_mm,.1)} ${Math.max(p.height_mm,.1)}`);thumb.setAttribute('aria-hidden','true');const path=document.createElementNS(thumb.namespaceURI,'path');path.setAttribute('d',p.rings_mm.map(r=>'M '+r.map(x=>x.join(',')).join(' L ')+' Z').join(' '));path.setAttribute('fill',p.colour);path.setAttribute('fill-rule','evenodd');thumb.append(path);const name=document.createElement('span');name.className='piece-label';name.textContent=p.name;select.append(order,thumb,name);select.onclick=e=>choose([p.id],e.ctrlKey||e.metaKey);const swatch=document.createElement('span');swatch.className='piece-swatch';swatch.style.background=p.colour;swatch.title=(p.thread_name||p.colour)+' · '+p.colour;swatch.setAttribute('aria-label','Thread '+(p.thread_name||p.colour));const eye=document.createElement('button');eye.type='button';eye.replaceChildren(icon(p.visible?'eye':'hidden'));eye.setAttribute('aria-label',(p.visible?'Hide ':'Show ')+p.name);eye.disabled=pending||p.locked;eye.onclick=()=>commit('visible',!p.visible,[p.id]);row.append(select,swatch,eye);parent.append(row)}
+  }
+  for(const [path,container] of containers){
+   if(container.querySelector(':scope > .piece-group-actions'))continue;
+   const items=report.pieces.filter(p=>p.group.split('/').map(s=>s.trim()).filter(Boolean).join('/').startsWith(path+'/'));
+   if(items.length)container.insertBefore(groupActions(items,path),container.children[1]);
+  }
+ }
+ properties.querySelectorAll('[data-field]').forEach(input=>input.addEventListener('keydown',e=>{
+  if(e.isComposing)return;
+  if(e.key==='Escape'){e.preventDefault();sync();return}
+  if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();const sign=e.key==='ArrowUp'?1:-1;const increment=(e.shiftKey?1:.1)/(units()==='in'&&input.dataset.field!=='rotation'?25.4:1);const current=Number(input.value);if(Number.isFinite(current))input.value=(current+sign*increment).toFixed(units()==='in'?4:1);return}
+  if(e.key==='Enter'){e.preventDefault();const raw=input.value.trim(),value=Number(raw)*(units()==='in'&&input.dataset.field!=='rotation'?25.4:1);if(!raw||!Number.isFinite(value)){sync();input.setAttribute('aria-invalid','true');feedback('Enter a valid number. The previous value was restored.');return}commit(input.dataset.field,value)}
+ }));
+ for(const [id,field] of [['pieceName','name'],['pieceGroup','group']])$(id).addEventListener('keydown',e=>{if(e.isComposing)return;if(e.key==='Escape'){e.preventDefault();sync()}if(e.key==='Enter'){e.preventDefault();commit(field,e.target.value.trim())}});
+ $('pieceEye').onclick=()=>commit('visible',!targets().every(p=>p.visible));$('pieceLock').onclick=()=>commit('locked',!targets().some(p=>p.locked));
+ $('pieceLink').onclick=()=>{linked=!linked;sync()};$('pieceSimple').onclick=()=>{advanced=false;sync()};$('pieceAdvanced').onclick=()=>{advanced=true;sync()};
+ $('pieceMove').onclick=()=>{rotate=false;$('pieceMove').setAttribute('aria-pressed','true');$('pieceRotate').setAttribute('aria-pressed','false')};$('pieceRotate').onclick=()=>{rotate=true;$('pieceMove').setAttribute('aria-pressed','false');$('pieceRotate').setAttribute('aria-pressed','true')};
+ const canvas=$('prepared');
+ canvas.addEventListener('pointerdown',e=>{
+  if(!active||$('tool').value==='measure'||studio.navigationGesture(e)||e.button!==0||pending||studio.isBusy())return;
+  e.stopImmediatePropagation();const at=studio.piecePoint(e,canvas),context=canvas.getContext('2d');
+  const hit=[...report.pieces].reverse().find(p=>{if(!p.visible)return false;const path=new Path2D();for(const r of p.rings){r.forEach(([x,y],i)=>i?path.lineTo(x,y):path.moveTo(x,y));path.closePath()}return context.isPointInPath(path,...at,'evenodd')});
+  if(!hit)return;if(!selected.has(hit.id)||e.ctrlKey||e.metaKey)choose([hit.id],e.ctrlKey||e.metaKey);
+  if(targets().some(p=>p.locked)){feedback('This piece is locked. Unlock it before dragging.');return}
+  drag={at,box:aggregate(),items:targets(),pointer:e.pointerId};canvas.setPointerCapture(e.pointerId);e.preventDefault();
+ },true);
+ canvas.addEventListener('pointermove',e=>{
+  if(!drag)return;e.stopImmediatePropagation();const at=studio.piecePoint(e,canvas),dx=(at[0]-drag.at[0])*report.scale,dy=(at[1]-drag.at[1])*report.scale;
+  if(rotate){const cx=(drag.box.x_mm+report.origin_mm[0])/report.scale,cy=(drag.box.y_mm+report.origin_mm[1])/report.scale;drag.angle=(Math.atan2(at[1]-cy,at[0]-cx)-Math.atan2(drag.at[1]-cy,drag.at[0]-cx))*180/Math.PI;$('pieceRotation').value=format((drag.box.rotation||0)+drag.angle,true)}
+  else{$('pieceX').value=format(drag.box.x_mm+dx);$('pieceY').value=format(drag.box.y_mm+dy);drag.position=[drag.box.x_mm+dx,drag.box.y_mm+dy];window.stitchRegionSelection={rings:drag.items.flatMap(p=>p.rings.map(r=>r.map(([x,y])=>[x+dx/report.scale,y+dy/report.scale])))}}studio.redraw();
+ },true);
+ canvas.addEventListener('pointerup',e=>{if(!drag)return;e.stopImmediatePropagation();const done=drag;drag=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(rotate&&done.angle)commit('rotation',(done.items.length===1?done.box.rotation:0)+done.angle);else if(done.position)commit('position',done.position);else sync()},true);
+ const cancel=()=>{if(drag){drag=null;sync()}};canvas.addEventListener('pointercancel',cancel,true);canvas.addEventListener('lostpointercapture',cancel,true);
+ window.addEventListener('studio:preview',e=>{total.textContent=Number(e.detail.stitchCount||0).toLocaleString()+' total stitches';report=e.detail.report.piece_layout||{pieces:[]};selected=new Set([...selected].filter(id=>report.pieces.some(p=>p.id===id)));renderRows();sync()});
+ window.addEventListener('studio:topic',e=>{active=e.detail==='styles';sync()});
+ window.addEventListener('studio:controls',()=>{if(!drag)sync()});
+ new MutationObserver(()=>sync()).observe(document.documentElement,{attributes:true,attributeFilter:['data-units']});
+ window.PiecePanel={targets,commit,paint:(context,scale)=>{
+  if(!report.pieces.length||$('middleView').value==='isolated')return;
+  if(report.transformed){
+   context.save();context.setTransform(1,0,0,1,0,0);context.clearRect(0,0,context.canvas.width,context.canvas.height);context.restore();
+   for(const p of report.pieces){if(!p.visible)continue;context.beginPath();for(const ring of p.rings){ring.forEach(([x,y],j)=>j?context.lineTo(x,y):context.moveTo(x,y));context.closePath()}context.fillStyle=p.colour;context.fill('evenodd')}
+  }
+  if(!active)return;
+  const [ox,oy]=report.origin_mm.map(v=>v/report.scale),[w,h]=report.hoop_mm.map(v=>v/report.scale);
+  context.save();context.lineWidth=1/scale;context.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--ui-muted');context.setLineDash([5/scale,5/scale]);context.strokeRect(ox-w/2,oy-h/2,w,h);
+  context.beginPath();context.moveTo(ox-6/scale,oy);context.lineTo(ox+6/scale,oy);context.moveTo(ox,oy-6/scale);context.lineTo(ox,oy+6/scale);context.stroke();context.setLineDash([]);
+  context.font=`${11/scale}px system-ui`;context.fillStyle=context.strokeStyle;context.fillText('0,0 · Y ↓',ox+8/scale,oy-8/scale);context.restore();
+ }};
+ renderRows();sync();
+})();

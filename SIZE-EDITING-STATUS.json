@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-14",
+  "status": "Targeted editing and small-text fixes implemented; the whole digitizer is not finished",
+  "restore_point": "restore-before-size-controls-20261014",
+  "local_only": true,
+  "changes": [
+    "Image and native text editors expose 10% smaller / 10% larger actions through their existing size/history owners. Stitches rebuild, not coordinate-scale.",
+    "Native size validation reads the installed font's scale metadata instead of a fixed 4–6 mm application limit. Current enabled font inputs span 3.6–15.2 mm nominal size, not measured capital height.",
+    "A blocked cleanup request returns its preview and opens the existing review with keyboard focus. Keep all pending details records one Undoable choice; previous choices are preserved. Only 30 records render initially, with Show more and a complete downloadable report.",
+    "Native generation tries one explicit SVG securing-stitch pattern if the original file pair fails only short-stitch checks. It regenerates from the same source vectors, verifies both written files against the unchanged source envelope, and accepts the candidate only when every check passes. The result reports the adjustment before Save. Passing initial builds are untouched."
+  ],
+  "verification": {
+    "automated_tests": "419 passed in 87.23 seconds. No unit-test failures.",
+    "browser": "PASS: 372-area review, 371 pending Keep choices preserving an existing Drop, one-step Undo, stale-control rejection, proportional image resize/Undo, native resize/Undo, actual 3.6 mm native rebuild with visible adjustment notice, keyboard and 390px reflow.",
+    "browser_runner": "tests/browser_editing_sizes.py",
+    "real_small_text": {
+      "result": "8/8 passed in the real application generation, approval and download routes",
+      "words": ["tiny i .", "Jesus is King"],
+      "nominal_sizes_mm": [3.6, 3.8, 4, 6],
+      "formats": ["DST", "PES"],
+      "checks": "Zero short/long stitches, empty-area crossings, missing columns and uncut travel under existing checks; matching DST/PES trim counts. Both saved formats read back after download.",
+      "before": "At 3.6 and 3.8 mm, both examples had three 0.2 mm securing stitches. They now have zero short stitches.",
+      "example": "Jesus is King at nominal 3.6 mm: 37.2 × 5.5 mm, 666 stitches, 12 cuts, 0.447–2.408 mm stitch lengths.",
+      "evidence": "small-text-lock-repair-verification.json"
+    },
+    "broader_range": "Before lock retry, 7/12 cases passed; two small cases are now resolved. Jesus is King at 8, 12 and 15.2 mm still has one crossing in each format. This rule deliberately does not repair crossings.",
+    "before_evidence": ["size-range-verification.json", "smaller-text-verification.json"],
+    "source_experiment": "lettering-lock-probe.json — temporary designs only, no production approval",
+    "physical_sew_out": "PENDING. No claim of density, physical readability, needle safety or arbitrary-font support.",
+    "static_audit": "89 findings: the prior 87 plus two externally bound resize buttons that passed runtime activation. Remaining legacy findings are not individually closed. Strict audit is NOT clean.",
+    "static_evidence": "editing-ui-audit.json",
+    "legacy_browser_commands": "Not run: configured browser_workspace.py and browser_workspace_states.py write to the prohibited outputs folder. The isolated changed-flow browser test was used instead.",
+    "export_fixtures": "No committed DST/PES fixture files changed. This is not a claim of fresh-generation byte determinism; that prior limitation remains."
+  },
+  "remaining": [
+    "Tiny raster contours can still be unsupported after keeping their pixels; keeping details is not a guarantee they can all be stitched.",
+    "Larger text routing cases still need correction, as recorded above.",
+    "Font reverse-direction semicolon coverage and cold-generation determinism from the earlier report remain unresolved.",
+    "Additional fonts, exact measured capital-height sizing, density and physical sew-out validation remain unfinished."
+  ],
+  "reference": "https://inkstitch.org/docs/stitches/lock-stitches/"
+}

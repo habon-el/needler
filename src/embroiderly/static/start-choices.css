@@ -1,0 +1,18 @@
+.start-choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:440px}
+.start-choices .button{display:flex;align-items:center;justify-content:center;gap:16px;box-sizing:border-box;min-height:54px;padding:12px 20px;border:1px solid var(--ui-primary,#126957);border-radius:8px;background:var(--ui-primary,#126957);color:var(--ui-surface,#ffffff);font:600 14px system-ui;text-decoration:none;cursor:pointer;text-align:center}
+.start-choices .button:hover{background:var(--ui-ink,#243538)}
+.start-choices .button:focus-visible{outline:3px solid var(--ui-primary,#126957);outline-offset:3px}
+.library-heading .start-choices{min-width:330px}
+.library-main{padding-top:24px}
+.library-heading{margin-bottom:20px}
+.card-image{height:160px}
+.card-body{padding:12px 16px}
+.library-heading #newDesign{display:block}
+.library-heading #newDesign [hidden]{display:none!important}
+.card-kind{display:inline-block;font-size:11px;color:var(--ui-muted);border:1px solid var(--ui-line);border-radius:4px;padding:1px 6px;margin-bottom:6px}
+.card-rename{padding:8px;background:var(--ui-background)}
+.card-rename label,.card-rename input{display:block;width:100%;box-sizing:border-box}
+.card-rename input{margin:6px 0;padding:8px;font:inherit;color:var(--ui-ink);background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:6px}
+.card-rename button{margin-right:6px}
+.card-rename [role=alert]{color:var(--ui-danger);font-size:12px}
+@media(max-width:520px){.library-heading .start-choices{min-width:0}.start-choices .button{padding:10px;gap:8px}}

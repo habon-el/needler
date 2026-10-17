@@ -1,0 +1,173 @@
+{
+  "date": "2026-10-14",
+  "latest_follow_up": "SIZE-EDITING-STATUS.json",
+  "status": "PARTIAL — not ready to call the whole repair plan finished",
+  "workspace": "/home/guyha/Documents/Codex/2026-09-04/files-mentioned-by-the-user-embroiderybuildprompt",
+  "repository": "Local only. No GitHub actions.",
+  "jira": "No Jira connector or project was available; no Jira issues were changed.",
+  "restore_point": "restore-before-digitizer-repair-20261014 (2247bb2)",
+  "fixes": [
+    {
+      "commit": "05063e9",
+      "issue": "Rare colours lost during palette sampling",
+      "change": "Use every exact source colour when flat artwork fits its selected palette budget; record smoothing and colour-reduction changes separately. Cleanup decisions and original pixels remain reviewable.",
+      "before": "A 3×3 black feature at an unlucky sampling position became skin colour, with automatic_changes=false.",
+      "after": "The colour survives quantization; subsequent cleanup is recorded with actual bounds. New focused tests: old code 5 failed / 1 passed; fixed code 6 passed."
+    },
+    {
+      "commit": "ef45ad9",
+      "issue": "Old prepared previews reused after processing changes",
+      "change": "Preparation and restored-plan lookup share a code-and-knowledge revision key. Existing files are retained, but stale plans are not presented as current.",
+      "regression": "Old v2 plan acceptance reproduced; rejected after the change."
+    },
+    {
+      "commit": "2394ef6",
+      "issue": "Small selected raster pieces silently omitted by the fill converter",
+      "change": "Show real pixel bounds and physical dimensions before approval, and refuse incomplete generation before replacing files. The existing warning panel remains visible in Edit and its keyboard-accessible button zooms to the detail.",
+      "before": "A selected 2×2-pixel detail was skipped by the converter's contour-area threshold.",
+      "after": "A 0.5×0.5 mm case shows its true size and is blocked explicitly, not removed.",
+      "limitation": "This is an honesty/safety fix, not a new generator for very small raster contours.",
+      "regression": "Two new tests failed on old code. Palette-only existing test now explicitly excludes the tiny black component it previously silently omitted."
+    },
+    {
+      "commit": "fbc5914",
+      "issue": "Valid font geometry rejected; missing characters poorly explained",
+      "change": "Recognize bent rungs and overlapping authored ribbons using source-boundary winding, preserve open counters, prefer established unambiguous rail interpretations, and name missing characters. Font paths are not rewritten and export checks are not relaxed.",
+      "regression": "Bent-rung and missing-character-message tests failed before the changes. The real ampersand case now passes DST/PES checks."
+    }
+  ],
+  "verification": {
+    "baseline_unit_tests": 391,
+    "final_unit_tests": 406,
+    "unit_result": "PASS",
+    "native_real_engine": {
+      "cases": 23,
+      "passed": 20,
+      "blocked": 3,
+      "evidence": "native-repair-verification.json",
+      "core_cases": "All 17 word/verse cases passed at nominal font settings 4–6 mm, including the verse with 100 and 110 mm available width.",
+      "blocked_cases": "The full alphabet with semicolon on a reverse-sewn line fails at 4, 5 and 6 mm because the installed font substitutes a replacement glyph. Original failing layouts remain in the test.",
+      "explicit_alternative": "A different, explicitly authored five-line layout placing the semicolon on a forward line passes at all three sizes. The app does not change line breaks automatically.",
+      "passed_case_checks": "Zero short/long stitches, empty-area crossings, reported missing columns and uncut travel under existing software checks. DST/PES trim counts match. Three repeated downloads of each approved file are byte-identical.",
+      "exit_status": 1
+    },
+    "image_real_engine": {
+      "result": "PASS",
+      "stitches": 1758,
+      "trims": 2,
+      "min_mm": 0.4,
+      "max_mm": 3.5,
+      "evidence": "image-repair-verification.json",
+      "scope": "Synthetic two-colour logo with transparent hole; real app generation and download routes, readback in both formats."
+    },
+    "cold_native_generation": {
+      "result": "FAIL",
+      "evidence": "native-cold-generation-verification.json",
+      "command_counts": [
+        874,
+        873
+      ],
+      "note": "Fresh font generation still changes paths/counts. Identical cached downloads do not establish cold determinism."
+    },
+    "browser": {
+      "result": "PASS for changed warning flow",
+      "runner": "tests/browser_missing_detail.py",
+      "checks": [
+        "Real-size warning shown before approval",
+        "Incomplete generation blocked",
+        "Visible keyboard-focusable locate button",
+        "Locate changes view, not design settings",
+        "390px reflow"
+      ],
+      "screenshots": [
+        ".repair-browser/detail-before-approval.png",
+        ".repair-browser/detail-warning.png",
+        ".repair-browser/detail-warning-narrow.png"
+      ],
+      "limitations": "Legacy whole-workspace browser runners were not run because they write to the project's output folder. No claim of full UI regression coverage."
+    },
+    "syntax": "PASS: preparation.js, workflow.js, workspace-ui.js and verification scripts",
+    "static_audit": {
+      "result": "FAIL / existing findings still open",
+      "errors": 87,
+      "evidence": "repair-ui-static-audit.json",
+      "breakdown": {
+        "actionless-button": 86,
+        "textarea-resize-missing": 1
+      },
+      "note": "Static detection does not prove missing runtime handlers; these findings were not individually closed by this pass."
+    },
+    "app": "Restarted with the requested command from the same project folder; root HTTP 200 and new JavaScript served.",
+    "export_fixtures": "No committed DST/PES fixtures changed. Same-plan repeated downloads verified; whole-codebase cold output equivalence is not claimed.",
+    "physical_sew_out": "PENDING. No density, legibility, needle-breakage or production-safety certification."
+  },
+  "plan": [
+    {
+      "step": 1,
+      "title": "Restore point",
+      "state": "complete"
+    },
+    {
+      "step": 2,
+      "title": "Reproduce failures",
+      "state": "partial",
+      "remaining": "Historical customer cases and every prior issue are not all rerun."
+    },
+    {
+      "step": 3,
+      "title": "Trace where detail is lost",
+      "state": "partial",
+      "remaining": "Palette sampling and contour omission traced; SAM selection and all image conversions need broader ground-truth coverage."
+    },
+    {
+      "step": 4,
+      "title": "Keep typed text native",
+      "state": "partial",
+      "remaining": "Native path tested without raster uploads; reverse-line semicolon and cold font routing remain."
+    },
+    {
+      "step": 5,
+      "title": "Small text and sizing",
+      "state": "partial",
+      "remaining": "4–6 mm nominal settings tested. Under-4-mm support, measured cap height, density and physical readability not validated. Available width is a fit constraint, not an automatic scale target."
+    },
+    {
+      "step": 6,
+      "title": "Routing and export",
+      "state": "partial",
+      "remaining": "Checked cases pass file gates; cold determinism and all historical designs not closed."
+    },
+    {
+      "step": 7,
+      "title": "Image subject selection",
+      "state": "pending",
+      "remaining": "Needs representative original images and intended selections to establish missing-detail accuracy; no SAM model change was made."
+    },
+    {
+      "step": 8,
+      "title": "Preserve details",
+      "state": "partial",
+      "remaining": "Rare colours retained and tiny omissions exposed; generating unsupported raster contours without changing them is still missing."
+    },
+    {
+      "step": 9,
+      "title": "Clear workflow and errors",
+      "state": "partial",
+      "remaining": "Changed warnings tested; static audit and full-workspace regression review still open."
+    },
+    {
+      "step": 10,
+      "title": "Regression and real sew-outs",
+      "state": "partial",
+      "remaining": "406 unit tests pass; integration matrix is not fully green, cold-generation check fails, physical sew-outs pending."
+    }
+  ],
+  "next_priorities": [
+    "Resolve installed font reverse-direction glyph coverage without substituting the chosen font.",
+    "Make cold font routing deterministic at its source, without deleting authored underpaths.",
+    "Validate selection/detail preservation against representative customer originals and intended masks.",
+    "Implement a verified converter for currently omitted raster contours, with explicit review of changes.",
+    "Complete density/physical sew-out validation and remaining UI audit."
+  ],
+  "reference_consulted": "https://inkstitch.org/docs/lettering/"
+}

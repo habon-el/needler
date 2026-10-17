@@ -1,0 +1,32 @@
+{
+  "text": {
+    "dst": {
+      "commands": 858,
+      "stitch_data_sha256": "a0d3b2f63fb9ae175215f3dde237694c5ec4f89e832aafebaa4142da57ec1a1d"
+    },
+    "pes": {
+      "commands": 857,
+      "stitch_data_sha256": "0c06fa92c21f77985ca49acd3648a683f1f4365a906c133f121ac274c8fb7a2b"
+    }
+  },
+  "small-text": {
+    "dst": {
+      "commands": 259,
+      "stitch_data_sha256": "d3f3136c4cbfbe124bc9f0cef070e60fd78ec3a3ecbce6e78bcbf73e378b6e61"
+    },
+    "pes": {
+      "commands": 259,
+      "stitch_data_sha256": "d3f3136c4cbfbe124bc9f0cef070e60fd78ec3a3ecbce6e78bcbf73e378b6e61"
+    }
+  },
+  "image": {
+    "dst": {
+      "commands": 886,
+      "stitch_data_sha256": "6410ccc130514ef9c7f22952a825ec8680bc1d868176a2321c92ba5af3acdb22"
+    },
+    "pes": {
+      "commands": 885,
+      "stitch_data_sha256": "86b6e1822d19ba2bbed794acbaca02dbe359396742f003438a15be59a762af9f"
+    }
+  }
+}

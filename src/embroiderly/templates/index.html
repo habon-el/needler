@@ -1,0 +1,8 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Embroiderly Lab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="{{ url_for('static', filename='studio.css') }}"><script defer src="{{ url_for('static', filename='studio.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+<main><p class="eyebrow">AUTO-DIGITISING REVIEW</p><h1>Prepare artwork for embroidery</h1>
+<p>Upload a flat-colour logo, word, or line drawing. You’ll receive a feasibility result and adjustable embroidery recommendations—not a technical pipeline.</p>
+<section><h2>Choose artwork</h2><form novalidate data-owned-validation method="post" action="/upload" enctype="multipart/form-data"><input type="file" name="image" accept="image/*" required><button>Analyse artwork</button></form></section>
+{% if files %}<section><h2>Your designs · open in studio</h2><ul>{% for file in files %}<li><a href="{{ url_for('artwork_prepare', name=file) }}">{{ file }}</a></li>{% endfor %}</ul></section>{% endif %}
+</main><script src="/static/ui-language.js"></script><script src="/static/form-validation.js"></script></html>

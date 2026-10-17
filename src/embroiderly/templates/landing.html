@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Embroiderly — Your ideas. Made of thread.</title>
+  <meta name="description" content="Bring your artwork into an embroidery workspace. Choose what to stitch, edit thread colours, preview the stitch path and export PES or DST.">
+  <link rel="stylesheet" href="/static/landing.css">
+  <link rel="stylesheet" href="/static/start-choices.css">
+  <link rel="preload" as="image" href="/static/landing/cap-concept.webp">
+  <script defer src="/static/thread-surface.js"></script><script defer src="/static/stitch-layer.js"></script><script defer src="/static/landing.js"></script>
+</head>
+<body>
+{% macro arrow() %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>{% endmacro %}
+{% macro mark() %}<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 2v28M2 16h28M6 6l20 20M6 26 26 6M9 3l14 26M3 23 29 9"/></svg>{% endmacro %}
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header wrap">
+  <a href="/" class="wordmark" aria-label="Embroiderly home">{{ mark() }}Embroiderly<span class="beta">BETA</span></a>
+  <nav aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#possibilities">The possibilities</a><a href="/designs">Your designs</a></nav>
+  <a class="button small" href="/designs#newDesign">Open studio {{ arrow() }}</a>
+</header>
+<main id="main">
+  <section class="hero wrap" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="tiny-stitch" aria-hidden="true"></span> FROM ARTWORK TO EMBROIDERY</p>
+      <h1 id="hero-title">Your ideas.<br>Made of<br><span>thread.</span></h1>
+      <p class="lede">That logo. That little sketch. That idea you can’t stop thinking about. Give it a new life in stitches.</p>
+      <div class="hero-actions start-choices"><a class="button" href="/text/new">Type text {{ arrow() }}</a><a class="button" href="/designs#newDesign">Upload image {{ arrow() }}</a></div>
+      <p class="fine-print">Upload. Make it yours. Preview the stitch path.</p>
+    </div>
+    <figure class="hero-visual">
+      <img src="/static/landing/cap-concept.webp" width="1200" height="800" alt="Forest-green cap with a raised ivory leaf embroidery motif. AI-generated concept." fetchpriority="high">
+      <div class="photo-tag"><span aria-hidden="true">✳</span> Small details.<br><strong>Big personality.</strong></div>
+      <figcaption><span>THE EVERYDAY, REIMAGINED</span><span>AI-generated concept · not a sew-out</span></figcaption>
+    </figure>
+  </section>
+  <div class="capability-strip wrap" aria-label="What the studio offers"><span>One creative workspace</span><span>Choose your thread colours</span><span>Watch the stitch sequence</span><span>PES &amp; DST export</span></div>
+
+  <section id="how-it-works" class="walkthrough wrap" aria-labelledby="demo-title">
+    <div class="section-heading"><div><p class="eyebrow">A LITTLE PREVIEW OF THE PROCESS</p><h2 id="demo-title">From “what if”<br>to <span>every stitch.</span></h2></div><p>You’re in control at every step.<br>Try the sample below—no upload needed.</p></div>
+    <div class="demo-layout">
+      <div class="demo-steps" role="group" aria-label="Sample walkthrough steps">
+        <button type="button" class="demo-step" data-stage="artwork" aria-pressed="true" aria-controls="demo-view"><span class="step-number">01</span><span><strong>Start with your artwork</strong><small>A word, a logo, a simple drawing.<br>Choose what you want to stitch.</small></span>{{ arrow() }}</button>
+        <button type="button" class="demo-step" data-stage="plan" aria-pressed="false" aria-controls="demo-view"><span class="step-number">02</span><span><strong>Make it your own</strong><small>Review your selection and colours.<br>Keep the background out.</small></span>{{ arrow() }}</button>
+        <button type="button" class="demo-step" data-stage="stitches" aria-pressed="false" aria-controls="demo-view"><span class="step-number">03</span><span><strong>Watch it come together</strong><small>Play the actual generated path.<br>See where each stitch goes.</small></span>{{ arrow() }}</button>
+      </div>
+      <div class="demo-workbench" id="demo-view">
+        <div class="demo-top"><span><i aria-hidden="true"></i> hello · sample design</span><span id="demoMode">ARTWORK</span></div>
+        <div class="demo-canvas-wrap"><canvas id="demoCanvas" width="960" height="450" role="img" aria-label="Embroidery sample showing the word hello"></canvas><span class="demo-scale">SAMPLE / NOT A SEW-OUT</span></div>
+        <div class="demo-bottom"><div id="demoColourControls" hidden><span>Preview colour</span><button class="swatch green" type="button" data-colour="#126957" aria-label="Forest green preview" aria-pressed="true"></button><button class="swatch blue" type="button" data-colour="#365b91" aria-label="Blue preview" aria-pressed="false"></button><button class="swatch berry" type="button" data-colour="#9b3e58" aria-label="Berry preview" aria-pressed="false"></button></div><span id="demoFacts">Original sample artwork</span></div>
+        <div class="demo-playback" id="demoPlayback" hidden><button type="button" id="demoPlay" disabled>Play stitches</button><label class="sr-only" for="demoProgress">Stitch playback position</label><input id="demoProgress" type="range" min="0" max="100" value="0" disabled><output id="demoPercent" for="demoProgress">0%</output></div>
+        <p id="demoStatus" class="demo-status" role="status" aria-live="polite">This sample uses lettering on a transparent background.</p><button id="demoRetry" type="button" hidden>Retry sample</button>
+      </div>
+    </div>
+    <p class="demo-caption">Interactive software preview. Colour changes here are for demonstration only; your saved designs are untouched. <a href="/designs#newDesign">Try your own artwork {{ arrow() }}</a></p>
+    <noscript><p>The interactive demo needs JavaScript. You can still <a href="/designs">open your designs</a>.</p></noscript>
+  </section>
+
+  <section class="craft-section" id="possibilities" aria-labelledby="craft-title"><div class="craft-grid wrap">
+    <figure><img src="/static/landing/machine-concept.webp" width="1000" height="667" loading="lazy" alt="Close-up concept of a machine needle over a green embroidered leaf on ivory fabric."><figcaption>AI-generated process inspiration · not a machine demonstration</figcaption></figure>
+    <div class="craft-copy"><p class="eyebrow">FOR THE THINGS YOU WANT TO MAKE</p><h2 id="craft-title">More you.<br>In every detail.</h2><p>A personal mark on a cap. A logo for your small business. A patch with a story. Start with the artwork, then explore how it could become embroidery.</p>
+      <ul class="craft-features"><li><span>01</span><div><h3>Keep what matters</h3><p>Select your subject and refine the areas you want to stitch.</p></div></li><li><span>02</span><div><h3>Find your thread</h3><p>Choose colours and supported stitch styles, by colour or individual area.</p></div></li><li><span>03</span><div><h3>Check before you sew</h3><p>Review the stitch sequence and export PES or DST. Always test on your own fabric and machine.</p></div></li></ul>
+    </div>
+  </div></section>
+
+  <section class="questions wrap" aria-labelledby="questions-title"><div><p class="eyebrow">BEFORE YOUR FIRST STITCH</p><h2 id="questions-title">A few good<br>things to know.</h2></div><div class="faq-list">
+    <details><summary>What can I upload?<span aria-hidden="true">+</span></summary><p>PNG, JPG, WebP or BMP images up to 12 MB. Clear logos and simple artwork are a good starting point. Detailed photographs need more preparation and careful review.</p></details>
+    <details><summary>Does the preview guarantee the sewn result?<span aria-hidden="true">+</span></summary><p>No. Fabric, stabiliser, thread, tension and your machine affect the result. The stitch preview helps you review the plan; a physical sew-out is still needed.</p></details>
+    <details><summary>Can I make raised or 3D embroidery?<span aria-hidden="true">+</span></summary><p>Experimental layered satin is available for supported narrow shapes. Complex lettering and irregular areas are limited. It is not foam embroidery, and the preview does not predict physical height.</p></details>
+    <details><summary>Are the cap and machine photos actual results?<span aria-hidden="true">+</span></summary><p>They are AI-generated concept images for inspiration, not customer work or products sewn by Embroiderly. The interactive “hello” sample uses actual generated stitch-file paths.</p></details>
+  </div></section>
+
+  <section class="closing wrap"><p class="eyebrow">YOUR NEXT PROJECT STARTS HERE</p><h2>Let’s make something<br><span>worth stitching.</span></h2><a class="button" href="/designs#newDesign">Open the design studio {{ arrow() }}</a><p>Bring your artwork. We’ll give you a place to begin.</p></section>
+</main>
+<footer class="site-footer wrap"><a class="wordmark" href="/">{{ mark() }}Embroiderly</a><p>Made for ideas with a little texture.</p><nav aria-label="Footer"><a href="/designs">Your designs</a><a href="#how-it-works">Try the demo</a><a href="#hero-title">Back to top ↑</a></nav><small>Development preview · not a public subscription service</small></footer>
+</body></html>

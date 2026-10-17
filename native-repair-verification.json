@@ -1,0 +1,1621 @@
+[
+  {
+    "text": "Hello World",
+    "nominal_height_mm": 4,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 4.2,
+        "long": 0,
+        "maximum_mm": 2.2,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 709,
+        "trims": 9,
+        "uncut_travel": 0,
+        "width_mm": 37.0
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 4.2,
+        "long": 0,
+        "maximum_mm": 2.2,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 709,
+        "trims": 9,
+        "uncut_travel": 0,
+        "width_mm": 37.0
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 37.0,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "3ed995732bad231d4cc6b9062a8d258b867686e30b1ace8a50ebfb99d51427d3",
+        "readback": {
+          "stitches": 709,
+          "trims": 9,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.2,
+          "width_mm": 37.0,
+          "height_mm": 4.2
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "e114279ccb63549bc8350a7f54fc30080d5a7df31a38acff38047774f5d9530d",
+        "readback": {
+          "stitches": 709,
+          "trims": 9,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.2,
+          "width_mm": 37.0,
+          "height_mm": 4.2
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 9.61
+  },
+  {
+    "text": "Hello World",
+    "nominal_height_mm": 5,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.2,
+        "long": 0,
+        "maximum_mm": 2.474,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 848,
+        "trims": 9,
+        "uncut_travel": 0,
+        "width_mm": 46.0
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.2,
+        "long": 0,
+        "maximum_mm": 2.474,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 848,
+        "trims": 9,
+        "uncut_travel": 0,
+        "width_mm": 46.0
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 46.0,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "4713adde2c296548e833bd64deef038d51970ca708cd64be01ca269f699a2869",
+        "readback": {
+          "stitches": 848,
+          "trims": 9,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.474,
+          "width_mm": 46.0,
+          "height_mm": 5.2
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "8c526d08a2bfeb0dd7b32846b4917dea0acd9824fc3666ab6e2723d79051679b",
+        "readback": {
+          "stitches": 848,
+          "trims": 9,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.474,
+          "width_mm": 46.0,
+          "height_mm": 5.2
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 9.8
+  },
+  {
+    "text": "Hello World",
+    "nominal_height_mm": 6,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 6.2,
+        "long": 0,
+        "maximum_mm": 2.159,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 974,
+        "trims": 9,
+        "uncut_travel": 0,
+        "width_mm": 55.2
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 6.2,
+        "long": 0,
+        "maximum_mm": 2.159,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 974,
+        "trims": 9,
+        "uncut_travel": 0,
+        "width_mm": 55.2
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 55.2,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "2a2523c8faadab1d3b370e91e29f285bce0da6a9ab8d082e59ad0abc2664701e",
+        "readback": {
+          "stitches": 974,
+          "trims": 9,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.5,
+          "maximum_mm": 2.159,
+          "width_mm": 55.2,
+          "height_mm": 6.2
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "05d393641f01e3760c78a46c658e1047b50f52602c52692aa8d07dde572d6efb",
+        "readback": {
+          "stitches": 974,
+          "trims": 9,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.5,
+          "maximum_mm": 2.159,
+          "width_mm": 55.2,
+          "height_mm": 6.2
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 10.06
+  },
+  {
+    "text": "tiny",
+    "nominal_height_mm": 4,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.8,
+        "long": 0,
+        "maximum_mm": 2.102,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 249,
+        "trims": 4,
+        "uncut_travel": 0,
+        "width_mm": 11.8
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.8,
+        "long": 0,
+        "maximum_mm": 2.102,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 249,
+        "trims": 4,
+        "uncut_travel": 0,
+        "width_mm": 11.8
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 11.8,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "5c165e3e99f6a8460ce8aab154098cb95977a38c132eb2b2e569d0ae88411c6b",
+        "readback": {
+          "stitches": 249,
+          "trims": 4,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.102,
+          "width_mm": 11.8,
+          "height_mm": 5.8
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "b2c019776f2d5bc50eb54decc45b9048992beb48d559f9e0284814014139b619",
+        "readback": {
+          "stitches": 249,
+          "trims": 4,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.102,
+          "width_mm": 11.8,
+          "height_mm": 5.8
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 7.59
+  },
+  {
+    "text": "tiny",
+    "nominal_height_mm": 5,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 7.2,
+        "long": 0,
+        "maximum_mm": 2.47,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 296,
+        "trims": 4,
+        "uncut_travel": 0,
+        "width_mm": 14.5
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 7.2,
+        "long": 0,
+        "maximum_mm": 2.47,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 296,
+        "trims": 4,
+        "uncut_travel": 0,
+        "width_mm": 14.5
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 14.5,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "0863e7953fb3030fec5cf677416e2324e8e91bf976c9edf524342337a3f4e4e4",
+        "readback": {
+          "stitches": 296,
+          "trims": 4,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.47,
+          "width_mm": 14.5,
+          "height_mm": 7.2
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "92e45493a38b75117154c48d9b463b62d0725bdcea41b471dd542f7cc776fe52",
+        "readback": {
+          "stitches": 296,
+          "trims": 4,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.47,
+          "width_mm": 14.5,
+          "height_mm": 7.2
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 7.47
+  },
+  {
+    "text": "tiny",
+    "nominal_height_mm": 6,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 8.6,
+        "long": 0,
+        "maximum_mm": 2.2,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 335,
+        "trims": 4,
+        "uncut_travel": 0,
+        "width_mm": 17.6
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 8.6,
+        "long": 0,
+        "maximum_mm": 2.2,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 335,
+        "trims": 4,
+        "uncut_travel": 0,
+        "width_mm": 17.6
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 17.6,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "f2fa599771725c5b5cc068ad4581cf2a494ac52d00c8754b9099a7e50d69af2d",
+        "readback": {
+          "stitches": 335,
+          "trims": 4,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.5,
+          "maximum_mm": 2.2,
+          "width_mm": 17.6,
+          "height_mm": 8.6
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "6728415ceb96ecc5f02bc1d8b3f97e93d4db1fd99b2c0871457f53bbe0ee6d62",
+        "readback": {
+          "stitches": 335,
+          "trims": 4,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.5,
+          "maximum_mm": 2.2,
+          "width_mm": 17.6,
+          "height_mm": 8.6
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 7.53
+  },
+  {
+    "text": "jesus is\nkings",
+    "nominal_height_mm": 4,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 12.4,
+        "long": 0,
+        "maximum_mm": 2.202,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 788,
+        "trims": 14,
+        "uncut_travel": 0,
+        "width_mm": 24.0
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 12.4,
+        "long": 0,
+        "maximum_mm": 2.202,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 788,
+        "trims": 14,
+        "uncut_travel": 0,
+        "width_mm": 24.0
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 24.0,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "6b51aa5a8d65b24848c993f0ac66f4df3a688495819a7a05da424fd636f42afc",
+        "readback": {
+          "stitches": 788,
+          "trims": 14,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.202,
+          "width_mm": 24.0,
+          "height_mm": 12.4
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "62e207ed7bae7c83cf0183f6859a03bbb699b752ffed025a03855582d81f6a83",
+        "readback": {
+          "stitches": 788,
+          "trims": 14,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.202,
+          "width_mm": 24.0,
+          "height_mm": 12.4
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 10.02
+  },
+  {
+    "text": "jesus is\nkings",
+    "nominal_height_mm": 5,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 15.2,
+        "long": 0,
+        "maximum_mm": 2.11,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 963,
+        "trims": 14,
+        "uncut_travel": 0,
+        "width_mm": 29.6
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 15.2,
+        "long": 0,
+        "maximum_mm": 2.11,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 963,
+        "trims": 14,
+        "uncut_travel": 0,
+        "width_mm": 29.6
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 29.6,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "35f7538c4a7aac64408e381eb456ea29a0a03f5be565df300a47533b07239bd4",
+        "readback": {
+          "stitches": 963,
+          "trims": 14,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.11,
+          "width_mm": 29.6,
+          "height_mm": 15.2
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "bc82abab29027547d9bc7979b058c13ae87b4027cb258f93453f3ec1de78beca",
+        "readback": {
+          "stitches": 963,
+          "trims": 14,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.11,
+          "width_mm": 29.6,
+          "height_mm": 15.2
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 10.34
+  },
+  {
+    "text": "jesus is\nkings",
+    "nominal_height_mm": 6,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 18.4,
+        "long": 0,
+        "maximum_mm": 2.3,
+        "minimum_mm": 0.447,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1089,
+        "trims": 14,
+        "uncut_travel": 0,
+        "width_mm": 35.8
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 18.4,
+        "long": 0,
+        "maximum_mm": 2.3,
+        "minimum_mm": 0.447,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1089,
+        "trims": 14,
+        "uncut_travel": 0,
+        "width_mm": 35.8
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 35.8,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "526c64e97983b97a272533da721c7dacfa2f94bb5f7d8773f1d45c9ce7cce52a",
+        "readback": {
+          "stitches": 1089,
+          "trims": 14,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.447,
+          "maximum_mm": 2.3,
+          "width_mm": 35.8,
+          "height_mm": 18.4
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "4b0879861fc662eaf8f13a7b639f77933965102b623fef1b0e1e1626036cc7fc",
+        "readback": {
+          "stitches": 1089,
+          "trims": 14,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.447,
+          "maximum_mm": 2.3,
+          "width_mm": 35.8,
+          "height_mm": 18.4
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 10.61
+  },
+  {
+    "text": "Baby 0689",
+    "nominal_height_mm": 4,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.6,
+        "long": 0,
+        "maximum_mm": 2.0,
+        "minimum_mm": 0.447,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 717,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 34.2
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.6,
+        "long": 0,
+        "maximum_mm": 2.0,
+        "minimum_mm": 0.447,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 717,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 34.2
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 34.2,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "a77f114d0e25755e9f01505c187aa7b541201c7e4cf015158c77763129c16946",
+        "readback": {
+          "stitches": 717,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.447,
+          "maximum_mm": 2.0,
+          "width_mm": 34.2,
+          "height_mm": 5.6
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "a36e36ba9d547a81d33207d68ff8adc041580cca2a92dc3ab566fea181bec38d",
+        "readback": {
+          "stitches": 717,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.447,
+          "maximum_mm": 2.0,
+          "width_mm": 34.2,
+          "height_mm": 5.6
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 10.46
+  },
+  {
+    "text": "Baby 0689",
+    "nominal_height_mm": 5,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 6.9,
+        "long": 0,
+        "maximum_mm": 2.5,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 887,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 42.4
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 6.9,
+        "long": 0,
+        "maximum_mm": 2.5,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 887,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 42.4
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 42.4,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "b833f64a276741f065fd86bc360ca6dbe4a25533af78a22f7bc98b24dd14c54a",
+        "readback": {
+          "stitches": 887,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.5,
+          "width_mm": 42.4,
+          "height_mm": 6.9
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "56da5a58bd5ba2ee1ed1be9ac9f77e917fe74f02d87503dddbc588a6cc861f62",
+        "readback": {
+          "stitches": 887,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.5,
+          "width_mm": 42.4,
+          "height_mm": 6.9
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 10.06
+  },
+  {
+    "text": "Baby 0689",
+    "nominal_height_mm": 6,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 8.2,
+        "long": 0,
+        "maximum_mm": 2.5,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1023,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 50.8
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 8.2,
+        "long": 0,
+        "maximum_mm": 2.5,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1023,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 50.8
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 50.8,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "a333f8e9fbc6959972a7d43c2652625e42fc494a9aff6929982efc2348a750d4",
+        "readback": {
+          "stitches": 1023,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.5,
+          "maximum_mm": 2.5,
+          "width_mm": 50.8,
+          "height_mm": 8.2
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "bd8fbd041c918dd6d8515d401ee5102e58510edc822e729b47a08006da2a81f8",
+        "readback": {
+          "stitches": 1023,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.5,
+          "maximum_mm": 2.5,
+          "width_mm": 50.8,
+          "height_mm": 8.2
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 10.4
+  },
+  {
+    "text": "i j . , :",
+    "nominal_height_mm": 4,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.8,
+        "long": 0,
+        "maximum_mm": 2.4,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 177,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 18.8
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.8,
+        "long": 0,
+        "maximum_mm": 2.4,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 177,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 18.8
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 18.8,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "56d4465d1df5c76b7e7b5fc048f4e5f7de9471301889dd2aea5198b9e2fa301f",
+        "readback": {
+          "stitches": 177,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.5,
+          "maximum_mm": 2.4,
+          "width_mm": 18.8,
+          "height_mm": 5.8
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "6f740a930275f80d40a4fde14292ab82ea92e9e118945e73dde85564620427fd",
+        "readback": {
+          "stitches": 177,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.5,
+          "maximum_mm": 2.4,
+          "width_mm": 18.8,
+          "height_mm": 5.8
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 6.72
+  },
+  {
+    "text": "i j . , :",
+    "nominal_height_mm": 5,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 7.2,
+        "long": 0,
+        "maximum_mm": 1.8,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 202,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 23.4
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 7.2,
+        "long": 0,
+        "maximum_mm": 1.8,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 202,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 23.4
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 23.4,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "5dcf83b699162c3bd950e7534d6c9fc9277d7c0c2c4ec83906ea6da754429ca8",
+        "readback": {
+          "stitches": 202,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 1.8,
+          "width_mm": 23.4,
+          "height_mm": 7.2
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "9102a460343d43579376678b5093484ff40d399189716e0bf80522200bea136f",
+        "readback": {
+          "stitches": 202,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 1.8,
+          "width_mm": 23.4,
+          "height_mm": 7.2
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 6.59
+  },
+  {
+    "text": "i j . , :",
+    "nominal_height_mm": 6,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 8.8,
+        "long": 0,
+        "maximum_mm": 2.2,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 223,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 28.0
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 8.8,
+        "long": 0,
+        "maximum_mm": 2.2,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 223,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 28.0
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 28.0,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "5dea4fc3edb06b050eb9be92f3ca3c204ca2239b81bf0dd6447cb73bf04e50df",
+        "readback": {
+          "stitches": 223,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.5,
+          "maximum_mm": 2.2,
+          "width_mm": 28.0,
+          "height_mm": 8.8
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "56341bd11854ef4acae529fff338b0dedc96e4e79b08116821d9bde7c8cd6173",
+        "readback": {
+          "stitches": 223,
+          "trims": 7,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.5,
+          "maximum_mm": 2.2,
+          "width_mm": 28.0,
+          "height_mm": 8.8
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 6.79
+  },
+  {
+    "text": "rejoice in our confident hope.\nBe patient in trouble,\nand keep on praying.\nromans 12:12 NLT",
+    "nominal_height_mm": 4,
+    "available_width_mm": 100,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 23.6,
+        "long": 0,
+        "maximum_mm": 2.408,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 5239,
+        "trims": 83,
+        "uncut_travel": 0,
+        "width_mm": 97.8
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 23.6,
+        "long": 0,
+        "maximum_mm": 2.408,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 5239,
+        "trims": 83,
+        "uncut_travel": 0,
+        "width_mm": 97.8
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 97.8,
+      "available_width_mm": 100.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "c6e8777e7d7f4cfdaf47f293703618154df6f0851c2abdc153f91459c0d31aa1",
+        "readback": {
+          "stitches": 5239,
+          "trims": 83,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.408,
+          "width_mm": 97.8,
+          "height_mm": 23.6
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "698ae55ef76ad24479a686692ed9242538ad988001f67295ddafe455c277e607",
+        "readback": {
+          "stitches": 5239,
+          "trims": 83,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.408,
+          "width_mm": 97.8,
+          "height_mm": 23.6
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 38.17
+  },
+  {
+    "text": "rejoice in our confident hope.\nBe patient in trouble,\nand keep on praying.\nromans 12:12 NLT",
+    "nominal_height_mm": 4,
+    "available_width_mm": 110,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 23.6,
+        "long": 0,
+        "maximum_mm": 2.408,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 5239,
+        "trims": 83,
+        "uncut_travel": 0,
+        "width_mm": 97.8
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 23.6,
+        "long": 0,
+        "maximum_mm": 2.408,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 5239,
+        "trims": 83,
+        "uncut_travel": 0,
+        "width_mm": 97.8
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 97.8,
+      "available_width_mm": 110.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "c6e8777e7d7f4cfdaf47f293703618154df6f0851c2abdc153f91459c0d31aa1",
+        "readback": {
+          "stitches": 5239,
+          "trims": 83,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.408,
+          "width_mm": 97.8,
+          "height_mm": 23.6
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "698ae55ef76ad24479a686692ed9242538ad988001f67295ddafe455c277e607",
+        "readback": {
+          "stitches": 5239,
+          "trims": 83,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.408,
+          "width_mm": 97.8,
+          "height_mm": 23.6
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 8.04
+  },
+  {
+    "text": "ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n.,:;\"'()-+/#&@",
+    "nominal_height_mm": 4,
+    "available_width_mm": 400,
+    "status": 422,
+    "passed": false,
+    "issues": null,
+    "reports": null,
+    "error": "The font did not keep every letter and punctuation mark. Missing: ';' \u00d7 1. Unexpected: '\ufffd' \u00d7 1. Try different line breaks or another embroidery font. Nothing was approved.",
+    "fit": null,
+    "physical_sew_out": "pending",
+    "seconds": 24.32
+  },
+  {
+    "text": "ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n.,:;\"'()-+/#&@",
+    "nominal_height_mm": 5,
+    "available_width_mm": 400,
+    "status": 422,
+    "passed": false,
+    "issues": null,
+    "reports": null,
+    "error": "The font did not keep every letter and punctuation mark. Missing: ';' \u00d7 1. Unexpected: '\ufffd' \u00d7 1. Try different line breaks or another embroidery font. Nothing was approved.",
+    "fit": null,
+    "physical_sew_out": "pending",
+    "seconds": 25.48
+  },
+  {
+    "text": "ABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n.,:;\"'()-+/#&@",
+    "nominal_height_mm": 6,
+    "available_width_mm": 400,
+    "status": 422,
+    "passed": false,
+    "issues": null,
+    "reports": null,
+    "error": "The font did not keep every letter and punctuation mark. Missing: ';' \u00d7 1. Unexpected: '\ufffd' \u00d7 1. Try different line breaks or another embroidery font. Nothing was approved.",
+    "fit": null,
+    "physical_sew_out": "pending",
+    "seconds": 26.29
+  },
+  {
+    "text": ";\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n.,:\"'()-+/#&@",
+    "nominal_height_mm": 4,
+    "available_width_mm": 400,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 28.8,
+        "long": 0,
+        "maximum_mm": 2.435,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 5577,
+        "trims": 80,
+        "uncut_travel": 0,
+        "width_mm": 113.9
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 28.8,
+        "long": 0,
+        "maximum_mm": 2.435,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 5577,
+        "trims": 80,
+        "uncut_travel": 0,
+        "width_mm": 113.9
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 113.9,
+      "available_width_mm": 400.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "78f80dafb0b136c374e9ddafc9a7e6332ad70cf6a6ad44e6ecc3ccb5f33f0e54",
+        "readback": {
+          "stitches": 5577,
+          "trims": 80,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.435,
+          "width_mm": 113.9,
+          "height_mm": 28.8
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "bc019fee368913b1957771cc14d725c3273154bfca1ac51b31633c9522dbe991",
+        "readback": {
+          "stitches": 5577,
+          "trims": 80,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.435,
+          "width_mm": 113.9,
+          "height_mm": 28.8
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 38.06
+  },
+  {
+    "text": ";\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n.,:\"'()-+/#&@",
+    "nominal_height_mm": 5,
+    "available_width_mm": 400,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 35.8,
+        "long": 0,
+        "maximum_mm": 2.766,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 6729,
+        "trims": 80,
+        "uncut_travel": 0,
+        "width_mm": 141.1
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 35.8,
+        "long": 0,
+        "maximum_mm": 2.766,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 6729,
+        "trims": 80,
+        "uncut_travel": 0,
+        "width_mm": 141.1
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 141.1,
+      "available_width_mm": 400.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "72f32473fa30dbdbe4993aebad57fe66fbde73eaa51884f074e3ef1ee8ead438",
+        "readback": {
+          "stitches": 6729,
+          "trims": 80,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.766,
+          "width_mm": 141.1,
+          "height_mm": 35.8
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "d617f8759aa6a615b5a3f255beb906970fbf0db2f013203bc541b76ce06363da",
+        "readback": {
+          "stitches": 6729,
+          "trims": 80,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.766,
+          "width_mm": 141.1,
+          "height_mm": 35.8
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 40.03
+  },
+  {
+    "text": ";\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz\n0123456789\n.,:\"'()-+/#&@",
+    "nominal_height_mm": 6,
+    "available_width_mm": 400,
+    "status": 200,
+    "passed": true,
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 43.0,
+        "long": 0,
+        "maximum_mm": 2.581,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 7747,
+        "trims": 81,
+        "uncut_travel": 0,
+        "width_mm": 169.9
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 43.0,
+        "long": 0,
+        "maximum_mm": 2.581,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 7747,
+        "trims": 81,
+        "uncut_travel": 0,
+        "width_mm": 169.9
+      }
+    },
+    "error": null,
+    "fit": {
+      "actual_width_mm": 169.9,
+      "available_width_mm": 400.0,
+      "fits": true,
+      "overflow_mm": 0,
+      "resized": false
+    },
+    "physical_sew_out": "pending",
+    "downloads": {
+      "dst": {
+        "sha256": "8570f7cd8bbd940ae64fa75b662f1df1eb5590d9c48b74c1df5d09f293958cfd",
+        "readback": {
+          "stitches": 7747,
+          "trims": 81,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.581,
+          "width_mm": 169.9,
+          "height_mm": 43.0
+        },
+        "repeated_downloads_identical": true
+      },
+      "pes": {
+        "sha256": "16639258eec1b276a2b60bba77bda7613d01eab3220811a7d5e1a3d037e33439",
+        "readback": {
+          "stitches": 7747,
+          "trims": 81,
+          "short": 0,
+          "long": 0,
+          "minimum_mm": 0.4,
+          "maximum_mm": 2.581,
+          "width_mm": 169.9,
+          "height_mm": 43.0
+        },
+        "repeated_downloads_identical": true
+      }
+    },
+    "seconds": 42.58
+  }
+]

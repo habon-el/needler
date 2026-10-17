@@ -1,0 +1,70 @@
+{
+  "text": {
+    "page": "/text/b41449d966c3b3134eb3fd6fd81c16ba22eeb36778a532b34c09004a158e93fa",
+    "url": "/lettering/native/b41449d966c3b3134eb3fd6fd81c16ba22eeb36778a532b34c09004a158e93fa/download/",
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.2,
+        "long": 0,
+        "maximum_mm": 2.5,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 837,
+        "trims": 9,
+        "uncut_travel": 0,
+        "width_mm": 46.0
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.2,
+        "long": 0,
+        "maximum_mm": 2.5,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 837,
+        "trims": 9,
+        "uncut_travel": 0,
+        "width_mm": 46.0
+      }
+    }
+  },
+  "small-text": {
+    "page": "/text/a2713d337259e575954e2ada84abedcfe9743e513ba9f3e29ef0f3798fddddb3",
+    "url": "/lettering/native/a2713d337259e575954e2ada84abedcfe9743e513ba9f3e29ef0f3798fddddb3/download/",
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.8,
+        "long": 0,
+        "maximum_mm": 2.102,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 249,
+        "trims": 4,
+        "uncut_travel": 0,
+        "width_mm": 11.8
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.8,
+        "long": 0,
+        "maximum_mm": 2.102,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 249,
+        "trims": 4,
+        "uncut_travel": 0,
+        "width_mm": 11.8
+      }
+    }
+  },
+  "image": {
+    "page": "/artwork/088a08ba36354ad4ba384ba3738edc63.png",
+    "url": "/studio-export/prepared_db261498815f4d3a0763b87e.png/"
+  }
+}

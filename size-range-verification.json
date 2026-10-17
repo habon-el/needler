@@ -1,0 +1,808 @@
+[
+  {
+    "text": "tiny i .",
+    "font_size": 3.6,
+    "status": 200,
+    "passed": false,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.3,
+        "long": 0,
+        "maximum_mm": 2.47,
+        "minimum_mm": 0.2,
+        "missing_columns": 0,
+        "short": 3,
+        "stitches": 280,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 18.2
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.3,
+        "long": 0,
+        "maximum_mm": 2.47,
+        "minimum_mm": 0.2,
+        "missing_columns": 0,
+        "short": 3,
+        "stitches": 280,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 18.2
+      }
+    },
+    "issues": {
+      "dst": [
+        {
+          "code": "short",
+          "location": {
+            "command": 108,
+            "x_mm": -4.3,
+            "y_mm": -1.0
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        },
+        {
+          "code": "short",
+          "location": {
+            "command": 109,
+            "x_mm": -4.3,
+            "y_mm": -1.2
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        },
+        {
+          "code": "short",
+          "location": {
+            "command": 110,
+            "x_mm": -4.3,
+            "y_mm": -1.0
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        }
+      ],
+      "pes": [
+        {
+          "code": "short",
+          "location": {
+            "command": 108,
+            "x_mm": -4.3,
+            "y_mm": -1.0
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        },
+        {
+          "code": "short",
+          "location": {
+            "command": 109,
+            "x_mm": -4.3,
+            "y_mm": -1.2
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        },
+        {
+          "code": "short",
+          "location": {
+            "command": 110,
+            "x_mm": -4.3,
+            "y_mm": -1.0
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        }
+      ]
+    },
+    "seconds": 11.21
+  },
+  {
+    "text": "tiny i .",
+    "font_size": 4,
+    "status": 200,
+    "passed": true,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.8,
+        "long": 0,
+        "maximum_mm": 2.1,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 314,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 20.2
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.8,
+        "long": 0,
+        "maximum_mm": 2.1,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 314,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 20.2
+      }
+    },
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "seconds": 10.34,
+    "downloads": {
+      "dst": {
+        "stitches": 314,
+        "trims": 7,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.4,
+        "maximum_mm": 2.1,
+        "width_mm": 20.2,
+        "height_mm": 5.8
+      },
+      "pes": {
+        "stitches": 314,
+        "trims": 7,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.4,
+        "maximum_mm": 2.1,
+        "width_mm": 20.2,
+        "height_mm": 5.8
+      }
+    }
+  },
+  {
+    "text": "tiny i .",
+    "font_size": 6,
+    "status": 200,
+    "passed": true,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 8.6,
+        "long": 0,
+        "maximum_mm": 2.2,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 415,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 30.0
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 8.6,
+        "long": 0,
+        "maximum_mm": 2.2,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 415,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 30.0
+      }
+    },
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "seconds": 10.21,
+    "downloads": {
+      "dst": {
+        "stitches": 415,
+        "trims": 7,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.5,
+        "maximum_mm": 2.2,
+        "width_mm": 30.0,
+        "height_mm": 8.6
+      },
+      "pes": {
+        "stitches": 415,
+        "trims": 7,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.5,
+        "maximum_mm": 2.2,
+        "width_mm": 30.0,
+        "height_mm": 8.6
+      }
+    }
+  },
+  {
+    "text": "tiny i .",
+    "font_size": 8,
+    "status": 200,
+    "passed": true,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 11.4,
+        "long": 0,
+        "maximum_mm": 2.5,
+        "minimum_mm": 0.566,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 511,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 40.0
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 11.4,
+        "long": 0,
+        "maximum_mm": 2.5,
+        "minimum_mm": 0.566,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 511,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 40.0
+      }
+    },
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "seconds": 10.03,
+    "downloads": {
+      "dst": {
+        "stitches": 511,
+        "trims": 7,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.566,
+        "maximum_mm": 2.5,
+        "width_mm": 40.0,
+        "height_mm": 11.4
+      },
+      "pes": {
+        "stitches": 511,
+        "trims": 7,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.566,
+        "maximum_mm": 2.5,
+        "width_mm": 40.0,
+        "height_mm": 11.4
+      }
+    }
+  },
+  {
+    "text": "tiny i .",
+    "font_size": 12,
+    "status": 200,
+    "passed": true,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 17.2,
+        "long": 0,
+        "maximum_mm": 2.729,
+        "minimum_mm": 0.447,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 703,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 60.0
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 17.2,
+        "long": 0,
+        "maximum_mm": 2.729,
+        "minimum_mm": 0.447,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 703,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 60.0
+      }
+    },
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "seconds": 10.66,
+    "downloads": {
+      "dst": {
+        "stitches": 703,
+        "trims": 7,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.447,
+        "maximum_mm": 2.729,
+        "width_mm": 60.0,
+        "height_mm": 17.2
+      },
+      "pes": {
+        "stitches": 703,
+        "trims": 7,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.447,
+        "maximum_mm": 2.729,
+        "width_mm": 60.0,
+        "height_mm": 17.2
+      }
+    }
+  },
+  {
+    "text": "tiny i .",
+    "font_size": 15.2,
+    "status": 200,
+    "passed": true,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 21.8,
+        "long": 0,
+        "maximum_mm": 3.324,
+        "minimum_mm": 0.539,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 845,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 76.0
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 21.8,
+        "long": 0,
+        "maximum_mm": 3.324,
+        "minimum_mm": 0.539,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 845,
+        "trims": 7,
+        "uncut_travel": 0,
+        "width_mm": 76.0
+      }
+    },
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "seconds": 10.8,
+    "downloads": {
+      "dst": {
+        "stitches": 845,
+        "trims": 7,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.539,
+        "maximum_mm": 3.324,
+        "width_mm": 76.0,
+        "height_mm": 21.8
+      },
+      "pes": {
+        "stitches": 845,
+        "trims": 7,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.539,
+        "maximum_mm": 3.324,
+        "width_mm": 76.0,
+        "height_mm": 21.8
+      }
+    }
+  },
+  {
+    "text": "Jesus is King",
+    "font_size": 3.6,
+    "status": 200,
+    "passed": false,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 5.4,
+        "long": 0,
+        "maximum_mm": 2.408,
+        "minimum_mm": 0.2,
+        "missing_columns": 0,
+        "short": 3,
+        "stitches": 667,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 37.2
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 5.4,
+        "long": 0,
+        "maximum_mm": 2.408,
+        "minimum_mm": 0.2,
+        "missing_columns": 0,
+        "short": 3,
+        "stitches": 667,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 37.2
+      }
+    },
+    "issues": {
+      "dst": [
+        {
+          "code": "short",
+          "location": {
+            "command": 541,
+            "x_mm": 12.9,
+            "y_mm": -1.1
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        },
+        {
+          "code": "short",
+          "location": {
+            "command": 542,
+            "x_mm": 12.9,
+            "y_mm": -1.3
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        },
+        {
+          "code": "short",
+          "location": {
+            "command": 543,
+            "x_mm": 12.9,
+            "y_mm": -1.1
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        }
+      ],
+      "pes": [
+        {
+          "code": "short",
+          "location": {
+            "command": 540,
+            "x_mm": 12.9,
+            "y_mm": -1.1
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        },
+        {
+          "code": "short",
+          "location": {
+            "command": 541,
+            "x_mm": 12.9,
+            "y_mm": -1.3
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        },
+        {
+          "code": "short",
+          "location": {
+            "command": 542,
+            "x_mm": 12.9,
+            "y_mm": -1.1
+          },
+          "reason": "stitch length 0.20 mm is outside 0.3\u20137 mm"
+        }
+      ]
+    },
+    "seconds": 12.12
+  },
+  {
+    "text": "Jesus is King",
+    "font_size": 4,
+    "status": 200,
+    "passed": true,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 6.0,
+        "long": 0,
+        "maximum_mm": 2.4,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 744,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 41.4
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 6.0,
+        "long": 0,
+        "maximum_mm": 2.4,
+        "minimum_mm": 0.4,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 744,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 41.4
+      }
+    },
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "seconds": 11.7,
+    "downloads": {
+      "dst": {
+        "stitches": 744,
+        "trims": 12,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.4,
+        "maximum_mm": 2.4,
+        "width_mm": 41.4,
+        "height_mm": 6.0
+      },
+      "pes": {
+        "stitches": 744,
+        "trims": 12,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.4,
+        "maximum_mm": 2.4,
+        "width_mm": 41.4,
+        "height_mm": 6.0
+      }
+    }
+  },
+  {
+    "text": "Jesus is King",
+    "font_size": 6,
+    "status": 200,
+    "passed": true,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 0,
+        "height_mm": 9.0,
+        "long": 0,
+        "maximum_mm": 2.3,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1022,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 61.6
+      },
+      "pes": {
+        "crossings": 0,
+        "height_mm": 9.0,
+        "long": 0,
+        "maximum_mm": 2.3,
+        "minimum_mm": 0.5,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1022,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 61.6
+      }
+    },
+    "issues": {
+      "dst": [],
+      "pes": []
+    },
+    "seconds": 13.08,
+    "downloads": {
+      "dst": {
+        "stitches": 1022,
+        "trims": 12,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.5,
+        "maximum_mm": 2.3,
+        "width_mm": 61.6,
+        "height_mm": 9.0
+      },
+      "pes": {
+        "stitches": 1022,
+        "trims": 12,
+        "short": 0,
+        "long": 0,
+        "minimum_mm": 0.5,
+        "maximum_mm": 2.3,
+        "width_mm": 61.6,
+        "height_mm": 9.0
+      }
+    }
+  },
+  {
+    "text": "Jesus is King",
+    "font_size": 8,
+    "status": 200,
+    "passed": false,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 1,
+        "height_mm": 11.8,
+        "long": 0,
+        "maximum_mm": 2.55,
+        "minimum_mm": 0.51,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1278,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 81.8
+      },
+      "pes": {
+        "crossings": 1,
+        "height_mm": 11.8,
+        "long": 0,
+        "maximum_mm": 2.55,
+        "minimum_mm": 0.51,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1278,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 81.8
+      }
+    },
+    "issues": {
+      "dst": [
+        {
+          "code": "crossing",
+          "location": {
+            "command": 860,
+            "x_mm": 17.7,
+            "y_mm": -1.5
+          },
+          "reason": "a stitch crosses a removed area"
+        }
+      ],
+      "pes": [
+        {
+          "code": "crossing",
+          "location": {
+            "command": 857,
+            "x_mm": 17.7,
+            "y_mm": -1.5
+          },
+          "reason": "a stitch crosses a removed area"
+        }
+      ]
+    },
+    "seconds": 14.41
+  },
+  {
+    "text": "Jesus is King",
+    "font_size": 12,
+    "status": 200,
+    "passed": false,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 1,
+        "height_mm": 17.8,
+        "long": 0,
+        "maximum_mm": 3.114,
+        "minimum_mm": 0.51,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1804,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 122.8
+      },
+      "pes": {
+        "crossings": 1,
+        "height_mm": 17.8,
+        "long": 0,
+        "maximum_mm": 3.114,
+        "minimum_mm": 0.51,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 1804,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 122.8
+      }
+    },
+    "issues": {
+      "dst": [
+        {
+          "code": "crossing",
+          "location": {
+            "command": 1218,
+            "x_mm": 26.6,
+            "y_mm": -2.2
+          },
+          "reason": "a stitch crosses a removed area"
+        }
+      ],
+      "pes": [
+        {
+          "code": "crossing",
+          "location": {
+            "command": 1214,
+            "x_mm": 26.6,
+            "y_mm": -2.2
+          },
+          "reason": "a stitch crosses a removed area"
+        }
+      ]
+    },
+    "seconds": 12.67
+  },
+  {
+    "text": "Jesus is King",
+    "font_size": 15.2,
+    "status": 200,
+    "passed": false,
+    "error": null,
+    "reports": {
+      "dst": {
+        "crossings": 1,
+        "height_mm": 22.4,
+        "long": 0,
+        "maximum_mm": 3.612,
+        "minimum_mm": 0.539,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 2216,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 155.4
+      },
+      "pes": {
+        "crossings": 1,
+        "height_mm": 22.4,
+        "long": 0,
+        "maximum_mm": 3.612,
+        "minimum_mm": 0.539,
+        "missing_columns": 0,
+        "short": 0,
+        "stitches": 2216,
+        "trims": 12,
+        "uncut_travel": 0,
+        "width_mm": 155.4
+      }
+    },
+    "issues": {
+      "dst": [
+        {
+          "code": "crossing",
+          "location": {
+            "command": 1497,
+            "x_mm": 33.7,
+            "y_mm": -2.8
+          },
+          "reason": "a stitch crosses a removed area"
+        }
+      ],
+      "pes": [
+        {
+          "code": "crossing",
+          "location": {
+            "command": 1489,
+            "x_mm": 33.7,
+            "y_mm": -2.8
+          },
+          "reason": "a stitch crosses a removed area"
+        }
+      ]
+    },
+    "seconds": 14.33
+  }
+]

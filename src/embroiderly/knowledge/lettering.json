@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "seed_data": true,
+  "rows": [
+    {
+      "id": "satin.default",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "stitch_type": "satin",
+      "fabric": "unspecified",
+      "minimum_cap_height_mm": 5,
+      "notes": "Approximate starting minimum, not a legibility guarantee; fabric and font can change it."
+    }
+  ]
+}

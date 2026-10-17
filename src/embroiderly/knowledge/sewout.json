@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "seed_data": true,
+  "rows": [
+    {
+      "id": "photo.limits",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "visible": [
+        "coverage",
+        "puckering",
+        "registration",
+        "gaps",
+        "letter shape"
+      ],
+      "not_measurable": [
+        "true thread colour",
+        "thread tension",
+        "physical stitch density without scale"
+      ],
+      "capture": "Photograph the sew-out flat, in even light, filling most of the frame. This reduces perspective and shadow ambiguity.",
+      "notes": "Visible symptoms are not proof of a machine cause."
+    },
+    {
+      "id": "lettering_closed",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "label": "Lettering appears closed up",
+      "possible_causes": [
+        "Density may be too high",
+        "Pull compensation may be unsuitable for the fabric"
+      ],
+      "remedy": "Inspect letter height, stitch density and pull compensation with a controlled sew-out.",
+      "setting": "density / pull compensation",
+      "adjustment": null,
+      "capability_gap": "No per-letter satin generator or supported density/pull-compensation operation is registered. An exact adjustment is not established by this photo."
+    },
+    {
+      "id": "puckering",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "label": "Possible puckering around stitching",
+      "possible_causes": [
+        "Backing may be insufficient",
+        "Density may be unsuitable for the fabric",
+        "Hooping may be loose"
+      ],
+      "remedy": "Review backing and hooping; compare a controlled sample before changing density.",
+      "setting": "backing / hooping / density",
+      "adjustment": null,
+      "capability_gap": "Backing and hooping are physical actions; no supported density-adjustment operation is registered. A safe numeric adjustment is unknown."
+    },
+    {
+      "id": "registration",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "label": "Possible colour misregistration",
+      "possible_causes": [
+        "Fabric may have moved"
+      ],
+      "remedy": "Check underlay, stabiliser and hooping on a controlled sample.",
+      "setting": "underlay / stabiliser / hooping",
+      "adjustment": null,
+      "capability_gap": "No supported underlay-edit operation is registered; physical stabilisation cannot be applied in software."
+    },
+    {
+      "id": "fill_outline_gap",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "label": "Possible gap between fill and outline",
+      "possible_causes": [
+        "Fabric pull-in may not be compensated"
+      ],
+      "remedy": "Measure the gap on a flat sample and review pull compensation.",
+      "setting": "pull compensation",
+      "adjustment": null,
+      "capability_gap": "Pull-compensation editing is unavailable. Photo pixels are not a measured millimetre adjustment."
+    },
+    {
+      "id": "thread_break",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "label": "Possible interrupted thread coverage",
+      "possible_causes": [
+        "The photograph does not establish whether a thread actually broke"
+      ],
+      "remedy": "Confirm the break with the machine operator, then measure the affected region against the rest of the plan.",
+      "setting": "regional stitch density",
+      "adjustment": null,
+      "capability_gap": "Photo-to-object registration and regional density comparison are not implemented. No tension diagnosis or numeric remedy is justified."
+    },
+    {
+      "id": "sinking",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "label": "Possible stitches sinking into pile",
+      "possible_causes": [
+        "Pile may obscure the stitches"
+      ],
+      "remedy": "For confirmed towel or fleece, consult the topping recommendation before a test sew-out.",
+      "setting": "topping",
+      "adjustment": null,
+      "capability_gap": "Topping is a physical material, not an editable stitch operation."
+    }
+  ]
+}

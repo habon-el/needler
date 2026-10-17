@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-14",
+  "scope": "First priority: read-only selected-subject versus prepared-artwork review, with optional cloud explanations. Not a completed autonomous digitizer.",
+  "restore_point": "restore-before-ai-review-20261014",
+  "location": "Image workspace > Check design > Detail & mask checks > Check my design",
+  "owners": {
+    "measurements": "design_review.py; aligned preview pixels, CIELab Delta-E76 >= 12, existing detail_loss region grouping",
+    "interface": "design-review.js inside the existing detail panel; existing studio owns all options and edits",
+    "network_and_spend": "Existing provider_budget.py; no alternative network path or billing configuration",
+    "mutations": "None. Results have no executable operations and the UI never calls studio.apply."
+  },
+  "verification": {
+    "before_unit_tests": "419 passed in 98.93 seconds",
+    "browser": "PASS: synthetic face with two cheeks and tongue removed gives 3 changed regions; unchanged control gives 0; no option changes or preparation saves; keyboard, locate, consent, cache, simulated provider, offline error, stale response, 390px, dark mode and reduced motion checked",
+    "browser_command": "PYTHONPATH=src:work/deps python3 tests/browser_design_review.py",
+    "screenshots": [
+      ".repair-browser/design-review-local.png",
+      ".repair-browser/design-review-narrow.png",
+      ".repair-browser/design-review-dark.png"
+    ],
+    "javascript_syntax": "Passed design-review.js, workspace-ui.js, preparation.js",
+    "static_audit": "89 findings, same counts as editing-ui-audit.json: 88 legacy actionless-button heuristic findings and 1 textarea resize finding. Not a clean audit; not all legacy findings independently reverified. New controls checked in browser.",
+    "live_app": "Restarted with documented command; localhost:5050 returns HTTP 200; review readiness returns HTTP 200 with AI disabled",
+    "export_comparison": "No new before/after customer exports performed. Generation, export and safety-check code unchanged. Existing preparation fingerprint includes all Python source, so new files invalidate old cached prepared identities conservatively.",
+    "live_ai": "Not tested; all AI test responses simulated. No paid API calls made.",
+    "physical_sew_out": "Pending; no machine-safety claim.",
+    "after_unit_tests": "440 passed in 77.88 seconds; includes 21 new review regressions. Initial locked-piece test used an invalid fake piece ID; replaced with a real piece locked through the app, then reran the entire suite."
+  },
+  "limitations": [
+    "Checks subject-to-artwork only, at existing preview resolution. Original-to-subject and artwork-to-stitches checks remain future work.",
+    "Differences can be intentional palette changes. Zero candidates does not certify completeness or accuracy.",
+    "All changed components counted, largest 50 displayed, at most 8 candidate regions sent for AI explanations.",
+    "Moved/hidden pieces and local recovery patches are refused until coordinate mapping supports them. Native typed text stays on its own path.",
+    "AI cache is bounded to 32 results and in-flight deduplication is process-local. Multi-worker deployment needs shared deduplication and authentication before public launch.",
+    "Cancelling a sent cloud request cannot guarantee refund; existing worst-case budget reservation remains.",
+    "AI cannot restore details, change settings or override export warnings in this slice."
+  ],
+  "activation": {
+    "model": "gpt-5.4-mini-2026-03-17",
+    "requires": [
+      "Server-side OPENAI_API_KEY, never in frontend or chat",
+      "User-chosen per-design and monthly USD caps in the existing policy",
+      "Confirmed, dated pricing for this exact model",
+      "Per-request permission to send source, prepared image and crops"
+    ],
+    "configured_by_this_pass": false,
+    "references": [
+      "https://developers.openai.com/api/docs/models/gpt-5.4-mini",
+      "https://developers.openai.com/api/docs/guides/structured-outputs",
+      "https://developers.openai.com/api/docs/guides/images-vision"
+    ]
+  },
+  "next_priorities": [
+    "Configure confirmed spending limits and server credentials, then measure AI findings on labelled real examples; include unchanged controls and false positives.",
+    "Extend aligned comparisons to original-to-subject and artwork-to-stitches; preserve native typed-letter structure.",
+    "Only then implement reviewed correction proposals with before/after and explicit Apply/Undo.",
+    "Natural-language editing after correction validation; voice last."
+  ],
+  "changed_files": [
+    "src/embroiderly/design_review.py",
+    "src/embroiderly/static/design-review.js",
+    "src/embroiderly/detail_loss.py",
+    "src/embroiderly/piece_guards.py",
+    "src/embroiderly/templates/artwork.html",
+    "tests/test_design_review.py",
+    "tests/test_design_review_boundaries.py",
+    "tests/browser_design_review.py",
+    "UX-CONTRACT.md",
+    "design-review-ui-audit.json",
+    "AI-REVIEW-STATUS.json"
+  ]
+}

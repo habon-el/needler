@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Machine playback</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="{{ url_for('static', filename='studio.css') }}"><script defer src="{{ url_for('static', filename='studio.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+<main><h1>Embroidery preview</h1><p><strong>{{ 'Stitch plan · PES readback' if playback.engine else 'Legacy experimental paths · DST readback' }}</strong></p><p><a class="preview-link" href="{{ url_for('engine_trial',name=name) }}">Stitch generation</a> <a href="{{ url_for('engine_trial',name=name,view=1) }}">Open saved stitch result</a></p>
+<p>{{ playback.stitch_count }} stitch commands · {{ playback.trim_count }} decoded trims. Review at the chosen physical size before a sew-out.</p>
+{% include 'thread_controls.html' %}<section><div class="player"><button id="play">Play</button><select id="speed"><option>1</option><option>5</option><option>20</option><option>60</option></select>×<input id="seek" type="range" min="0" value="0"><span id="count"></span></div>
+<canvas id="view" width="900" height="650" style="width:100%"></canvas>
+<section><h2>Sewing area check</h2><p>Enter your machine’s usable rectangular sewing area, rather than the hoop’s outside dimensions. This checks centred placement; it does not model hoop shape or clamps.</p><label>Width (mm) <input id="hoop-w" type="number" min="1" max="1000" value="100"></label><label>Height (mm) <input id="hoop-h" type="number" min="1" max="1000" value="100"></label><p id="hoop-result" role="status"></p></section>
+<section aria-label="Thread sewing order"><h2>Thread order</h2><p id="thread-summary"></p><p id="active-thread" role="status" aria-live="polite"></p><ol id="thread-order"></ol><p class="muted">Colour names are approximate. The swatch and colour code identify the selected thread colour. Repeated colours appear again when the design returns to them.</p></section>
+<p>Thread: solid · Jump: grey dash · Cut: red cross · Colour change: blue circle</p></section></main>
+<script>
+const data={{ playback|tojson }}, steps=data.steps, canvas=document.getElementById('view'), ctx=canvas.getContext('2d'), seek=document.getElementById('seek'), button=document.getElementById('play');
+window.threadDesignName={{ name|tojson }};window.threadChoices=Object.fromEntries([...new Set(data.colors)].map(hex=>[hex,{include:true,thread:hex}]));
+let index=0,playing=false,colour=0,last={x:0,y:0},timestamp=0,credit=0;
+seek.max=steps.length;
+let maxX=1,maxY=1,minX=0,minY=0;for(const s of steps){maxX=Math.max(maxX,s.x);maxY=Math.max(maxY,s.y);minX=Math.min(minX,s.x);minY=Math.min(minY,s.y)}
+const zoom=Math.min(860/(maxX-minX),610/(maxY-minY));
+const needleSteps=steps.filter(s=>s.t==='stitch'||s.t==='jump');
+function checkArea(){let loX=Infinity,loY=Infinity,hiX=-Infinity,hiY=-Infinity;for(const s of needleSteps){loX=Math.min(loX,s.x);loY=Math.min(loY,s.y);hiX=Math.max(hiX,s.x);hiY=Math.max(hiY,s.y)}const width=needleSteps.length?hiX-loX:0,height=needleSteps.length?hiY-loY:0,w=+document.getElementById('hoop-w').value,h=+document.getElementById('hoop-h').value,out=document.getElementById('hoop-result');out.textContent=w>0&&h>0?`Written needle travel: ${width.toFixed(1)} × ${height.toFixed(1)} mm. ${!needleSteps.length?'No stitches selected.':width<=w&&height<=h?'Fits these rectangular dimensions when centred.':'Exceeds the entered sewing area — reduce the design size.'}`:'Enter positive sewing-area dimensions.'}
+document.getElementById('hoop-w').oninput=checkArea;document.getElementById('hoop-h').oninput=checkArea;checkArea();
+// These image-derived coordinates and pyembroidery readback use the same Y direction.
+const point=s=>[20+(s.x-minX)*zoom,20+(s.y-minY)*zoom];
+function draw(s){const [x,y]=point(s),[px,py]=point(last);ctx.setLineDash([]);ctx.lineWidth=1;
+if((s.t==='stitch'&&window.threadChoices[s.color]?.include!==false)||s.t==='jump'){ctx.strokeStyle=s.t==='jump'?'#888':window.threadChoices[s.color]?.thread||s.color||data.colors[colour]||'#000';ctx.setLineDash(s.t==='jump'?[3,4]:[]);ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(x,y);ctx.stroke()}
+if(s.t==='trim'){ctx.strokeStyle='red';ctx.beginPath();ctx.moveTo(x-3,y-3);ctx.lineTo(x+3,y+3);ctx.moveTo(x+3,y-3);ctx.lineTo(x-3,y+3);ctx.stroke()}
+if(s.t==='color_change'){colour++;ctx.strokeStyle='blue';ctx.beginPath();ctx.arc(x,y,4,0,7);ctx.stroke()}last=s}
+function advance(target){if(target<index){ctx.clearRect(0,0,900,650);index=0;colour=0;last={x:0,y:0}}while(index<target)draw(steps[index++]);seek.value=index;document.getElementById('count').textContent=index+' / '+steps.length+' commands';updateThreads()}
+button.onclick=()=>{playing=!playing;button.textContent=playing?'Pause':'Play'};
+seek.oninput=()=>{playing=false;button.textContent='Play';advance(+seek.value)};
+const names=[['Black','#000000'],['White','#ffffff'],['Chocolate brown','#633b24'],['Yellow','#ffff00'],['Orange','#ff8000'],['Red','#ff0000'],['Green','#008000'],['Blue','#0000ff'],['Purple','#800080'],['Pink','#ffb6c1'],['Grey','#808080'],['Beige','#dbc9a0']];
+const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));function threadName(h){const p=rgb(h);if(Math.max(...p)-Math.min(...p)<24){const light=p.reduce((a,b)=>a+b,0)/3;return light<25?'Black':light<100?'Charcoal grey':light<190?'Grey':light<240?'Light grey':'White'}return names.reduce((a,b)=>{const dist=n=>rgb(n[1]).reduce((s,v,i)=>s+(v-p[i])**2,0);return dist(b)<dist(a)?b:a})[0]}
+const blocks=data.colors.map((hex,i)=>({hex,name:threadName(hex),start:0,count:0}));let block=0;steps.forEach((s,i)=>{if(s.t==='color_change'){block++;if(blocks[block])blocks[block].start=i+1}if(s.t==='stitch'&&blocks[block])blocks[block].count++});
+document.getElementById('thread-summary').textContent=`${new Set(data.colors.map(c=>c.toLowerCase())).size} thread colours · ${blocks.length} sewing blocks · ${Math.max(0,blocks.length-1)} colour changes`;
+const blockRows=blocks.map((b,i)=>{const li=document.createElement('li');li.style.padding='10px';li.style.marginBottom='6px';const sw=document.createElement('span');sw.className='swatch';sw.style.background=b.hex;const btn=document.createElement('button');btn.type='button';btn.textContent=`${i===0?'First':i===blocks.length-1?'Last':'Next'}: ${b.name} ${b.hex} · ${b.count} stitches`;btn.onclick=()=>{playing=false;button.textContent='Play';advance(b.start)};li.append(sw,btn);document.getElementById('thread-order').append(li);return li});
+function updateThreads(){blockRows.forEach((r,i)=>{r.style.background=i===colour?'#d9eee4':'';r.setAttribute('aria-current',i===colour?'step':'false')});const b=blocks[colour];document.getElementById('active-thread').textContent=b?`${index===steps.length?'Finished with':index===0?'Starts with':'Current thread'}: ${b.name} (${colour+1} of ${blocks.length})${blocks[colour+1]?' · Next: '+blocks[colour+1].name:''}`:'No threads selected'}
+function frame(now){if(playing){credit+=Math.min(now-timestamp,100)*0.01*Number(document.getElementById('speed').value);const n=Math.floor(credit);credit-=n;advance(Math.min(steps.length,index+n));if(index===steps.length){playing=false;button.textContent='Play'}}timestamp=now;requestAnimationFrame(frame)}advance(0);requestAnimationFrame(frame);
+</script><script src="/static/thread-controls.js"></script><script src="/static/appearance.js"></script><script src="/static/ui-language.js"></script></html>

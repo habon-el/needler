@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "seed_data": true,
+  "rows": [
+    {
+      "id": "pile.topping",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "fabric": [
+        "towel",
+        "fleece"
+      ],
+      "density": "unspecified",
+      "backing": null,
+      "topping": "water-soluble",
+      "notes": "Consider topping when stitches sink into pile. Backing weight and compatibility require shop confirmation."
+    },
+    {
+      "id": "knit.review",
+      "source_note": "User advisory-intelligence brief, 2026-09-21. Unverified shop starting point; confirm with a controlled sew-out.",
+      "verified_by_user": false,
+      "fabric": [
+        "knit"
+      ],
+      "density": "unspecified",
+      "backing": null,
+      "topping": null,
+      "notes": "Review stabilisation, stitch density and hooping together. No verified backing weight or density threshold is available."
+    }
+  ]
+}

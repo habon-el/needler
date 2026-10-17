@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-15",
+  "scope": "One text-only live connection test through the app's BudgetedProvider; not an image-review accuracy test",
+  "status": "completed",
+  "requested_model": "gpt-5.4-mini-2026-03-17",
+  "returned_model": "gpt-5.4-mini-2026-03-17",
+  "model_matches": true,
+  "answer": "Connection OK",
+  "input_tokens": 12,
+  "output_tokens": 6,
+  "estimated_usage_cost_usd": 0.000036,
+  "conservative_budget_reservation_usd": 0.000153,
+  "elapsed_seconds": 2.21,
+  "per_design_cap_usd": 0.10,
+  "per_month_cap_usd": 10.00,
+  "app_readiness_after_test": true,
+  "customer_artwork_sent": false,
+  "key_printed_or_persisted": false,
+  "rate_source": "https://developers.openai.com/api/docs/models/gpt-5.4-mini",
+  "limitations": [
+    "Usage cost is calculated from reported tokens, not a billing invoice.",
+    "Automatic review on every digitization and general chat are not established by this test.",
+    "No stitch generation, export or safety check was changed."
+  ]
+}

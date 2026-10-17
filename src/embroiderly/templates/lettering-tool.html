@@ -1,0 +1,23 @@
+<dialog id="letteringDialog" class="settings-panel lettering-panel" aria-labelledby="letteringTitle">
+<header><h1 id="letteringTitle">Text studio</h1><button id="letteringClose" type="button">Close</button></header>
+<p>Create a separate lettering design. Your open picture stays unchanged. Reopen Text on a lettering design to revise its words and create a new version.</p>
+<label for="letteringWords">Your words</label><textarea id="letteringWords" rows="3" maxlength="200" aria-describedby="letteringStatus">Hello</textarea>
+<label>Alignment<select id="letteringAlign"><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option></select></label>
+<label>Thread colour<input id="letteringColour" type="color" value="#202020"></label>
+{% include 'lettering-native.html' %}
+<details id="letteringArtworkOptions">
+<summary>Artwork fonts — picture preview only</summary>
+<p id="letteringCount"></p>
+<label>Find a font<input id="letteringSearch" type="search" placeholder="Try bold, script, serif…"></label><button id="letteringClearSearch" type="button" hidden>Clear font search</button>
+<label>Font and style<select id="letteringFont" aria-describedby="letteringCount"></select></label>
+<a id="letteringLicense" target="_blank" rel="noopener">Read this font’s licence</a>
+<label>Text block height (mm)<input id="letteringHeight" type="number" value="25" min="10" max="350" step=".1"></label>
+<label>Extra letter spacing (em)<input id="letteringSpacing" type="number" value="0" min="0" max=".5" step=".01"></label>
+<div class="lettering-preview"><img id="letteringPreview" alt="Proposed lettering on a transparent background" hidden></div>
+<p id="letteringDimensions"></p><p id="letteringStatus" role="status" aria-live="polite">Loading fonts…</p>
+<p>These outline fonts create a picture, not editable embroidery letters. Stitch generation for saved text pictures is blocked: choose an embroidery font above to build stitches. Your chosen artwork font is never replaced automatically. Basic left-to-right lettering only; contextual scripts and automatic kerning are not supported yet.</p>
+<button id="letteringRetry" type="button">Refresh preview</button> <button id="letteringCreate" type="button" disabled>Create artwork only</button>
+<p><a id="letteringOpen" target="_blank" rel="noopener" hidden>Open new lettering design ↗</a></p>
+</details>
+</dialog>
+<link rel="stylesheet" href="/static/lettering.css"><script defer src="/static/lettering.js"></script>

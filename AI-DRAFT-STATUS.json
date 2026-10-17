@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-16",
+  "status": "Selection and bounded review fixes implemented; updated live GPT + SAM2 acceptance pending app restart",
+  "restore_point": "18e19bf (local only; clean tree before this fix pass)",
+  "scope": "Restore isolated local SAM2; prioritize keep/remove hints; crop-aware AI fallback; maximum two draft correction rounds; separate cutout and thread-plan findings. No automatic application or stitch/export changes.",
+  "ui": [
+    "AI assistant is the first icon-labelled basic action",
+    "One prompt owner with Make a draft / Ask a question",
+    "Large original/cutout comparison and Thread plan toggle",
+    "Approval controls replace the prompt form during review",
+    "Long explanations and returned model/token evidence are closed by default",
+    "Warnings, playback and manual tools retained"
+  ],
+  "provider": {
+    "model": "gpt-5.4-mini-2026-03-17",
+    "paid_calls_this_pass": 0,
+    "maximum_completed_calls_per_draft": 4,
+    "policy": "Existing verified rates, per-design and monthly caps unchanged; explicit consent per request"
+  },
+  "verification": {
+    "full_suite": "502 passed in 97.72 seconds, normal project command with local runtime installed; 17 more tests than the prior 485-test checkpoint. Real SAM2 smoke and browser tests run separately.",
+    "browser_draft": "Passed with synthetic AI: keyboard, consent, loading, before/after, escaped text, fallback notice, explicit approval, exact Undo, cache reuse, stale edits, cancellation, offline prompt retention, generation-owner delegation, 390px dark/reduced-motion and uncertain-review generation lockout.",
+    "browser_existing_questions": "Passed: question history, IME, errors, cancellation, stale replies, missing provider, sibling review/player and narrow/dark layout.",
+    "real_local_cutout": "Passed a synthetic cartoon through real GrabCut and preparation using fixed synthetic AI instructions: hair, eyes, cheeks and mouth retained; exterior removed; original untouched. This does not validate AI localization quality.",
+    "generation": "Browser verifies delegation to canonical acceptRefinement; existing generation/release tests pass. New AI-to-machine-file end-to-end test not run.",
+    "syntax": "node --check passed for ask-ai.js, workflow.js, workspace-ui.js and preparation.js; git diff --check clean",
+    "static_audit": "89 existing findings, identical to ai-draft-ui-audit.json; zero new findings, not a clean global audit.",
+    "legacy_browser_commands": "Not run because the wrappers write output folders excluded by AGENTS.md. Scoped isolated browser tests used instead.",
+    "live_api": "Prior live test is retained below and failed cutout acceptance. Current running server has no subject-draft-v2 version field; new live paid workflow not tested until user restarts key-bearing terminal. No new paid calls in this pass.",
+    "physical_sewout": "Not run; no machine-safety claim",
+    "real_local_sam2": {
+      "installed": true,
+      "method": "SAM2",
+      "fixed_diagnostic_points": true,
+      "paid_ai_localization": false,
+      "first_ms": 6550.9,
+      "warm_decoder_ms": 96,
+      "retained_pixels_before_ranking_fix": 149996,
+      "retained_pixels_after_ranking_fix": 206516,
+      "prompt_conflicts_after": 0,
+      "repeat_identical": true,
+      "original_unchanged": true,
+      "quality": "Eyes/mouth visibly better preserved; clothing and outer-hair holes/roughness remain. No labelled ground truth; not a complete semantic-accuracy pass."
+    },
+    "old_code_regression": "Keep/remove ranking test was run against 18e19bf and failed, then passed on fixed code."
+  },
+  "safety": "No stitch engine, export or release-check implementation changes. No automatic application. Locked/manually edited pieces and native lettering rejected by this subject tool. Original source unchanged. Canceled/stale drafts cannot apply; repeated unchanged drafts reuse process memory.",
+  "followups": [
+    "Restart app and run real GPT-5.4-mini + SAM2 Sasuke prompt; inspect remaining hair/clothing defects and record actual tokens/rounds.",
+    "Thread-plan colour/detail-loss correction (now reported separately, not automatically repaired).",
+    "Real generated-stitch/export acceptance after explicit user approval.",
+    "AI editable-text creation; corrections beyond bounded two-round selection loop.",
+    "Hosted authentication, per-user job isolation and distributed deduplication.",
+    "Physical sew-out pending."
+  ],
+  "evidence_directory": ".simple-ui-evidence",
+  "report_note": "Screenshots are synthetic QA scenes, not paid AI digitizations.",
+  "live_sasuke": {
+    "job": "b71eeffd640e457cb35fe7495f59c4c8",
+    "model": "gpt-5.4-mini-2026-03-17",
+    "method": "GrabCut fallback",
+    "input_tokens": 2122,
+    "output_tokens": 302,
+    "review": {
+      "concerns": [
+        "Background pieces are still left behind on both sides, including the red symbol strip and the circular tan shapes.",
+        "Some hair edges look cropped or simplified, especially around the left and right outer spikes.",
+        "The clothing is only partially kept at the bottom edges, with visible loss of shoulder/collar detail.",
+        "Facial details are mostly present, but the mouth and eye linework look slightly altered from the original."
+      ],
+      "summary": "The cutout keeps Sasuke centered and most of the face, hair, and clothing are still visible. However, the prepared artwork does not match the request to remove only the background, because several background elements remain and some outer parts of the character are trimmed or simplified."
+    },
+    "warnings": {
+      "boundary": 3,
+      "details": 441,
+      "generation": 1099
+    },
+    "mask_retained_percent": 47.2056,
+    "acceptance": "Failed: background retained and subject detail loss. These are model observations and visual inspection, not quantified semantic ground truth.",
+    "applied": false
+  }
+}
