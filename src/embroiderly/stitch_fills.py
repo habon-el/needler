@@ -38,7 +38,7 @@ def _rows(shape, spacing):
     parts = [hit] if isinstance(hit, LineString) else [g for g in getattr(hit, 'geoms', []) if isinstance(g, LineString)]
     for part in parts:
         xs = [c[0] for c in part.coords]
-        if max(xs)-min(xs) < 1e-6:
+        if len(xs) < 2 or max(xs)-min(xs) < 1e-6:
             continue
         k = round(part.coords[0][1]/spacing-.5)
         rows.setdefault(k, []).append((min(xs), max(xs)))

@@ -8,6 +8,7 @@ import math
 import re
 import cv2
 import numpy as np
+from .colour_rows import unique_rows
 from scipy.ndimage import distance_transform_edt
 from skimage.color import rgb2lab
 from .knowledge_store import load_knowledge
@@ -66,7 +67,7 @@ def classify_flat(rgb,visible):
     if not len(pixels):return False
     neutral=np.mean(np.ptp(pixels.astype(float),axis=1)<20)
     extreme=np.mean((pixels.mean(1)<65)|(pixels.mean(1)>210))
-    return bool((neutral>.94 and extreme>.80) or len(np.unique(pixels//32,axis=0))<=35)
+    return bool((neutral>.94 and extreme>.80) or len(unique_rows(pixels//32))<=35)
 
 
 def propose_background(image):
@@ -75,7 +76,7 @@ def propose_background(image):
     border=np.zeros(visible.shape,bool);border[[0,-1],:]=True;border[:,[0,-1]]=True
     samples=rgb[border&visible]
     if len(samples)<.5*np.count_nonzero(border):return None
-    bins,count=np.unique(samples//16,axis=0,return_counts=True);dominant=bins[np.argmax(count)]
+    bins,count=unique_rows(samples//16,return_counts=True);dominant=bins[np.argmax(count)]
     value=np.rint(np.median(samples[np.all(samples//16==dominant,axis=1)],axis=0)).astype(np.uint8)
     lab=rgb2lab(samples[None]/255)[0];target=rgb2lab(value[None,None]/255)[0,0]
     seed=defaults();coverage=float(np.mean(np.linalg.norm(lab-target,axis=1)<=seed['default_delta_e']))
@@ -99,7 +100,7 @@ get their own foreground representative rather than being assumed to be ink.
         core=cv2.erode((visible&~matched).astype(np.uint8),np.ones((5,5),np.uint8),borderType=cv2.BORDER_CONSTANT,borderValue=0)>0
         pixels=rgb[core] if core.any() else rgb[visible&~matched]
         if len(pixels):
-            bins,counts=np.unique(pixels//16,axis=0,return_counts=True)
+            bins,counts=unique_rows(pixels//16,return_counts=True)
             ids=np.flatnonzero(counts>=max(8,len(pixels)*.02))
             ids=ids[np.argsort(-counts[ids],kind='stable')][:16]
             representatives=np.array([np.rint(np.median(pixels[np.all(pixels//16==bins[i],axis=1)],axis=0)) for i in ids],np.uint8)

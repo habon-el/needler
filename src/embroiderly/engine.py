@@ -4,6 +4,7 @@ import json
 import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
+from .colour_rows import unique_rows
 from PIL import Image
 import pyembroidery as emb
 from .regions import artwork_rgb, _quantize
@@ -45,7 +46,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     if not piece_layout and settings.get('ink_only') is not True:
         from .fill_coverage import missing_boundaries, require_boundaries
         selected=alpha.copy()
-        for colour in np.unique(array[alpha],axis=0):
+        for colour in unique_rows(array[alpha]):
             colour_key='#%02x%02x%02x'%tuple(colour)
             choice=(colours or {}).get(colour_key,{'include':prepared or not np.all(colour>=245)})
             if not choice['include']:
@@ -57,7 +58,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     # Versioned stitch-parameter document; the generator reads these attributes.
     metadata=ET.SubElement(document,'metadata')
     ET.SubElement(metadata,'{http://inkstitch.org/namespace}inkstitch_svg_version').text='3'
-    palette=np.unique(array.reshape(-1,3),axis=0)
+    palette=unique_rows(array.reshape(-1,3))
     objects=0
     release_mask=np.zeros_like(alpha)
     if settings.get("ink_only") is True:
@@ -77,6 +78,12 @@ def digitize(source, directory, height_mm=100, colours=None):
         from .piece_generation import append as append_pieces
         objects,release_mask,piece_origin,mask_origin=append_pieces(document,piece_layout,scale,settings,colours)
         alpha=release_mask
+    # Sew the largest colour area (usually the background) first and small
+    # details last, so detail edges lie on top instead of under the fill.
+    if len(palette) and not piece_layout:
+        present,counts=unique_rows(array[alpha],return_counts=True)
+        area={tuple(c):int(n) for c,n in zip(present,counts)}
+        palette=sorted(palette,key=lambda c:(-area.get(tuple(c),0),tuple(int(v) for v in c)))
     for colour in ([] if piece_layout else palette):
         key='#%02x%02x%02x'%tuple(colour)
         choice=(colours or {}).get(key,{'include':prepared or not np.all(colour>=245),'thread':key})

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+from .colour_rows import unique_rows
 from PIL import Image
 
 
@@ -54,7 +55,7 @@ def _quantize(image: Image.Image, colors: int) -> np.ndarray:
     pixels = cv2.bilateralFilter(pixels, 5, 12, 3)
     reduced = Image.fromarray(pixels).quantize(colors=colors, method=Image.Quantize.MEDIANCUT)
     result = np.array(reduced.convert('RGB'), dtype=np.uint8)
-    palette, counts = np.unique(result.reshape(-1, 3), axis=0, return_counts=True)
+    palette, counts = unique_rows(result.reshape(-1, 3), return_counts=True)
     lab = rgb2lab(palette[None, :, :].astype(float) / 255)[0]
     order = sorted(range(len(palette)), key=lambda i: (-int(counts[i]), tuple(palette[i])))
     representatives = []

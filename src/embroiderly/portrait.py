@@ -4,6 +4,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from .colour_rows import unique_rows
 PORTRAIT_COLOUR_DEFAULT = 10  # More room for skin highlights, midtones and shadows.
 PORTRAIT_COLOUR_MAX = 12
 PORTRAIT_MERGE_DELTA_E = 2.0  # Lab ΔE76; avoid merging nearby skin tones aggressively.
@@ -97,7 +98,7 @@ def feature_report(image,options,height):
     for item in feature_boxes(options,w,h):
         x,y,r,b=item['bounds'];region=array[y:b,x:r];pixels=region[:,:,:3][region[:,:,3]>127]
         width=(r-x)*scale;short=min(r-x,b-y)*scale
-        colours=len(np.unique(pixels,axis=0)) if len(pixels) else 0
+        colours=len(unique_rows(pixels)) if len(pixels) else 0
         luminance=pixels@np.array([.2126,.7152,.0722]) if len(pixels) else np.array([0])
         contrast=float(luminance.max()-luminance.min())
         needed=max(height,height*FEATURE_READABLE_WIDTH_MM/max(short,1e-9))

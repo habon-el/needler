@@ -8,6 +8,7 @@ def geometry(svg):
     root=ET.parse(svg).getroot()
     shapes={}
     root_attributes=dict(root.attrib)
+    order=0
     for node in root:
         if node.tag.split('}')[-1]=='metadata':
             root_attributes['metadata']=ET.tostring(node,encoding='unicode')
@@ -20,7 +21,8 @@ def geometry(svg):
         attrs=dict(node.attrib);attrs.pop('id',None)
         style=dict(part.split(':',1) for part in attrs.pop('style').split(';') if part)
         colour=style.pop('fill')
-        key=json.dumps([attrs,style],sort_keys=True)
+        # Sewing order is part of the routing: a reordered design is not a recolour.
+        key=json.dumps([order,attrs,style],sort_keys=True);order+=1
         if key in shapes:raise ValueError('Ambiguous duplicate geometry')
         shapes[key]=colour
     return root_attributes,shapes
@@ -39,7 +41,10 @@ def colour_mapping(old_svg,new_svg):
 def routing_policy(alpha, scale, settings):
     import hashlib
     from .engine_cache import digest
-    return dict(version=1, knockout=bool(settings.get('colour_knockouts')),
+    from .stitch_engine import fingerprint
+    # Any change to the generator or to this reuse rule invalidates earlier plans.
+    return dict(version=2, engine=fingerprint(), recolour=digest(Path(__file__)),
+                knockout=bool(settings.get('colour_knockouts')),
                 scale=float(scale), shape=list(alpha.shape),
                 mask=hashlib.sha256(alpha.tobytes()).hexdigest(),
                 guard=digest(Path(__file__).with_name('knockout_routing.py')),

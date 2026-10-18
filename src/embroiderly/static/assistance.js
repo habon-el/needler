@@ -54,7 +54,7 @@ async function request(args,automatic=false){
  let timeout;
  try{
   controller=new AbortController();const signal=controller.signal;
-  timeout=setTimeout(()=>controller?.abort(),args.action==='remove_colour'||args.patch?.colour_knockouts?30000:240000);
+  timeout=setTimeout(()=>controller?.abort(),args.action==='remove_colour'||args.patch?.colour_knockouts?90000:240000);
   const response=await fetch('/assist/'+encodeURIComponent(config.name),{method:'POST',signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({options:JSON.parse(snapshot),...args})});
   const result=await response.json();if(!response.ok)throw Error(result.error||'Suggestion unavailable.');
   if(version!==generation||snapshot!==JSON.stringify(studio.snapshot())){message('Artwork changed; outdated suggestion discarded.');return}

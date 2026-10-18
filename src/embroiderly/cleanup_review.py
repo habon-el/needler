@@ -5,6 +5,11 @@ import cv2
 import numpy as np
 
 
+# Changes no larger than about half a thread width cannot be seen in stitches.
+# They are recorded as 'auto' (still reversible with 'keep'), not asked about.
+AUTO_ACCEPT_MM=.25
+
+
 def review_changes(before, after, options, scale, stage):
     decisions=options.get('cleanup_decisions',{})
     if not isinstance(decisions,dict) or len(decisions)>10000 or any(
@@ -19,7 +24,7 @@ def review_changes(before, after, options, scale, stage):
         identity=hashlib.sha256(json.dumps([stage,x,y,w,h,scale],sort_keys=True).encode()+
                                 np.packbits(region[y:y+h,x:x+w]).tobytes()+
                                 before[region].tobytes()+after[region].tobytes()).hexdigest()[:24]
-        decision=decisions.get(identity,'pending')
+        decision=decisions.get(identity,'auto' if max(w,h)*scale<=AUTO_ACCEPT_MM+1e-9 else 'pending')
         if decision=='keep':output[region]=before[region]
         records.append(dict(id=identity,stage=stage,bounds=[x,y,x+w,y+h],pixels=area,
                             width_mm=round(w*scale,4),height_mm=round(h*scale,4),

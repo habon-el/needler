@@ -8,6 +8,7 @@ import math
 import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
+from .colour_rows import unique_rows
 from shapely.geometry import Polygon, LineString
 
 NS='{http://inkstitch.org/namespace}'
@@ -40,7 +41,7 @@ def region_id(rings):
 
 
 def regions(rgb,alpha):
-    for colour in np.unique(rgb[alpha],axis=0):
+    for colour in unique_rows(rgb[alpha]):
         mask=(np.all(rgb==colour,axis=2)&alpha).astype('uint8')
         contours,hierarchy=cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
         if hierarchy is None:continue

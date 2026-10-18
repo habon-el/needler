@@ -6,6 +6,7 @@ import math
 import json
 from pathlib import Path
 import numpy as np
+from .colour_rows import unique_rows
 import cv2
 from PIL import Image,ImageDraw
 from scipy.ndimage import maximum_filter,minimum_filter,distance_transform_edt
@@ -59,7 +60,7 @@ def prepare_replayed(path,options,mask_directory=None,target_height_mm=None):
     image,_,report=prepare(path,base,mask_directory,target_height_mm)
     source=load_image(path);output,history=replay(source,image,options['refinement_ops']);pixels=np.array(output);kept=pixels[:,:,3]>127
     if not kept.any():raise ValueError('Corrections removed the entire design; undo or restore the subject.')
-    palette,inverse=np.unique(pixels[:,:,:3][kept],axis=0,return_inverse=True)
+    palette,inverse=unique_rows(pixels[:,:,:3][kept],return_inverse=True)
     limit=12 if options.get('artwork_type')=='portrait' else 8
     if len(palette)>limit:raise ValueError(f'Correction needs {len(palette)} colours; the current engine permits {limit}. No other colours were changed or discarded.')
     swatches=[dict(hex='#%02x%02x%02x'%tuple(v),pixels=int((inverse==i).sum()),locked=False) for i,v in enumerate(palette)]
@@ -139,7 +140,7 @@ def worklist(source,prepared,payload,report,min_area=.25):
                 if label:width=min(int(stats[label,cv2.CC_STAT_WIDTH]),int(stats[label,cv2.CC_STAT_HEIGHT]))*scale
             if diagnosis=='unresolved' and tone_distance<3 and width<SHAPE_WIDTH_MM:
                 diagnosis='physical-limit';reason=knowledge_message('refinement.10', v0=width);remedies=[]
-        colours=np.unique(src[y:bot,x:r,:3].reshape(-1,3),axis=0)
+        colours=unique_rows(src[y:bot,x:r,:3].reshape(-1,3))
         representative=src[point[1],point[0],:3];target=out[point[1],point[0],:3]
         delta=float(np.linalg.norm(rgb2lab(representative[None,None]/255)-rgb2lab(target[None,None]/255)))
         patches.append(dict(id=hashlib.sha256(json.dumps(box).encode()).hexdigest()[:12],bounds=box,point=point,position=location(box,w,h),
@@ -174,7 +175,7 @@ def make_operation(source,prepared,patch,kind,options,point=None):
         local=components==component if component else np.zeros_like(local)
     tone=src[point[1],point[0],:3]
     if kind=='add-region':
-        palette=np.unique(out[:,:,:3][out[:,:,3]>127],axis=0)
+        palette=unique_rows(out[:,:,:3][out[:,:,3]>127])
         if len(palette):tone=palette[np.argmin(np.linalg.norm(rgb2lab(palette[None]/255)[0]-rgb2lab(tone[None,None]/255)[0,0],axis=1))]
     op=dict(version=VERSION,type=kind,bounds=[x,y,r,b],point=point,mask_runs=mask_runs(local),colour='#%02x%02x%02x'%tuple(tone),
         image_hash=digest(src),diagnosis=patch['diagnosis'])

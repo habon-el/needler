@@ -15,6 +15,7 @@ from uuid import uuid4
 import cv2
 import numpy as np
 
+from .colour_rows import unique_rows
 from .preparation import load_image, prepare, data_url, number, cached_selection
 from .subject_model import propose_mask, mask_runs
 
@@ -43,7 +44,7 @@ def classify(image):
         raise ValueError("Select visible artwork.")
     neutral = float(np.mean(np.ptp(rgb.astype(float), axis=1) < 20))
     extreme = float(np.mean((rgb.mean(axis=1) < 65) | (rgb.mean(axis=1) > 210)))
-    bins = len(np.unique(rgb // 32, axis=0))
+    bins = len(unique_rows(rgb // 32))
     kind = "line art" if neutral > .94 and extreme > .80 else "flat artwork" if bins <= 35 else "photograph or textured artwork"
     return {"kind": kind, "method": "Offline heuristic—not a trained classifier",
             "coarse_colour_bins": bins, "neutral_fraction": round(neutral, 3)}

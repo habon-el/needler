@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 import cv2
 import numpy as np
+from .colour_rows import unique_rows
 from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 from scipy.ndimage import distance_transform_edt
 from skimage.color import rgb2lab, lab2rgb
@@ -196,6 +197,36 @@ def match_thread(hexcode):
     matches=rank_threads(hexcode)
     return {**matches[0],"alternatives":matches} if matches else None
 
+THREAD_WIDTH_MM=.4
+
+def absorb_edge_specks(labels,mm_per_px,locked=()):
+    """Merge antialiasing fragments into the neighbouring colours, in place.
+
+    Only a colour fragment thinner than one thread width everywhere (it cannot
+    be sewn as its own colour) that lies on a boundary between two different
+    neighbours: two colours, or a colour and transparency. Each pixel takes its
+    nearest neighbouring colour. A thin or tiny detail surrounded by a single
+    colour (an eye, a dot, a hairline) is never merged and still needs a decision.
+    """
+    merged=0
+    for label in [int(v) for v in np.unique(labels) if v>=0 and v not in locked]:
+        plane=(labels==label).astype(np.uint8)
+        n,cc,stats,_=cv2.connectedComponentsWithStats(plane,8)
+        for i in range(1,n):
+            x,y,w,h,_=map(int,stats[i])
+            x0,y0=max(0,x-2),max(0,y-2);x1,y1=min(labels.shape[1],x+w+2),min(labels.shape[0],y+h+2)
+            piece=(cc[y0:y1,x0:x1]==i)
+            thickness=2*cv2.distanceTransform(np.pad(piece,1).astype(np.uint8),cv2.DIST_L2,3).max()
+            if thickness*mm_per_px>=THREAD_WIDTH_MM:continue
+            window=labels[y0:y1,x0:x1]
+            ring=cv2.dilate(piece.astype(np.uint8),np.ones((3,3),np.uint8)).astype(bool)&~piece
+            around=window[ring];around=around[around!=label]
+            if len(np.unique(around))<2 or not np.any(around>=0):continue
+            others=(window>=0)&~piece
+            _,nearest=distance_transform_edt(~others,return_indices=True)
+            window[piece]=window[nearest[0][piece],nearest[1][piece]];merged+=1
+    return merged
+
 def prepare(path,o,mask_directory=None,target_height_mm=None):
     requested_options=o
     knockout=bool(o.get("colour_knockouts"))
@@ -255,7 +286,7 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
     locked_rgb=[colour(c) for c in locks]
     floor=number(o,"floor_mm2",1,0,25);height=physical_height
     simplify=number(o,"simplify",0,0,100);smooth=int(number(o,"smooth",1,0,3))
-    source_colours=np.unique(rgb[mask],axis=0)
+    source_colours=unique_rows(rgb[mask])
     before_colours=len(source_colours)
     detail_source=rgb.copy()
     detail_selected=mask.copy()
@@ -309,10 +340,12 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
     for a,b in o.get("merges",{}).items():
         if a in locks: raise ValueError("Unlock a colour before merging it.")
         palette[np.all(palette==colour(a),axis=1)]=colour(b)
-    palette,remap=np.unique(palette,axis=0,return_inverse=True)
+    palette,remap=unique_rows(palette,return_inverse=True)
     labels[mask]=remap[labels[mask]]
     detail_stages["merge"]=(detail_premerge,detail_rgb())
     locked_ids={i for i,p in enumerate(palette) if tuple(p) in locked_rgb}
+    # Before cleanup review: antialiasing fragments are not decisions for the user.
+    edge_specks=0 if portrait_mode else absorb_edge_specks(labels,height/h,locked_ids)
     before=components(labels);px_mm2=(height/h)**2
     if portrait_mode:portrait_original_labels=labels.copy()
     small_before=sum(area*px_mm2<floor for _,_,_,area in before)
@@ -358,7 +391,7 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
     if portrait_mode:detail_cleanup_records=profile.removal_records(portrait_original_labels,labels,palette,height/h,height)
     if o.get("detail_recoveries"):
         output=recover_details(output,detail_source,o)
-        palette,inverse=np.unique(output[kept,:3],axis=0,return_inverse=True)
+        palette,inverse=unique_rows(output[kept,:3],return_inverse=True)
         labels[kept]=inverse
         after=components(labels)
         locked_ids={i for i,p in enumerate(palette) if tuple(p) in locked_rgb}
@@ -370,7 +403,7 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
         swatch["match"]=match_thread(swatch["hex"])
     report=dict(colours_before=before_colours,colours_after=len(swatches),regions_before=len(before),regions_after=len(after),
         below_floor_before=small_before,below_floor_after=sum(area*px_mm2<floor for _,_,_,area in after),
-        boundary_pixels_changed=smoothing_pixels,specks_reassigned=cleaned,isolated_subject_islands_removed=deleted_islands,floor_mm2=floor,cleanup_floor_mm2=threshold,
+        boundary_pixels_changed=smoothing_pixels,specks_reassigned=cleaned,edge_specks_merged=edge_specks,isolated_subject_islands_removed=deleted_islands,floor_mm2=floor,cleanup_floor_mm2=threshold,
         width_px=w,height_px=h,height_mm=height,interactions=int(number(o,"interactions",0,0,100000)),
         note="Area heuristic only: narrow features, fabric and stitch type still require review.")
     report["minimum_region_area_before_mm2"]=min((area*px_mm2 for _,_,_,area in before),default=0)

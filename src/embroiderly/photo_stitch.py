@@ -10,6 +10,7 @@ import tempfile
 from pathlib import Path
 import cv2
 import numpy as np
+from .colour_rows import unique_rows
 import pyembroidery as emb
 from PIL import Image,ImageDraw
 from skimage.color import rgb2lab
@@ -44,7 +45,7 @@ def generate(source,directory,height_mm,options):
     with Image.open(source) as im:array=np.array(im.convert('RGBA'))
     h,w=array.shape[:2];scale=height_mm/h;alpha=array[:,:,3]>127
     if not alpha.any():raise ValueError('No selected portrait pixels.')
-    palette=np.unique(array[:,:,:3][alpha],axis=0)
+    palette=unique_rows(array[:,:,:3][alpha])
     if len(palette)>12:raise ValueError('Prepare the portrait with at most 12 colours.')
     brightness=rgb2lab(palette[None]/255)[0,:,0]
     order=np.argsort(brightness,kind='stable')
@@ -215,7 +216,7 @@ def generate(source,directory,height_mm,options):
         pixels=rendered[y:b,x:r];covered=selected&(pixels[:,:,3]>0)
         feature_coverage.append(dict(kind=feature['kind'],bounds=feature['bounds'],
             selected_pixels=int(selected.sum()),covered_pixels=int(covered.sum()),
-            visible_thread_colours=len(np.unique(pixels[:,:,:3][covered],axis=0)),
+            visible_thread_colours=len(unique_rows(pixels[:,:,:3][covered])),
             note='User-marked box; sampled nominal-width coverage, not anatomical recognition or physical sew-out.'))
     quality=dict(length_audits=audits,omissions=omissions,overlaps=overlaps,
         overlap_count=len(overlaps),max_written_penetration_mm=max((max(v['written_left_mm'],v['written_right_mm']) for v in overlaps),default=0),max_planned_penetration_mm=max((max(v['left_mm'],v['right_mm']) for v in overlaps),default=0),
