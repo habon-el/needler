@@ -81,7 +81,7 @@ def satin_rails(rings,scale):
 
 def inventory(rgb,alpha,scale,options):
     chosen=assignments(options);items=[]
-    if options.get('ink_only') or options.get('artwork_type')=='portrait':
+    if options.get('ink_only') or options.get('line_art') or options.get('artwork_type')=='portrait':
         return dict(areas=[],stale=list(chosen),catalog=CATALOG,unavailable='Area fills require colour artwork mode. Black lines keep Running/Reinforced; portrait stitching has its own planner.')
     for key,colour,rings in regions(rgb,alpha):
         if len(items)>=500:break

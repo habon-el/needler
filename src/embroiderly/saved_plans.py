@@ -4,7 +4,7 @@ import json
 import math
 from pathlib import Path
 
-DEFAULTS = dict(region_styles={}, ink_only=False, ink_length_mm=2, ink_bean_repeats=0, selection='full', count=4, brightness=1, contrast=1,
+DEFAULTS = dict(region_styles={}, ink_only=False, line_art=False, ink_length_mm=2, ink_bean_repeats=0, selection='full', count=4, brightness=1, contrast=1,
                 height_mm=100, floor_mm2=1, simplify=0, smooth=1,
                 mask_holes_mm2=1, mask_smooth=0, edge=0,
                 hints=[], edits=[], locks=[], merges={})

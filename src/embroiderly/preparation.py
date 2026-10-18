@@ -246,6 +246,12 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
             raise ValueError("Black lines only requires Logo mode, No border, and no local recovery operations.")
         # Effective overrides only: turning the mode off restores the saved cleanup choices.
         o={**o,"smooth":0,"simplify":0,"floor_mm2":0,"protect_selection":True,"locks":["#000000"],"merges":{}}
+    line_art=o.get("line_art") is True
+    if line_art:
+        if ink_only or o.get("artwork_type","logo")!="logo" or o.get("border_style","off")!="off" or o.get("refinement_ops") or o.get("colour_knockouts"):
+            raise ValueError("Line art needs Logo mode, No border, Black lines only off and no colour removal; the dark background is left out automatically.")
+        # Thin strokes are the design: no smoothing, cleanup or speck merging.
+        o={**o,"smooth":0,"simplify":0,"floor_mm2":0,"protect_selection":True,"merges":{}}
     if o.get("refinement_ops"):
         from .refinement import prepare_replayed
         return prepare_replayed(path,o,mask_directory,target_height_mm)
@@ -279,6 +285,16 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
         from .ink_lines import ink_mask
         mask &= ink_mask(rgb)
         rgb[mask]=0
+    if line_art:
+        # Light strokes on a dark background: each stroke pixel takes its
+        # thread colour; the background is not stitched.
+        from .line_art import colour_layers
+        strokes=np.zeros(mask.shape,bool);tones=[]
+        for tone,layer in colour_layers(rgb):
+            layer=layer&mask
+            if layer.any():rgb[layer]=colour(tone);strokes|=layer;tones.append(tone)
+        mask&=strokes
+        o={**o,"locks":tones,"count":max(2,len(tones))}
     if np.count_nonzero(mask)<5: raise ValueError("The selection is empty. Restore or enlarge the subject.")
     k=int(number(o,"count",profile.PORTRAIT_COLOUR_DEFAULT if portrait_mode else 4,8 if portrait_mode else 2,profile.PORTRAIT_COLOUR_MAX if portrait_mode else 8))
     locks=list(dict.fromkeys(o.get("locks",[])))
@@ -345,7 +361,7 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
     detail_stages["merge"]=(detail_premerge,detail_rgb())
     locked_ids={i for i,p in enumerate(palette) if tuple(p) in locked_rgb}
     # Before cleanup review: antialiasing fragments are not decisions for the user.
-    edge_specks=0 if portrait_mode else absorb_edge_specks(labels,height/h,locked_ids)
+    edge_specks=0 if portrait_mode or line_art else absorb_edge_specks(labels,height/h,locked_ids)
     before=components(labels);px_mm2=(height/h)**2
     if portrait_mode:portrait_original_labels=labels.copy()
     small_before=sum(area*px_mm2<floor for _,_,_,area in before)
@@ -425,6 +441,8 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
     report["colour_knockouts"]=knockout_reports
     report["background_proposal"]=None if knockout else propose_background(image)
     report["ink_only"]=ink_only
+    report["line_art"]=line_art
+    if line_art:report["note"]="Line art: strokes are sewn as continuous running-stitch lines in their own colours; the dark background is not stitched. Review fine hatching and physical sewability."
     if ink_only:report["note"]="Black ink only: white is transparent and receives no stitches. Cleanup is bypassed to retain thin ink. Review faint marks and physical sewability."
     report['cleanup_review']=mask_report.get('mask_cleanup_review',[])+colour_cleanup_review
     report['automatic_changes']=bool(any(r['removed'] for r in report['cleanup_review']) or detail_audit['pipeline_changes'] or detail_audit['mask_cleanup_changes'])
@@ -440,7 +458,7 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
     from .borders import border_plan
     report['border']=border_plan(output[:,:,3]>127,physical_height,o)
     from .fill_coverage import missing_boundaries
-    report['generation_blockers']=([] if ink_only or portrait_mode else
+    report['generation_blockers']=([] if ink_only or line_art or portrait_mode else
         missing_boundaries(output[:,:,:3],output[:,:,3]>127,physical_height/h))
     from .region_stitches import inventory
     report['stitch_regions']=inventory(output[:,:,:3],output[:,:,3]>127,physical_height/h,o)

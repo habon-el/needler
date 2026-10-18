@@ -15,6 +15,37 @@ from .engine_cache import serialize_output
 from .machine_files import write_pair
 from .stitch_engine import generate_plan, NAME as ENGINE_NAME
 
+def add_line_art(document, exact, alpha, scale, colours=None):
+    """Prepared line art -> one running-stitch element per continuous route."""
+    from .line_art import digitize_lines
+    layers=[]
+    for colour in unique_rows(exact[alpha]):
+        key='#%02x%02x%02x'%tuple(colour)
+        choice=(colours or {}).get(key,{'include':True,'thread':key})
+        if not choice.get('include',True):continue
+        layers.append((choice.get('thread',key),np.all(exact==colour,axis=2)&alpha))
+    # Darker threads first, so the light lines finish on top.
+    layers.sort(key=lambda item:sum(int(item[0][i:i+2],16) for i in (1,3,5)))
+    # Small pictures: trace smooth-upscaled strokes for cleaner centre lines.
+    factor=2 if max(alpha.shape)<1200 else 1
+    if factor>1:
+        size=(alpha.shape[1]*factor,alpha.shape[0]*factor)
+        layers=[(thread,cv2.resize(mask.astype(np.float32),size,interpolation=cv2.INTER_CUBIC)>.5) for thread,mask in layers]
+    drawn=np.zeros(alpha.shape,np.uint8);objects=0
+    for thread,paths in digitize_lines(layers,scale/factor):
+        for path in paths:
+            points=[(x/scale,y/scale) for x,y in path]
+            ET.SubElement(document,'path',id=f'line{objects}',d='M '+' L '.join(f'{x:.3f},{y:.3f}' for x,y in points),
+                style=f'fill:none;stroke:{thread};stroke-width:1',
+                attrib={'{http://inkstitch.org/namespace}stroke_method':'running_stitch',
+                        '{http://inkstitch.org/namespace}running_stitch_length_mm':'1.6',
+                        '{http://inkstitch.org/namespace}running_stitch_tolerance_mm':'0.12'})
+            cv2.polylines(drawn,[np.rint(points).astype(np.int32)],False,1,thickness=3)
+            objects+=1
+    if not objects:raise ValueError('No drawn lines were found. Line art needs light strokes on a dark background.')
+    return objects,drawn.astype(bool)
+
+
 @serialize_output
 def digitize(source, directory, height_mm=100, colours=None):
     settings={}
@@ -43,7 +74,8 @@ def digitize(source, directory, height_mm=100, colours=None):
     if not prepared:
         alpha=np.ones(array.shape[:2],bool)
     height,width=array.shape[:2]
-    if not piece_layout and settings.get('ink_only') is not True:
+    line_art=settings.get('line_art') is True
+    if not piece_layout and settings.get('ink_only') is not True and not line_art:
         from .fill_coverage import missing_boundaries, require_boundaries
         selected=alpha.copy()
         for colour in unique_rows(array[alpha]):
@@ -66,10 +98,16 @@ def digitize(source, directory, height_mm=100, colours=None):
         from .ink_lines import add_running_paths
         objects=add_running_paths(document,exact,alpha,settings)
         palette=[]
+    if line_art and not piece_layout:
+        if settings.get("border_style","off")!="off":raise ValueError("Line art requires No border.")
+        objects,drawn=add_line_art(document,exact,alpha,scale,colours)
+        # Allowed area: the strokes themselves plus the tiny joins between them.
+        release_mask=alpha|drawn
+        palette=[]
     from .region_stitches import assignments, regions, region_id, apply_style
     region_styles=assignments(settings)
     if region_styles and not piece_layout:
-        if settings.get('ink_only') is True:raise ValueError('Area styles cannot be applied to Black lines only. Clear area assignments first.')
+        if settings.get('ink_only') is True or line_art:raise ValueError('Area styles cannot be applied to line drawings. Clear area assignments first.')
         missing=set(region_styles)-{key for key,_,_ in regions(exact,alpha)}
         if missing:raise ValueError('Artwork areas changed. Clear unmatched stitch assignments and select the new areas.')
     if piece_layout:
@@ -109,7 +147,7 @@ def digitize(source, directory, height_mm=100, colours=None):
             apply_style(document,node,rings,scale,region_styles.get(region_id(rings),'tatami'))
             objects+=1
     if not objects:raise ValueError('No filled areas selected. Choose at least one colour.')
-    if objects>500:raise ValueError('Over 500 fill objects: simplify artwork before this engine trial.')
+    if objects>(3000 if line_art else 500):raise ValueError('Too many separate objects: simplify the artwork before generating stitches.')
     from .borders import border_plan,add_border
     border=border_plan(alpha,height_mm,settings)
     add_border(document,border)
