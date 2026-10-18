@@ -18,7 +18,7 @@ def register(app,root):
         # the mutation lock or stop the customer inspecting locked artwork.
         # AI draft endpoints only propose; they independently check saved/draft locks.
         # Keep every existing mutation endpoint under the original guard.
-        if request.endpoint in ('design_review', 'ai_draft', 'ai_draft_job'):
+        if request.endpoint in ('design_review', 'ai_draft', 'ai_draft_job', 'ai_workflow'):
             return
         if request.method not in ('POST','PATCH','DELETE') or not request.view_args or 'name' not in request.view_args:
             return

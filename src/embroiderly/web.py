@@ -47,6 +47,8 @@ def create_app(workspace: Path | None = None) -> Flask:
     register_assistance(app, root)
     from .ai_draft import register_ai_draft
     register_ai_draft(app, root)
+    from .ai_workflow import register_ai_workflow
+    register_ai_workflow(app, root)
     from .portrait_routes import register_portrait
     from .sewout_review import register_sewout_review
     register_sewout_review(app, root)
