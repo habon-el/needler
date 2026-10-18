@@ -1,7 +1,4 @@
-import subprocess
 import xml.etree.ElementTree as ET
-from pathlib import Path
-import pytest
 import pyembroidery as emb
 from embroiderly.engine_origin import set_origin
 from embroiderly.thread_recolour import colour_mapping
@@ -25,14 +22,13 @@ def test_origin_is_part_of_recolour_geometry(tmp_path):
     assert colour_mapping(a,b) is None
 
 
-@pytest.mark.skipif(not Path('/opt/inkstitch/bin/inkstitch').exists(),reason='Local engine unavailable')
 def test_real_engine_uses_explicit_source_origin(tmp_path):
     # Demonstrate old auto-centering then verify the explicit source-space frame.
+    from embroiderly.stitch_engine import generate_plan
     results=[]
     for origin in (None,[0,0]):
         source=tmp_path/'source.svg';ET.ElementTree(svg(origin)).write(source)
-        run=subprocess.run(['/opt/inkstitch/bin/inkstitch','--extension=output','--format=json',str(source)],capture_output=True,timeout=60,check=True)
-        plan=tmp_path/'plan.json';plan.write_bytes(run.stdout)
+        plan=tmp_path/'plan.json';plan.write_bytes(generate_plan(source))
         pattern=emb.EmbPattern(str(plan))
         results.append([x/10 for x,y,c in pattern.stitches if c&emb.COMMAND_MASK==emb.STITCH])
     assert min(results[0])<0  # Previous implicit origin is not source coordinates.

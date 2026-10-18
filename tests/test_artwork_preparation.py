@@ -95,16 +95,16 @@ def test_prepared_white_and_exact_pes_rgb(tmp_path,artwork,monkeypatch):
     plan={"threadlist":[{"color":"#aa4422"},{"color":"#ffffff"}],
       "stitches":[[0,0,"JUMP"],[10,10,"STITCH"],[20,10,"STITCH"],[20,10,"COLOR_CHANGE"],
                   [30,20,"STITCH"],[40,30,"STITCH"],[40,30,"END"]],"extras":{}}
-    def run(args,**kwargs):
+    def run(path):
         for thread in plan['threadlist']:
             for key in ('description','catalog_number','details','brand','chart','weight'):
                 thread[key]=None
-        assert "--format=json" in args
-        svg=ET.parse(args[-1])
+        svg=ET.parse(path)
         fills=[el.get("style") for el in svg.getroot() if el.tag.endswith("path")]
         assert any("fill:#ffffff" in f for f in fills)
-        return SimpleNamespace(returncode=0,stdout=json.dumps(plan).encode(),stderr=b"")
-    monkeypatch.setattr(subprocess,"run",run)
+        return json.dumps(plan).encode()
+    import embroiderly.engine
+    monkeypatch.setattr(embroiderly.engine,"generate_plan",run)
     # This palette-only fixture intentionally exports red and white. Previously
     # its tiny black detail was silently omitted; exclusion must now be explicit.
     choices={'#000000':{'include':False}}

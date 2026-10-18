@@ -122,7 +122,8 @@ def cached_selection(path,image,options,directory=None):
         return selection(image,options)
     keys=("selection","rect","outline","hints","edge","mask_runs")
     settings={key:options[key] for key in keys if key in options}
-    digest=hashlib.sha256(Path(path).read_bytes()+json.dumps(settings,sort_keys=True).encode()+b"selection-v2-alpha").hexdigest()
+    # 32 hex digits keep cache paths well under Windows' 260-character limit.
+    digest=hashlib.sha256(Path(path).read_bytes()+json.dumps(settings,sort_keys=True).encode()+b"selection-v2-alpha").hexdigest()[:32]
     directory.mkdir(parents=True,exist_ok=True)
     target=directory/(digest+".png")
     if target.exists():
@@ -133,7 +134,7 @@ def cached_selection(path,image,options,directory=None):
     mask=selection(image,options)
     # Atomic rename prevents a simultaneous preview from reading a partial PNG.
     from uuid import uuid4
-    temporary=directory/(digest+"."+uuid4().hex+".tmp")
+    temporary=directory/(digest+"."+uuid4().hex[:12]+".tmp")
     Image.fromarray(mask.astype(np.uint8)*255).save(temporary,format="PNG")
     temporary.replace(target)
     return mask

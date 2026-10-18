@@ -28,13 +28,12 @@ FILES = ('design.svg', 'design.pes', 'design.dst', 'engine-plan.json', 'playback
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
-def cache_key(source, svg, engine):
-    engine = Path(engine).resolve()
-    stat = engine.stat()
+def cache_key(source, svg):
+    from .stitch_engine import fingerprint
     return hashlib.sha256(json.dumps(dict(
-        schema=1, source=digest(source), svg=digest(svg),
+        schema=2, source=digest(source), svg=digest(svg),
         integration=digest(Path(__file__).with_name('engine.py')),
-        engine=[str(engine), stat.st_size, stat.st_mtime_ns],
+        engine=fingerprint(),
         exporter=version('pyembroidery'),
     ), sort_keys=True).encode()).hexdigest()
 

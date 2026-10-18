@@ -126,7 +126,8 @@ def create_app(workspace: Path | None = None) -> Flask:
 
     @app.get('/studio-export/<name>/<format>')
     def studio_export(name,format):
-        if format not in {'pes','dst'} or Path(name).name != name:
+        from .release_gate import FORMATS
+        if format not in FORMATS or Path(name).name != name:
             abort(404)
         target=root/'work'/'inkstitch-preview'/Path(name).stem
         if not (target/'playback.json').is_file():
@@ -149,10 +150,22 @@ def create_app(workspace: Path | None = None) -> Flask:
         if not image or not image.filename:
             abort(400, "Choose an image to analyse")
         suffix = Path(image.filename).suffix.lower()
-        if suffix not in {".png", ".jpg", ".jpeg", ".bmp", ".webp"}:
-            abort(400, "Supported image formats: PNG, JPG, BMP, WebP")
-        name = f"{uuid4().hex}{suffix}"
-        image.save(uploads / name)
+        if suffix not in {".png", ".jpg", ".jpeg", ".bmp", ".webp", ".svg"}:
+            abort(400, "Supported image formats: PNG, JPG, BMP, WebP, SVG")
+        if suffix == ".svg":
+            # Vector logos are rendered by our own geometry-only reader to a
+            # transparent PNG; the original SVG is kept beside it for reference.
+            from .vector_raster import svg_upload
+            try:
+                rendered, source = svg_upload(image.read())
+            except ValueError as error:
+                abort(400, str(error))
+            name = f"{uuid4().hex}.png"
+            rendered.save(uploads / name)
+            (decisions / (name + ".source.svg")).write_bytes(source)
+        else:
+            name = f"{uuid4().hex}{suffix}"
+            image.save(uploads / name)
         from .preparation import load_image
         from .subject_model import warm_image
         warm_image(load_image(uploads/name))

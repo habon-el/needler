@@ -16,7 +16,7 @@ Work one confirmed blocker at a time. Reuse evidence; do not rebuild completed f
 | 9 | Customer isolation / security | Public multi-customer deployment not verified. Audit authentication, ownership, upload/storage boundaries before hosting. |
 | 10 | Production deployment | Local development server only. HTTPS, production server, monitoring and tested backup restore are launch gates. |
 | 11 | Billing / costs | AI spend gating implemented previously; payment/subscription readiness unverified. Do not introduce paid calls or billing without configuration. |
-| 12 | Claims / licences | Unsupported puff controls removed. Whole dependency/licence and launch-copy review pending. |
+| 12 | Claims / licences | Unsupported puff controls removed. Ink/Stitch (GPL) and Inkscape dependencies removed 2026-10-18; native engine and fonts documented in NATIVE-ENGINE.md. Whole dependency/licence and launch-copy review pending. |
 | 13 | Layer ordering | Confirmed missing sew-order editing; omit from launch promise unless implemented and tested. |
 | 14 | Advanced stitch settings | Confirmed missing per-piece controls documented in PIECE-PANEL-VERIFICATION.md. Scope out or implement separately. |
 | 15 | Customer workflows | Restore reproducible browser checks first. Real novice/accessibility/cross-browser testing remains pending. |

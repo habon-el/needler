@@ -19,6 +19,9 @@ from embroiderly.web import create_app
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'outputs/lettering-batch-20260930'
 FONT_DIR = Path('/usr/share/fonts/truetype/dejavu')
+if not FONT_DIR.is_dir():
+    # Bundled DejaVu fonts (a subset) on systems without the Linux package.
+    FONT_DIR = Path(__file__).resolve().parents[1]/'src'/'embroiderly'/'fonts'/'dejavu'
 CASES = [
     ('Hello World!', 'DejaVuSans-Bold.ttf', 72, 'PNG', False, 60),
     ('Happy Birthday', 'DejaVuSerif-Bold.ttf', 70, 'PNG', False, 60),

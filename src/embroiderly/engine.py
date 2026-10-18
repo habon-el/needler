@@ -1,6 +1,5 @@
-"""Local Ink/Stitch integration: selected colour masks to real fill objects."""
+"""Native stitch generation: selected colour masks to real fill objects."""
 from pathlib import Path
-import subprocess
 import json
 import xml.etree.ElementTree as ET
 import cv2
@@ -9,11 +8,11 @@ from PIL import Image
 import pyembroidery as emb
 from .regions import artwork_rgb, _quantize
 
-ENGINE=Path('/opt/inkstitch/bin/inkstitch')
 SVG='http://www.w3.org/2000/svg'
 
 from .engine_cache import serialize_output
 from .machine_files import write_pair
+from .stitch_engine import generate_plan, NAME as ENGINE_NAME
 
 @serialize_output
 def digitize(source, directory, height_mm=100, colours=None):
@@ -55,8 +54,7 @@ def digitize(source, directory, height_mm=100, colours=None):
         require_boundaries(missing_boundaries(array,selected,height_mm/height))
     scale=height_mm/height
     document=ET.Element('svg',xmlns=SVG,width=f'{width*scale}mm',height=f'{height_mm}mm',viewBox=f'0 0 {width} {height}')
-    # We construct current-format SVG ourselves. Mark it before invoking the
-    # exporter, otherwise it can wait on an invisible legacy-migration dialog.
+    # Versioned stitch-parameter document; the generator reads these attributes.
     metadata=ET.SubElement(document,'metadata')
     ET.SubElement(metadata,'{http://inkstitch.org/namespace}inkstitch_svg_version').text='3'
     palette=np.unique(array.reshape(-1,3),axis=0)
@@ -108,6 +106,10 @@ def digitize(source, directory, height_mm=100, colours=None):
     from .borders import border_plan,add_border
     border=border_plan(alpha,height_mm,settings)
     add_border(document,border)
+    if border:
+        # The border is requested stitching, so its band is not empty fabric.
+        from .borders import coverage
+        release_mask=release_mask|coverage(border,release_mask.shape)
     # Pin the generator to the same source frame as playback and the safety mask.
     used=np.any(array!=255,axis=2)&alpha if not prepared else alpha
     yy,xx=np.where(used)
@@ -126,7 +128,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     if piece_layout:
         from .engine_cache import digest
         policy['piece_integration']=[digest(Path(__file__).with_name(n)) for n in ('piece_generation.py','piece_layout.py')]
-    key=hashlib.sha256((cache_key(source,svg,ENGINE)+json.dumps(policy,sort_keys=True)+(json.dumps(piece_layout,sort_keys=True) if piece_layout else '')).encode()).hexdigest()
+    key=hashlib.sha256((cache_key(source,svg)+json.dumps(policy,sort_keys=True)+(json.dumps(piece_layout,sort_keys=True) if piece_layout else '')).encode()).hexdigest()
     cached=lookup(directory,key)
     if cached is not None:return cached
     # Both machine files come from one engine plan. PES v6 retains custom RGB.
@@ -135,11 +137,9 @@ def digitize(source, directory, height_mm=100, colours=None):
     if recoloured:
         plan_bytes,previous_pes=recoloured
     else:
-        run=subprocess.run([str(ENGINE),'--extension=output','--format=json',str(svg.resolve())],
-            capture_output=True,timeout=240)
-        if run.returncode or not run.stdout:
-            raise ValueError('Ink/Stitch could not generate this design: '+run.stderr.decode(errors='replace')[:500])
-        plan_bytes=run.stdout
+        try:plan_bytes=generate_plan(svg)
+        except (ValueError,TypeError,ArithmeticError) as error:
+            raise ValueError('Stitches could not be generated for this design: '+str(error)[:500]) from None
     raw=directory/'engine-plan.json'
     raw.write_bytes(plan_bytes)
     pattern=emb.EmbPattern(str(raw))
@@ -200,7 +200,7 @@ def digitize(source, directory, height_mm=100, colours=None):
         if index>=len(colors):raise ValueError('Written thread palette does not match commands.')
         steps.append({'x':x/10,'y':y/10,'t':kind,'color':colors[index]})
     payload={'steps':steps,'colors':colors,'stitch_count':sum(s['t']=='stitch' for s in steps),
-        'trim_count':sum(s['t']=='trim' for s in steps),'engine':'Ink/Stitch','objects':objects,
+        'trim_count':sum(s['t']=='trim' for s in steps),'engine':ENGINE_NAME,'objects':objects,
         'origin_mm':display_origin,'height_mm':height_mm,'palette_format':'PES v6 custom RGB','generation_mode':'verified thread recolour' if recoloured else 'full generation'}
     if settings.get('colour_knockouts'):payload['colour_knockout_routing']={'extra_cuts':knockout_cuts,'machine_files_verified':['PES','DST'],'boundary_allowance_pixels':1}
     payload['spacing_repair']=written.extras.get('spacing_repair',{})

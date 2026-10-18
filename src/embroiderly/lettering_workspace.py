@@ -47,7 +47,7 @@ def workspace_data(folder, key):
              for x,y,flag in pattern.stitches]
     playback = dict(steps=steps, colors=[colour], stitch_count=r['stitches'], trim_count=r['trims'],
                     origin_mm=[width/2,height/2], height_mm=height,
-                    engine='Ink/Stitch embroidery font', generation_mode='native lettering',
+                    engine='Needler embroidery font', generation_mode='native lettering',
                     objects=result['source_columns'])
     return dict(result=result, image=image, playback=playback,
                 canvas_height_mm=height, canvas_width_mm=width)

@@ -95,9 +95,57 @@ def checked_bytes(directory, fmt):
     return files[fmt]
 
 
+# Further machine formats are converted from the checked PES and checked again.
+# VP3 is omitted: its readback cannot distinguish travel from sewn stitches.
+FORMATS={'dst':'DST — Tajima and most commercial machines','pes':'PES — Brother / Babylock',
+         'jef':'JEF — Janome','exp':'EXP — Melco / Bernina','xxx':'XXX — Singer',
+         'u01':'U01 — Barudan','pec':'PEC — Brother (older)'}
+
+
+def cut_events(pattern):
+    """Thread cuts between sewn sections: a trim with a following colour change
+    is one cut, and a cut after the last stitch changes nothing on fabric."""
+    count=0;sewing=False;pending=False
+    for _,_,flags in pattern.stitches:
+        kind=flags&emb.COMMAND_MASK
+        if kind==emb.STITCH:
+            if pending:count+=1;pending=False
+            sewing=True
+        elif kind in (emb.TRIM,emb.COLOR_CHANGE,emb.NEEDLE_SET) and sewing:pending=True;sewing=False
+    return count
+
+
+# Writer/reader settings that keep explicit cuts in formats with optional trims.
+FORMAT_SETTINGS={'jef':({'trims':True},{'trims':True})}
+
+
+def converted_bytes(directory, fmt):
+    """Bytes of a further machine format, written from the checked PES pattern
+    and accepted only if its own readback passes the same release checks."""
+    if fmt in ('pes','dst'):
+        return checked_bytes(directory,fmt)
+    if fmt not in FORMATS:
+        raise ReleaseError('this machine format is not supported')
+    record,mask=read_context(directory)
+    source=checked_bytes(directory,'pes')
+    with TemporaryDirectory(prefix='needlora-convert-') as temp:
+        pes=Path(temp)/'design.pes';pes.write_bytes(source)
+        pattern=emb.EmbPattern(str(pes))
+        target=Path(temp)/('design.'+fmt)
+        write_settings,read_settings=FORMAT_SETTINGS.get(fmt,(None,None))
+        emb.write(pattern,str(target),write_settings)
+        data=target.read_bytes()
+        try:readback=emb.EmbPattern(str(target),settings=read_settings)
+        except Exception:raise ReleaseError('the converted machine file cannot be read') from None
+        if cut_events(readback)!=cut_events(pattern):
+            raise ReleaseError(f'{fmt.upper()} cannot store this design\'s thread cuts exactly; use PES or DST')
+        check_pattern(readback,mask,record['scale'],record['origin'])
+    return data
+
+
 def download(directory, fmt):
     from flask import jsonify,send_file
-    try:data=checked_bytes(directory,fmt)
+    try:data=converted_bytes(directory,fmt)
     except ReleaseError as error:return jsonify(error=str(error),location=error.location,issues=getattr(error,'issues',[])),422
     return send_file(io.BytesIO(data),mimetype='application/octet-stream',as_attachment=True,
                      download_name='design.'+fmt)

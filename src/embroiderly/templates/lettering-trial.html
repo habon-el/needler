@@ -1,7 +1,7 @@
 <details id="smallLetteringTrial">
 <summary>Try small embroidery lettering — experimental</summary>
 <p>Uses “Your words” above, but rebuilds embroidery-font stitches instead of tracing a picture. This trial does not change your design or provide a machine download.</p>
-<label>Embroidery font<select id="smallLetteringFont"><option value="small_font">Ink/Stitch Small Font</option><option value="glacial_tiny">Glacial Tiny 60 AGS</option></select></label>
+<label>Embroidery font<select id="smallLetteringFont">{% for key, font in native_fonts %}<option value="{{ key }}">{{ font.label }}</option>{% endfor %}</select></label>
 <label>Nominal font height (mm)<input id="smallLetteringHeight" type="number" min="4" max="6" step=".1" value="4" aria-describedby="smallLetteringStatus"></label>
 <label>Available width on your item (mm)<input id="smallLetteringWidth" type="number" min="5" max="400" step=".1" value="50" aria-describedby="smallLetteringStatus smallLetteringFit"></label>
 <p id="smallLetteringFit">Checks whether your words fit. It never shrinks, clips or changes them automatically.</p>

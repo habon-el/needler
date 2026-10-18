@@ -18,7 +18,7 @@ def test_native_retry_uses_same_release_gate_and_never_saves_unsafe_candidate(cl
         original['svg'], _ = route_font(original['svg'])
         original['plan']['stitches'][2] = [-3, -8, 'STITCH']
         return original
-    def rebuild(svg, engine):
+    def rebuild(svg, engine=None):
         rebuilt.append(svg)
         assert 'M 0,0 L 0.6,0' in svg
         plan = deepcopy(safe['plan'])

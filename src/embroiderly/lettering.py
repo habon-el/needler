@@ -7,13 +7,11 @@ not a catalogue of pre-digitized or sew-out-validated embroidery fonts.
 import base64
 from functools import lru_cache
 import hashlib
+import io
 import json
 import math
 from pathlib import Path
 import re
-import shutil
-import subprocess
-import tempfile
 import threading
 import unicodedata
 from uuid import uuid4
@@ -24,7 +22,13 @@ from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.transformPen import TransformPen
 
+BUNDLED = Path(__file__).with_name('fonts')
+# Bundled open-licence fonts work on every operating system. Linux system font
+# packages are added when present; each source must ship its licence text.
 FONT_SOURCES = [
+    (BUNDLED/'dejavu', 'fonts-dejavu-core', BUNDLED/'dejavu'/'LICENSE'),
+    (BUNDLED/'lato', 'fonts-lato', BUNDLED/'lato'/'LICENSE'),
+] + [(Path(directory), package, Path('/usr/share/doc')/package/'copyright') for directory, package in (
     ('/usr/share/fonts/truetype/lato', 'fonts-lato'),
     ('/usr/share/fonts/truetype/dejavu', 'fonts-dejavu-core'),
     ('/usr/share/fonts/truetype/liberation', 'fonts-liberation'),
@@ -32,15 +36,19 @@ FONT_SOURCES = [
     ('/usr/share/fonts/truetype/freefont', 'fonts-freefont-ttf'),
     ('/usr/share/fonts/opentype/urw-base35', 'fonts-urw-base35'),
     ('/usr/share/texmf/fonts/opentype/public/tex-gyre', 'fonts-texgyre'),
-]
+)]
 RENDER_LOCK = threading.Lock()
+
+
+def license_file(package):
+    return next((path for _, name, path in FONT_SOURCES if name == package and path.is_file()), None)
 
 
 @lru_cache(maxsize=1)
 def catalogue():
     result = {}
-    for directory, package in FONT_SOURCES:
-        license_path = Path('/usr/share/doc') / package / 'copyright'
+    seen = set()
+    for directory, package, license_path in FONT_SOURCES:
         if not license_path.is_file():
             continue
         for path in sorted(Path(directory).glob('*')):
@@ -50,9 +58,13 @@ def catalogue():
                 with TTFont(path) as font:
                     family = font['name'].getDebugName(16) or font['name'].getDebugName(1)
                     style = font['name'].getDebugName(17) or font['name'].getDebugName(2)
-                    if not family or not style:
+                    if not family or not style or (family, style) in seen:
                         continue
-                    key = hashlib.sha256(str(path).encode()).hexdigest()[:20]
+                    # Bundled fonts get location-independent IDs so saved recipes
+                    # keep working on any computer.
+                    identity = 'bundled/'+path.relative_to(BUNDLED).as_posix() if directory.parent == BUNDLED else str(path)
+                    key = hashlib.sha256(identity.encode()).hexdigest()[:20]
+                    seen.add((family, style))
                     result[key] = dict(id=key, family=family, style=style,
                                        path=str(path), package=package)
             except (OSError, KeyError):
@@ -139,10 +151,9 @@ def register_lettering(app, root):
 
     @app.get('/lettering/license/<package>')
     def lettering_license(package):
-        if package not in {p for _,p in FONT_SOURCES}: abort(404)
-        path=Path('/usr/share/doc')/package/'copyright'
-        if not path.is_file(): abort(404)
-        return Response(path.read_text(),mimetype='text/plain')
+        path=license_file(package)
+        if path is None: abort(404)
+        return Response(path.read_text(encoding='utf-8',errors='replace'),mimetype='text/plain')
 
     @app.get('/lettering/recipe/<name>')
     def lettering_recipe(name):
@@ -170,16 +181,12 @@ def register_lettering(app, root):
     def lettering_create():
         try:
             recipe,svg,size=outline(request.get_json(silent=True))
-            executable=shutil.which('inkscape')
-            if not executable: return jsonify(error='Vector renderer unavailable; install Inkscape to create lettering.'),503
             if not RENDER_LOCK.acquire(blocking=False): return jsonify(error='Another lettering design is rendering. Retry shortly.'),409
             try:
-                with tempfile.TemporaryDirectory(prefix='lettering-') as temp:
-                    source=Path(temp)/'letters.svg';output=Path(temp)/'letters.png';source.write_text(svg)
-                    subprocess.run([executable,str(source),'--export-type=png','--export-filename='+str(output),
-                                    '--export-area-page','--export-width=768' if size['width_mm']>=size['height_mm'] else '--export-height=768'],
-                                   check=True,timeout=20,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
-                    png=output.read_bytes()
+                from .vector_raster import render
+                wide=size['width_mm']>=size['height_mm']
+                image=render(svg,width=768 if wide else None,height=None if wide else 768)
+                buffer=io.BytesIO();image.save(buffer,'PNG');png=buffer.getvalue()
             finally:
                 RENDER_LOCK.release()
             name='lettering-'+uuid4().hex+'.png'
@@ -192,5 +199,5 @@ def register_lettering(app, root):
             return jsonify(name=name,url='/artwork/'+name)
         except (ValueError,TypeError,OverflowError) as error:
             return jsonify(error=str(error)),400
-        except (subprocess.SubprocessError,OSError):
+        except OSError:
             return jsonify(error='Lettering could not be rendered. Your existing design is unchanged; retry.'),503

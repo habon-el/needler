@@ -34,7 +34,8 @@ def test_invalid_recipe_rejected(patch):
 def test_create_reopen_and_transparency(tmp_path):
     app=create_app(tmp_path);client=app.test_client()
     fonts=client.get('/lettering/fonts').get_json()
-    assert len(fonts['fonts'])>=30 and fonts['families']>=5
+    # Bundled open-licence fonts work without system packages on any OS.
+    assert len(fonts['fonts'])>=14 and fonts['families']>=4
     assert all('path' not in f for f in fonts['fonts'])
     assert client.get('/lettering/license/fonts-lato').status_code==200
     assert client.get('/lettering/license/private').status_code==404

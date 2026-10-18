@@ -163,6 +163,8 @@ def apply_style(document,node,rings,scale,kind):
         decoration=decorative_paths(rings,scale,kind)
         if not decoration:return  # Embossed retains its base; inventory discloses no fitting repeat.
         target=ET.SubElement(document,'path',id=node.get('id')+'-texture') if kind=='embossed' else node
+        # The area outline lets the generator travel inside it between fragments.
+        target.set(NS+'travel_area',node.get('d'))
         target.set('d',decoration)
         target.set('style',f'fill:none;stroke:{colour};stroke-width:1')
         target.set(NS+'stroke_method','running_stitch');target.set(NS+'running_stitch_length_mm','2')

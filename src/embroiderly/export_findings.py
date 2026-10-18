@@ -30,7 +30,7 @@ def inspect(pattern, alpha, scale, origin):
             travel+=length
             if mask.crosses(needle,point) or mask.crosses(previous,point) or travel>MAX_UNCUT_TRAVEL_MM+1e-8:
                 add('travel','an uncut travel thread crosses empty fabric or exceeds 6 mm',point,index)
-        elif kind in (emb.TRIM,emb.COLOR_CHANGE,emb.END):
+        elif kind in (emb.TRIM,emb.COLOR_CHANGE,emb.NEEDLE_SET,emb.END):
             attached=False;needle=None;travel=0.
         elif kind not in (emb.JUMP,emb.STOP):
             add('unsupported','unsupported machine command',point,index)

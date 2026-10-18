@@ -13,9 +13,9 @@ def test_generated_svg_is_versioned_before_unattended_export(tmp_path,monkeypatc
     monkeypatch.setattr('embroiderly.engine_cache.lookup',lambda *args:None)
     monkeypatch.setattr('embroiderly.thread_recolour.reuse',lambda *args:None)
     class ExportReached(Exception):pass
-    def inspect(args,**kwargs):
-        root=ET.parse(args[-1]).getroot()
+    def inspect(svg):
+        root=ET.parse(svg).getroot()
         assert root.find('.//{http://inkstitch.org/namespace}inkstitch_svg_version').text=='3'
         raise ExportReached
-    monkeypatch.setattr(engine.subprocess,'run',inspect)
+    monkeypatch.setattr(engine,'generate_plan',inspect)
     with pytest.raises(ExportReached):engine.digitize(path,tmp_path/'output')

@@ -6,6 +6,7 @@ __pycache__/
 *.orig
 *.rej
 .venv/
+*.egg-info/
 # Local UI verification evidence and isolated test/browser state (not customer code).
 .ui-review-browser/
 .ui-pytest-before/

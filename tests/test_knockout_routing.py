@@ -58,7 +58,7 @@ def test_failed_readback_does_not_replace_existing_machine_files(tmp_path,monkey
     monkeypatch.setattr('embroiderly.engine_cache.cache_key',lambda *args:'test')
     monkeypatch.setattr('embroiderly.engine_cache.lookup',lambda *args:None)
     monkeypatch.setattr('embroiderly.thread_recolour.reuse',lambda *args:None)
-    monkeypatch.setattr(engine.subprocess,'run',lambda *args,**kwargs:SimpleNamespace(returncode=0,stdout=raw.read_bytes()))
+    monkeypatch.setattr(engine,'generate_plan',lambda svg:raw.read_bytes())
     monkeypatch.setattr(knockout_routing,'protect',lambda *args:0)
     def fail(*args):raise ValueError('Controlled unsafe readback')
     monkeypatch.setattr(knockout_routing,'verify',fail)

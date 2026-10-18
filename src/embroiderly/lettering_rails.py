@@ -9,7 +9,13 @@ def rail_polygon(a, b, *, resolve_overlap=True):
         return None
     if math.dist(a[0], a[-1]) < 1e-6 and math.dist(b[0], b[-1]) < 1e-6:
         outer, inner = (a, b) if Polygon(a).area > Polygon(b).area else (b, a)
-        return Polygon(outer, [inner])
+        shape = Polygon(outer, [inner])
+        if resolve_overlap and not shape.is_valid:
+            # A rail that folds on a tight curve: the same nonzero-winding
+            # interior rule as open ribbons, applied to each closed rail.
+            from .ribbon_outline import winding_interior
+            shape = winding_interior(outer).difference(winding_interior(inner))
+        return shape
     if math.dist(a[0], b[0])+math.dist(a[-1], b[-1]) > math.dist(a[0], b[-1])+math.dist(a[-1], b[0]):
         b = b[::-1]
     shape = Polygon(a+b[::-1])

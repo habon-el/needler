@@ -43,13 +43,11 @@ def recipe(body):
 def identity(settings):
     """Cache all output-affecting inputs, including installed font and code."""
     h = hashlib.sha256(json.dumps([VERSION, settings], sort_keys=True).encode())
-    folder = small_lettering.FONT_ROOT/settings['font']
-    for path in sorted(folder.rglob('*')):
-        if path.is_file():
-            h.update(str(path.relative_to(folder)).encode())
-            h.update(path.read_bytes())
-    engine = small_lettering.ENGINE.stat()
-    h.update(f'{engine.st_size}:{engine.st_mtime_ns}'.encode())
+    from .embroidery_fonts import FONTS, fingerprint as font_fingerprint
+    from .stitch_engine import fingerprint as engine_fingerprint
+    if settings.get('font') in FONTS:
+        h.update(font_fingerprint(settings['font']).encode())
+    h.update(engine_fingerprint().encode())
     for name in ('small_lettering', 'lettering_geometry', 'lettering_rails', 'ribbon_outline', 'lettering_source', 'lettering_coverage',
                  'lettering_rebuild', 'lettering_locks', 'lettering_native', 'machine_files',
                  'release_gate', 'export_findings', 'knockout_routing'):
@@ -117,7 +115,7 @@ def build(folder, settings):
         vector, changes = explicit_locks(generated['svg'])
         if changes:
             from .lettering_rebuild import rebuild
-            vector, plan, _ = rebuild(vector, small_lettering.ENGINE)
+            vector, plan, _ = rebuild(vector)
             candidate = {**generated, 'svg': vector, 'plan': plan}
             glyph_check(vector, settings['text'])
             with TemporaryDirectory(prefix='lock-review-', dir=folder) as temporary:
@@ -167,8 +165,9 @@ def register(app, root):
 
     @app.context_processor
     def lettering_font_limits():
-        return dict(native_font_sizes={key: small_lettering.size_limits(font)
-                    for key, font in small_lettering.fonts().items()})
+        fonts = small_lettering.fonts()
+        return dict(native_fonts=list(fonts.items()),
+                    native_font_sizes={key: small_lettering.size_limits(font) for key, font in fonts.items()})
 
 
     def folder_for(key):
@@ -257,8 +256,9 @@ def register(app, root):
     @app.get('/lettering/native/<key>/download/<fmt>')
     def download(key, fmt):
         try:
-            if fmt not in ('dst', 'pes'):
-                raise ValueError('Choose DST or PES.')
+            from .release_gate import FORMATS, converted_bytes
+            if fmt not in FORMATS:
+                raise ValueError('Choose a supported machine format.')
             folder = folder_for(key)
             result = load(folder, key)
             if not (folder/'approved.json').is_file():
@@ -266,7 +266,7 @@ def register(app, root):
             approval = json.loads((folder/'approved.json').read_text())
             if not result['checks_passed'] or approval != dict(context=digest((folder/'release-context.json').read_bytes()), key=key):
                 raise ValueError('Rebuild and review this lettering before downloading.')
-            data = checked_bytes(folder, fmt)
+            data = converted_bytes(folder, fmt)
             return send_file(io.BytesIO(data), mimetype='application/octet-stream',
                              as_attachment=True, download_name='embroiderly-lettering.'+fmt)
         except (ValueError, KeyError, OSError) as error:

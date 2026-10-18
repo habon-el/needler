@@ -3,7 +3,7 @@
 <p>Letters made for embroidery, not traced from a picture. Your current design stays unchanged.</p>
 <label for="nativeFont">Embroidery font</label>
 {% set limits = native_font_sizes.get('small_font', [4, 6]) %}
-<select id="nativeFont"><option value="small_font" data-min="{{ limits[0] }}" data-max="{{ limits[1] }}">Ink/Stitch Small Font</option><option value="glacial_tiny" disabled>Glacial Tiny — outline verification pending</option></select>
+<select id="nativeFont">{% for key, font in native_fonts %}{% set range = native_font_sizes[key] %}<option value="{{ key }}" data-min="{{ range[0] }}" data-max="{{ range[1] }}">{{ font.label }}</option>{% endfor %}</select>
 <label for="nativeHeight">Font size (mm)</label>
 <input id="nativeHeight" type="number" min="{{ limits[0] }}" max="{{ limits[1] }}" step=".1" value="5" aria-describedby="nativeHelp nativeStatus">
 <div id="nativeResize"><button id="nativeSmaller" type="button">10% smaller</button> <button id="nativeLarger" type="button">10% larger</button></div>

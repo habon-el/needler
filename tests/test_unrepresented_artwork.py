@@ -35,7 +35,7 @@ def test_generation_refuses_omission_before_touching_last_files(tmp_path, monkey
     (directory / 'design.dst').write_bytes(b'previous checked design')
     def no_engine(*args, **kwargs):
         raise AssertionError('An incomplete design reached the generator')
-    monkeypatch.setattr('subprocess.run', no_engine)
+    monkeypatch.setattr('embroiderly.engine.generate_plan', no_engine)
     with pytest.raises(ValueError, match='would leave out'):
         digitize(path, directory, 25)
     assert (directory / 'design.dst').read_bytes() == b'previous checked design'

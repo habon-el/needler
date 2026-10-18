@@ -1,13 +1,10 @@
 """Independent coverage from font-authored satin rails, never from output stitches.
 
-Only installed-font SVGs enter here. Unknown geometry fails closed. Font pull
+Only embroidery-font SVGs enter here. Unknown geometry fails closed. Font pull
 compensation is part of the intended sewing envelope, not a relaxed length gate.
-Inkscape's local parser handles curves/transforms; no font code is copied.
+Our own SVG reader handles curves and transforms.
 """
-import io
 import math
-import sys
-from pathlib import Path
 import xml.etree.ElementTree as ET
 import numpy as np
 from PIL import Image, ImageDraw
@@ -22,28 +19,28 @@ GRID = .04
 
 
 def outline(svg, *, with_paths=False):
+    from . import svg_geometry
     try:
-        import inkex
-    except ImportError:
-        installed = Path('/usr/share/inkscape/extensions')
-        if not (installed/'inkex/__init__.py').is_file():
-            raise ValueError('The installed vector parser is unavailable. No lettering was changed.')
-        sys.path.append(str(installed))
-        import inkex
-    from inkex.bezier import cspsubdiv
-    root = inkex.load_svg(io.BytesIO(svg.encode())).getroot()
+        root = svg_geometry.load(svg)
+    except ET.ParseError:
+        raise ValueError('The lettering vectors could not be read. No lettering was changed.') from None
     shapes, envelopes, paths = [], [], {}
-    for node in root.iter():
-        if not isinstance(node, inkex.PathElement):
+    for node, subpaths, _, _ in svg_geometry.elements(root, tolerance=.01/MM):
+        if svg_geometry.local(node.tag) != 'path':
             continue
         if str(node.get(INK+'satin_column', '')).lower() != 'true':
             # Font-authored underpaths must lie inside independently defined
             # columns; they may not create their own permission to cross gaps.
             continue
-        csp = node.path.transform(node.composed_transform()).to_superpath()
-        cspsubdiv(csp, .01/MM)
-        parts = [[(float(n[1][0])*MM, float(n[1][1])*MM) for n in part] for part in csp]
-        shape = column_shape(parts)
+        parts = [[(float(x)*MM, float(y)*MM) for x, y in points] for points, _ in subpaths]
+        if node.get(INK+'satin_pairs') == 'indexed' and len(parts) == 2 and len(parts[0]) == len(parts[1]) >= 2:
+            # Matched cross-sections: each stitch joins section i to section i
+            # or i+1, so the sewn area is the chain of neighbouring-section hulls.
+            from shapely.geometry import MultiPoint
+            a, b = parts
+            shape = unary_union([MultiPoint([a[i], a[i+1], b[i+1], b[i]]).convex_hull for i in range(len(a)-1)])
+        else:
+            shape = column_shape(parts)
         compensation = [float(v) for v in node.get(INK+'pull_compensation_mm', '0').split()]
         if not compensation or any(not math.isfinite(v) or not 0 <= v <= .5 for v in compensation):
             raise ValueError('This font has unsupported pull compensation.')

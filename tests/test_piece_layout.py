@@ -69,8 +69,7 @@ def make_image(path):
 
 
 def test_real_regeneration_and_exact_undo(tmp_path):
-    from embroiderly.engine import digitize,ENGINE
-    if not ENGINE.is_file():pytest.skip('Installed generator required')
+    from embroiderly.engine import digitize
     source=tmp_path/'source.png';make_image(source);_,o=sample()
     image,_,report=prepare(source,o)
     piece=report['piece_layout']['pieces'][0]

@@ -17,3 +17,10 @@ def test_rankings_are_explicit_deterministic_and_exact_match_first(tmp_path):
 
 def test_missing_catalogue_is_optional(tmp_path):
     assert rank_threads("#ff0000",tmp_path/"missing.gpl")==[]
+
+def test_builtin_machine_charts_need_no_installation():
+    matches=rank_threads("#ffffff")
+    assert len(matches)==3 and all(m["brand"] for m in matches)
+    assert matches[0]["delta_e"]<2
+    brother=rank_threads("#0a55a3",brands=["Brother"])
+    assert brother[0]["brand"]=="Brother" and brother[0]["delta_e"]==0

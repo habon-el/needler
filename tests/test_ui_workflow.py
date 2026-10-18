@@ -48,7 +48,9 @@ def test_workflow_delegates_to_existing_download_and_check_owners():
     assert source.count('fetch(') == 1
     assert 'fetch(target.href,{signal:AbortSignal.timeout(60000)})' in source
     assert 'method:' not in source
-    assert "if(native){$('native'" in source
+    # Lettering keeps its own checked DST/PES download; further formats use the
+    # server's checked converter for the same approved design.
+    assert "if(native&&(fmt==='dst'||fmt==='pes')){$('native'" in source
     assert 'version!==downloadVersion' in source
     assert 'localStorage' not in source
     assert 'localStorage' not in source  # No duplicate persistent settings owner.

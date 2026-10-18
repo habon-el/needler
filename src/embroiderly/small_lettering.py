@@ -1,35 +1,24 @@
-"""Direct installed embroidery-font generation, independent of picture cleanup.
+"""Direct embroidery-font generation, independent of picture cleanup.
 
 This produces vector source and a generator plan, NOT release-approved files.
-Font size is the installed font's nominal height, not an inferred cap height.
+Font size is the embroidery font's nominal height (capital H), not an inferred
+cap height of arbitrary artwork. Fonts are Needler's own satin conversions of
+bundled open-licence TrueType fonts; no external program is involved.
 """
-import io
-import json
 import math
-import os
-from pathlib import Path
-import subprocess
-from tempfile import TemporaryDirectory
 import unicodedata
-import zipfile
 
-FONT_ROOT=Path('/opt/inkstitch/fonts')
-ENGINE=Path('/opt/inkstitch/bin/inkstitch')
-FONTS=('small_font','glacial_tiny')
+from . import embroidery_fonts
+
+FONTS = tuple(embroidery_fonts.FONTS)
 
 
 def fonts():
-    result={}
-    for key in FONTS:
-        folder=FONT_ROOT/key
-        if not (folder/'font.json').is_file() or not (folder/'LICENSE').is_file():continue
-        data=json.loads((folder/'font.json').read_text())
-        result[key]=data
-    return result
+    return embroidery_fonts.catalogue()
 
 
 def size_limits(font):
-    """Editable tenth-mm range inside the installed font author's scale limits."""
+    """Editable tenth-mm range inside the font's supported scale range."""
     return (math.ceil(font['size'] * font['min_scale'] * 10) / 10,
             math.floor(font['size'] * font['max_scale'] * 10) / 10)
 
@@ -59,32 +48,17 @@ def validate(body):
 
 def generate(body, *, native=False):
     text,font,scale,align=validate(body)
-    # Batch normally splits lines into separate designs; use a separator which
-    # cannot occur in accepted text so all requested lines remain one design.
-    separator='__NEEDLORA_SEPARATE_DESIGN__'
-    if separator in text:raise ValueError('Reserved lettering separator in text.')
-    with TemporaryDirectory(prefix='small-lettering-') as temporary:
-        source=Path(temporary)/'blank.svg'
-        source.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="200mm" height="100mm" viewBox="0 0 755.9055 377.9528"><metadata xmlns:i="http://inkstitch.org/namespace"><i:inkstitch_svg_version>3</i:inkstitch_svg_version></metadata></svg>')
-        run=subprocess.run([str(ENGINE),'--extension=batch_lettering','--text='+text,
-                            '--separator='+separator,'--font='+font['name'],'--scale='+str(scale),
-                            '--trim=glyph','--text-align='+align,'--file-formats='+('svg' if native else 'svg,json'),str(source)],
-                           capture_output=True,timeout=120,check=True,env={**os.environ,'PYTHONHASHSEED':'0'})
-        with zipfile.ZipFile(io.BytesIO(run.stdout)) as archive:
-            svg=[n for n in archive.namelist() if n.endswith('.svg')]
-            plans=[n for n in archive.namelist() if n.endswith('.json')]
-            if len(svg)!=1 or (not native and len(plans)!=1):raise ValueError('The font generator did not preserve one complete design.')
-            vector=archive.read(svg[0]).decode()
-            coverage={}
-            if native:
-                from .lettering_geometry import source_frame
-                from .lettering_source import route_font
-                vector,cuts=route_font(vector)
-                vector,mask,origin,columns=source_frame(vector)
-                coverage=dict(mask=mask,origin=origin,columns=columns,added_cuts=cuts)
-            from .lettering_rebuild import rebuild
-            rebuilt_svg, rebuilt_plan, report = rebuild(vector, ENGINE)
-            report.update(coverage)
-            return dict(svg=rebuilt_svg,plan=rebuilt_plan,rebuild_report=report,
-                        text=text,font=font['name'],nominal_height_mm=font['size']*scale/100,
-                        requested_height_mm=float(body.get('height_mm',5)),release_approved=False)
+    vector=embroidery_fonts.layout(text,font['key'],scale,align)
+    coverage={}
+    if native:
+        from .lettering_geometry import source_frame
+        from .lettering_source import route_font
+        vector,cuts=route_font(vector)
+        vector,mask,origin,columns=source_frame(vector)
+        coverage=dict(mask=mask,origin=origin,columns=columns,added_cuts=cuts)
+    from .lettering_rebuild import rebuild
+    rebuilt_svg, rebuilt_plan, report = rebuild(vector)
+    report.update(coverage)
+    return dict(svg=rebuilt_svg,plan=rebuilt_plan,rebuild_report=report,
+                text=text,font=font['name'],nominal_height_mm=font['size']*scale/100,
+                requested_height_mm=float(body.get('height_mm',5)),release_approved=False)

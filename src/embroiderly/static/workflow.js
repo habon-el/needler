@@ -139,15 +139,16 @@ document.addEventListener('DOMContentLoaded', () => {
  const downloadNote=node('p','','workflowDownloadNote');
  download.append(node('h1','Save and download'),downloadNote);
  const format=node('select','','workflowFormat');
- for(const [value,label] of [['dst','DST — most commercial machines'],['pes','PES — Brother machines']]){const o=node('option',label);o.value=value;format.append(o);}
+ // Same list as release_gate.FORMATS; every format is re-checked on the server.
+ for(const [value,label] of [['dst','DST — Tajima and most commercial machines'],['pes','PES — Brother / Babylock'],['jef','JEF — Janome'],['exp','EXP — Melco / Bernina'],['xxx','XXX — Singer'],['u01','U01 — Barudan'],['pec','PEC — Brother (older)']]){const o=node('option',label);o.value=value;format.append(o);}
  const formatLabel=node('label','Machine file');formatLabel.htmlFor=format.id;download.append(formatLabel,format);
  const downloadError=node('section','','workflowDownloadError');downloadError.hidden=true;downloadError.setAttribute('role','alert');download.append(downloadError);
  const getFile=button('Download DST','workflowDownload',async ()=>{
   sync();if(getFile.disabled)return;
   const fmt=format.value;
   // Call the existing download owner. No bypass, new writer or new check.
-  if(native){$('native'+fmt[0].toUpperCase()+fmt.slice(1)).click();return;}
-  const target=$(fmt==='dst'?'exportDst':'exportPes'),version=downloadVersion;
+  if(native&&(fmt==='dst'||fmt==='pes')){$('native'+fmt[0].toUpperCase()+fmt.slice(1)).click();return;}
+  const target={href:native?`/lettering/native/${result&&result.id}/download/${fmt}`:$('exportDst').href.replace(/\/[a-z0-9]+$/,'/'+fmt)},version=downloadVersion;
   downloading=true;downloadError.hidden=true;sync();
   const originalLabel=getFile.textContent;getFile.textContent='Preparing file…';
   try{

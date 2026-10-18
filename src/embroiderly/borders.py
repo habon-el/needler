@@ -71,6 +71,19 @@ def satin_rails(points,radius):
     mid=len(p)//2
     return [(a[:mid+1],b[:mid+1]),(a[mid:],b[mid:])]
 
+def coverage(plan,shape):
+    """Source-pixel band the requested border sews over; part of the release mask."""
+    band=np.zeros(shape,np.uint8)
+    for points in plan['paths']:
+        if plan['style']=='satin':
+            # Exact rail outline, including mitred corners, plus one pixel.
+            for a,b in satin_rails(points,plan['width_mm']/(2*plan['scale'])):
+                ring=np.rint(np.vstack((a,b[::-1]))).astype(np.int32)
+                cv2.fillPoly(band,[ring],1);cv2.polylines(band,[ring],True,1,thickness=3)
+        else:
+            cv2.polylines(band,[np.rint(np.asarray(points)).astype(np.int32)],True,1,thickness=max(3,int(math.ceil(.6/plan['scale']))+2))
+    return band.astype(bool)
+
 def add_border(document,plan):
     if not plan:return 0
     metadata=ET.SubElement(document,'metadata')
