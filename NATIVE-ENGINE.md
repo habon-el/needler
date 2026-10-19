@@ -34,6 +34,21 @@ angle, row_spacing_mm, satin_column, zigzag_spacing_mm, lock_start, trim_after,
 - Further formats from the checked PES: JEF, EXP, XXX, U01, PEC pass readback
   checks. VP3 is not offered: its readback turns travel into stitches.
 
+## Small designs (added 2026-10-19)
+
+- Designs may be 3–400 mm tall (was 10–400 mm).
+- Areas no thicker than 4.5 mm (largest inscribed circle) that the user has
+  not given a stitch style are sewn as satin columns (`fill_method="auto_satin"`,
+  traced with the same machinery as the embroidery fonts) with 0.1 mm pull
+  compensation per side; wider areas stay tatami.
+- On very small designs one pixel is finer than the machine file's 0.1 mm grid.
+  The stitched area's edge gets the grid rounding (0.05 mm) as allowance;
+  with colour removal, stitches are instead kept 0.05 mm inside the edge and
+  satin gets no outward compensation, so removed areas stay exact.
+- Verified: a star at 10, 5, 4 and 3 mm, "ABC" text art at 5 mm and a badge
+  logo at 60–8 mm all generate and pass the release gate. Strokes thinner than
+  one thread (about 0.4 mm), e.g. badge lettering below ~20 mm, cannot sew cleanly.
+
 ## Known limits
 
 - Physical sew-outs are still required; nothing here is a sewability certificate.

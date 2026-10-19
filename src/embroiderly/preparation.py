@@ -148,7 +148,7 @@ def clean_selection(mask,image,options,pixel_area_override=None):
     floor=0 if protected else number(options,"floor_mm2",1,0,25)
     hole_floor=0 if protected else number(options,"mask_holes_mm2",1,0,25)
     smooth=0 if protected else int(number(options,"mask_smooth",0,0,2))
-    pixel_area=pixel_area_override if pixel_area_override is not None else (number(options,"height_mm",100,10,400)/h)**2
+    pixel_area=pixel_area_override if pixel_area_override is not None else (number(options,"height_mm",100,3,400)/h)**2
     removed=filled=0
     n,cc,stats,_=cv2.connectedComponentsWithStats(mask.astype(np.uint8),8)
     before=n-1
@@ -262,7 +262,7 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
         o={**profile.proposal(),**o}
         if float(o.get('floor_mm2',0))<profile.PORTRAIT_MIN_REGION_AREA_MM2:raise ValueError(knowledge_message('preparation.09'))
     image=load_image(path);w,h=image.size
-    physical_height=number(o,"height_mm",100,10,400) if target_height_mm is None else float(target_height_mm)
+    physical_height=number(o,"height_mm",100,3,400) if target_height_mm is None else float(target_height_mm)
     if not math.isfinite(physical_height) or not 1<=physical_height<=10000:
         raise ValueError(knowledge_message('preparation.08'))
     mask=cached_selection(path,image,o,mask_directory)

@@ -1,9 +1,9 @@
 """Cut exposed connectors for explicitly accepted colour-knockout artwork.
 
 This is not a new fill algorithm. Preserve the engine's sewn paths, replacing
-only travel across removed pixels with locked, trimmed moves. A one-pixel
-boundary allowance accommodates contour rasterisation and 0.1 mm file rounding.
-The written files are checked again; an unresolved crossing fails closed.
+only travel across removed pixels with locked, trimmed moves. The boundary
+allowance is one pixel: it accommodates contour rasterisation and 0.1 mm file
+rounding. The written files are checked again; an unresolved crossing fails closed.
 """
 import cv2
 import numpy as np

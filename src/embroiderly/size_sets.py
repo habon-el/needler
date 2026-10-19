@@ -23,7 +23,7 @@ PRESETS = [
 def resolve_size(size, image_size, bounds):
     axis=size.get("axis")
     mm=float(size.get("mm",0))
-    if axis not in {"width","height"} or not math.isfinite(mm) or not 10<=mm<=400:
+    if axis not in {"width","height"} or not math.isfinite(mm) or not 3<=mm<=400:
         raise ValueError(knowledge_message('size_sets.16'))
     left,top,right,bottom=bounds
     span=(right-left) if axis=="width" else (bottom-top)

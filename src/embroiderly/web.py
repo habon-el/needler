@@ -289,7 +289,7 @@ def create_app(workspace: Path | None = None) -> Flask:
             return render_template('engine.html',name=path.name)
         try:
             height=float(request.form.get('height_mm','100'))
-            if not math.isfinite(height) or not 10<=height<=300:
+            if not math.isfinite(height) or not 3<=height<=300:
                 raise ValueError(knowledge_message('web.18'))
             config=decisions / (path.name+'.colours.json')
             colours=json.loads(config.read_text()) if config.exists() else None

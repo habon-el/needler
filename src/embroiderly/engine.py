@@ -1,6 +1,7 @@
 """Native stitch generation: selected colour masks to real fill objects."""
 from pathlib import Path
 import json
+import math
 import xml.etree.ElementTree as ET
 import cv2
 import numpy as np
@@ -14,6 +15,32 @@ SVG='http://www.w3.org/2000/svg'
 from .engine_cache import serialize_output
 from .machine_files import write_pair
 from .stitch_engine import generate_plan, NAME as ENGINE_NAME
+
+SMALL_SATIN_MM=4.5   # areas no thicker than this are sewn as satin columns
+SATIN_PULL_MM=.1     # per side: satin pulls the fabric in by about this much
+
+
+GRID_ROUNDING_MM=.05  # machine files store 0.1 mm steps: up to 0.05 mm rounding per axis
+
+
+def grid_allowance(mask,scale):
+    """On very small designs one pixel is finer than machine-file rounding;
+    widen the stitched area's edge by the rounding (the gate allows one pixel).
+    Not used with colour removal, whose holes must stay exact."""
+    extra=math.ceil(GRID_ROUNDING_MM/scale-1e-9)-1
+    if extra<=0:return mask
+    kernel=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2*extra+1,2*extra+1))
+    return cv2.dilate(mask.astype(np.uint8),kernel).astype(bool)
+
+
+def thickness_mm(rings,scale):
+    """Widest point of an area (largest inscribed circle diameter) in mm."""
+    x,y,w,h=cv2.boundingRect(np.vstack(rings))
+    plane=np.zeros((h+2,w+2),np.uint8)
+    cv2.drawContours(plane,[r-[x-1,y-1] for r in rings],-1,1,-1)
+    for ring in rings[1:]:cv2.drawContours(plane,[ring-[x-1,y-1]],-1,0,-1)
+    return 2*float(cv2.distanceTransform(plane,cv2.DIST_L2,5).max())*scale
+
 
 def add_line_art(document, exact, alpha, scale, colours=None):
     """Prepared line art -> one running-stitch element per continuous route."""
@@ -118,6 +145,7 @@ def digitize(source, directory, height_mm=100, colours=None):
         alpha=release_mask
     # Sew the largest colour area (usually the background) first and small
     # details last, so detail edges lie on top instead of under the fill.
+    knockout=bool(settings.get('colour_knockouts'))
     if len(palette) and not piece_layout:
         present,counts=unique_rows(array[alpha],return_counts=True)
         area={tuple(c):int(n) for c,n in zip(present,counts)}
@@ -144,11 +172,26 @@ def digitize(source, directory, height_mm=100, colours=None):
             if not parts:continue
             node=ET.SubElement(document,'path',id=f'area{objects}',d=' '.join(parts),
                 style=f'fill:{choice["thread"]};fill-rule:evenodd;stroke:none')
-            apply_style(document,node,rings,scale,region_styles.get(region_id(rings),'tatami'))
+            identity=region_id(rings)
+            apply_style(document,node,rings,scale,region_styles.get(identity,'tatami'))
+            if identity not in region_styles and thickness_mm(rings,scale)<=SMALL_SATIN_MM:
+                # Narrow or small shapes are satin, as a digitizer would do them:
+                # rows of fill turn ragged and gappy below a few millimetres.
+                node.set('{http://inkstitch.org/namespace}fill_method','auto_satin')
+                if not knockout:
+                    node.set('{http://inkstitch.org/namespace}pull_compensation_mm',str(SATIN_PULL_MM))
+                    band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
+                    grow=max(1,int(math.ceil(SATIN_PULL_MM/scale)))
+                    release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
+            if knockout:
+                # Removed areas stay exact: keep stitches inside by the file rounding.
+                node.set('{http://inkstitch.org/namespace}edge_inset_mm',str(GRID_ROUNDING_MM))
             objects+=1
     if not objects:raise ValueError('No filled areas selected. Choose at least one colour.')
     if objects>(3000 if line_art else 500):raise ValueError('Too many separate objects: simplify the artwork before generating stitches.')
     from .borders import border_plan,add_border
+    if not settings.get('colour_knockouts'):
+        release_mask=grid_allowance(release_mask,scale)
     border=border_plan(alpha,height_mm,settings)
     add_border(document,border)
     if border:

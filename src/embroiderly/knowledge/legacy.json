@@ -273,11 +273,11 @@
     },
     {
       "id": "web.18",
-      "text": "Choose a height from 10 to 300 mm.",
+      "text": "Choose a height from 3 to 300 mm.",
       "source_note": "Existing implementation at src/embroiderly/web.py:271, captured 2026-09-22. Preserved code assumption or application limit, not validated shop guidance.",
       "verified_by_user": false,
       "previous_value": {
-        "value": "Choose a height from 10 to 300 mm.",
+        "value": "Choose a height from 3 to 300 mm.",
         "numeric_literals": [
           10,
           300

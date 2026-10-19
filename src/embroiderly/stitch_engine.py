@@ -18,7 +18,8 @@ from .stitch_satin import satin
 NS = '{http://inkstitch.org/namespace}'
 NAME = 'Needler native engine'
 VERSION = 1
-MODULES = ('stitch_engine.py', 'stitch_fills.py', 'stitch_satin.py', 'stitch_paths.py', 'svg_geometry.py')
+MODULES = ('stitch_engine.py', 'stitch_fills.py', 'stitch_satin.py', 'stitch_paths.py', 'svg_geometry.py',
+           'satin_font.py', 'line_art.py')
 DEFAULT_LOCK = '1 -1 1 -1'
 
 
@@ -153,6 +154,23 @@ class Block:
         self.trim_after, self.lockable = trim_after, lockable
 
 
+def _satin_area(shape, spacing, pull, min_len):
+    """Narrow or small areas as satin columns along their centre lines (the way
+    small shapes and lettering are digitized), joined by inside travel."""
+    from .satin_font import area_columns
+    runs = []
+    for a, b, closed, width in area_columns(shape):
+        a, b = list(a), list(b)
+        try:
+            points = satin([(a, closed), (b, closed)], spacing, pull, center_walk=2*width >= 1.0,
+                           indexed=len(a) == len(b))
+        except ValueError:
+            continue
+        if len(points) >= 2:
+            runs.append(points)
+    return join_runs(runs, shape, 1.5) if runs else []
+
+
 def _element_blocks(node, paths, style, scale, index, min_len):
     stroke = sg.colour(style.get('stroke'))
     fill = sg.colour(style.get('fill', '#000000')) if 'fill' in style or sg.local(node.tag) != 'line' else None
@@ -168,6 +186,9 @@ def _element_blocks(node, paths, style, scale, index, min_len):
     satin_column = _bool(node, 'satin_column')
     if fill and not satin_column:
         shape = fill_shape([(pts, True) for pts, _ in mm], 'evenodd' if style.get('fill-rule') == 'evenodd' else 'nonzero')
+        inset = _float(node, 'edge_inset_mm', 0)
+        if inset > 0 and not shape.buffer(-inset).is_empty:
+            shape = shape.buffer(-inset, join_style='mitre')
         if not shape.is_empty:
             spacing = max(.1, _float(node, 'row_spacing_mm', .25))
             length = max(.5, _float(node, 'running_stitch_length_mm', 1.5))
@@ -177,6 +198,10 @@ def _element_blocks(node, paths, style, scale, index, min_len):
                 runs = contour(shape, spacing, length, min_len, tolerance=tolerance)
             elif method == 'circular_fill':
                 runs = spiral(shape, spacing, length, min_len, tolerance=tolerance)
+            elif method == 'auto_satin':
+                runs = _satin_area(shape, max(.2, _float(node, 'zigzag_spacing_mm', .4)),
+                                   _float(node, 'pull_compensation_mm', 0), min_len) or \
+                    tatami(shape, _float(node, 'angle', 0), spacing, 3.0, 4, min_len)
             elif method == 'meander_fill':
                 cell = max(.6, _float(node, 'meander_scale_percent', 100)/100*10)
                 runs = meander(shape, cell, length, min_len, _seed(node, index), tolerance=tolerance)

@@ -505,10 +505,29 @@ def _dot(component, k):
 
 @lru_cache(maxsize=512)
 def glyph_columns(path, char):
-    """Satin columns for one glyph: [(rail_a, rail_b, rung_indices, closed, width)] in em."""
+    """Satin columns for one glyph: [(rail_a, rail_b, closed, width)] in em."""
     shape, advance = glyph_outline(path, char)
     if shape.is_empty:
         return (), advance, shape
+    return columns_for(shape), advance, shape
+
+
+def area_columns(shape):
+    """Satin columns for any filled shape (e.g. millimetres): the shape is
+    scaled to the tracer's working size and the columns scaled back."""
+    left, top, right, bottom = shape.bounds
+    size = max(right-left, bottom-top)
+    if shape.is_empty or size <= 0:
+        return ()
+    factor = size/.75
+    unit = affine_transform(shape, [1/factor, 0, 0, 1/factor, -left/factor, -top/factor])
+    back = lambda p: (p[0]*factor+left, p[1]*factor+top)
+    return tuple((tuple(back(p) for p in a), tuple(back(p) for p in b), closed, width*factor)
+                 for a, b, closed, width in columns_for(unit))
+
+
+def columns_for(shape):
+    """Core: skeleton strokes -> cross-section satin columns, in sewing order."""
     mask, to_px, to_em = _raster(shape)
     outline = affine_transform(shape, [RESOLUTION, 0, 0, RESOLUTION, to_px(0, 0)[0], to_px(0, 0)[1]])
     distance = cv2.distanceTransform(mask.astype(np.uint8), cv2.DIST_L2, 5)
@@ -559,7 +578,7 @@ def glyph_columns(path, char):
         if closed:
             ra, rb = ra+[ra[0]], rb+[rb[0]]
         result.append((tuple(ra), tuple(rb), closed, width/RESOLUTION))
-    return tuple(_order(result, shape)), advance, shape
+    return tuple(_order(result, shape))
 
 
 def _order(columns, shape):

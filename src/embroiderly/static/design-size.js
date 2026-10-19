@@ -37,7 +37,7 @@
  function apply(input){
   if(studio.isBusy()){sync();feedback.textContent='Wait for the current preview to finish, then enter the size again.';return;}
   const value=Number(input.value),h=input===width?value/ratio():value;
-  if(!input.value.trim()||!Number.isFinite(h)||h<10||h>400){sync();input.setAttribute('aria-invalid','true');feedback.textContent=`Size not changed. Canvas height must be 10–400 mm; width follows its proportions (${(10*ratio()).toFixed(1)}–${(400*ratio()).toFixed(1)} mm).`;return;}
+  if(!input.value.trim()||!Number.isFinite(h)||h<3||h>400){sync();input.setAttribute('aria-invalid','true');feedback.textContent=`Size not changed. Canvas height must be 3–400 mm; width follows its proportions (${(3*ratio()).toFixed(1)}–${(400*ratio()).toFixed(1)} mm).`;return;}
   for(const field of [width,height])field.removeAttribute('aria-invalid');
   if(Math.abs(h-studio.snapshot().height_mm)<1e-8)return;
   try{studio.apply({height_mm:h});sync();feedback.textContent=`Canvas width ${width.value} mm × height ${Number(height.value).toFixed(1)} mm. Review the subject, then Update stitches.`;}
