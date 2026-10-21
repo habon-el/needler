@@ -669,3 +669,76 @@ are applied by this loop. Uncertain, conflicting or failed reviews disable
 Use & make stitches, but allow explicit Use & keep editing. Undo, cancellation,
 stale-result rejection, budget gates and all warnings stay with existing owners.
 Physical output and semantic accuracy still require independent verification.
+
+## Automatic picture reviews and guided corrections (2026-10-18)
+
+Owner: ai-workflow.js presents one compact review surface below the existing
+stitch player. ask-ai.js remains the only prompt owner; preparation.js remains
+the only apply/undo/playback owner. No stitch generator, renderer, export policy
+or numerical safety threshold changed in this pass.
+
+Consent update: the earlier per-request-only rule still applies to drafts and
+questions. A separate, initially OFF, labelled Auto-review opt-in now remembers
+permission in this browser to send new pictures and finished stitch previews
+to OpenAI. The adjacent wording discloses paid sharing and existing caps.
+Switching it off prevents future automatic requests, not charges already sent.
+Native lettering is excluded; no picture rules are applied to native text.
+
+ai_workflow.py uses the existing BudgetedProvider and exact configured model.
+Upload review sees the original image. Finished review requires a matching
+saved plan and sees original, approved prepared image, and actual saved paths
+rendered by the existing renderer. It does not regenerate or export stitches.
+Rendering is independently fitted, so the model must compare semantic details,
+not infer pixel alignment, physical stitch quality or machine safety.
+
+Strict responses contain a summary and at most eight uncertain/possible source
+detail boxes. Small original-image thumbnails and Show me locate these details.
+Keep / Remove prepare a request in the existing assistant (never overwrite an
+unfinished prompt, send a paid call or apply an edit). The user reviews/sends it
+and approves its draft. Fix manually opens the existing outline tool. AI boxes
+are approximate navigation aids, never masks or erased rectangles. Unsupported
+precise corrections remain manual rather than pretending a change succeeded.
+
+Existing local cleanup/detail-loss measurements now have an always-visible
+summary and link to their original correction owner. No duplicate cleanup
+controls were created; existing Keep it / Let it go and previewed recovery
+remain authoritative. This surfaces possible losses; it does not solve every
+loss during palette reduction or make all difficult artwork stitchable.
+
+Review results are collapsed to avoid displacing the canvas/player. Changing
+a design invalidates its final comparison; late responses cannot replace the
+current result or steal canvas focus. Existing empty/generating/blocked/ready
+presentation and automatic finished-preview selection remain in place.
+Local detail checks operate even with cloud review off or unavailable.
+
+SQLite receipts in work/ai-reviews.sqlite3 reserve each design/source/stage/model/
+version/plan identity before the paid request. Concurrent tabs, refreshes and
+restarts reuse completed reviews. Pending requests are polled without a new call.
+Failure/interruption needs explicit Retry, with a possible-charge warning.
+Receipt text is stored locally without duplicate images. Rendering is skipped
+for cache hits. There is no automatic paid retry, no key in browser storage,
+and no new hosted multi-user authentication.
+
+Verification: test_ai_workflow.py uses explicitly synthetic provider replies for
+consent, budget readiness, schema rejection, caching, concurrency, native-text
+exclusion, current-plan checks and actual-render input wiring.
+browser_ai_workflow.py generates real stitches on disposable artwork; synthetic
+AI replies test opt-in/off, thumbnail/detail actions, prompt preservation, stale
+responses, error recovery, reload caching, keyboard and narrow/dark layouts.
+These are integration evidence, not live-model accuracy or physical sew-out
+evidence. Live provider validation after the app restart and real-design
+fidelity/physical sew-outs remain required.
+
+Acceptance checkpoint (2026-10-18): 514 unit tests passed; the new automatic-review
+browser flow passed with two synthetic provider responses and zero paid calls,
+including reload and Undo reuse, stale-response rejection, prompt preservation,
+real generation/playback, narrow/dark layout and >=4.5:1 status contrast.
+The existing digitization-results browser checks also passed (234 real stitches,
+0 trims on the synthetic rectangle; blocked/error states remain distinguishable).
+The workspace/browser-state suites passed after correcting stale test assumptions:
+eight existing topics including AI, current image coordinate mapping, an outline
+larger than the handle hit targets, and keyboard focus on the visible Borders
+button rather than its hidden legacy duplicate. No product outline behavior was
+changed to satisfy those tests. The strict static audit remains at 89 existing
+findings (89 before, 89 after), not a clean audit. Running server still needs a
+restart for the new route; no live GPT response or physical sew-out was verified.

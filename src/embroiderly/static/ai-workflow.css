@@ -1,0 +1,19 @@
+/* Scoped to the existing canvas review surface; no second inspector or player. */
+#aiWorkflow { margin: .75rem 0; padding: .75rem; border: 1px solid var(--ui-line, #cdd7d9); border-radius: .5rem; background: var(--ui-surface, #fff); color: var(--ui-ink, #243538); }
+#aiWorkflow p { margin: .4rem 0; color: var(--ui-ink, #243538); }
+.ai-workflow-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.ai-workflow-header label { display: flex; align-items: center; gap: .5rem; margin: 0; cursor: pointer; }
+#autoAiSharing, #aiWorkflow small, #aiWorkflow > details { color: var(--ui-muted, #596a6d); font-size: .85rem; }
+#autoAiStatus { min-height: 1.4em; }
+.ai-review-card { border-top: 1px solid var(--ui-line, #cdd7d9); margin-top: .75rem; padding-top: .5rem; }
+.ai-review-card summary { cursor: pointer; font-weight: 600; padding: .4rem 0; }
+.ai-review-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: .75rem; margin: .75rem 0; }
+.ai-review-details article { padding: .65rem; border: 1px solid var(--ui-line, #cdd7d9); border-radius: .5rem; overflow-wrap: anywhere; }
+.ai-detail-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+#aiWorkflow button { min-height: 2.5rem; }
+#aiWorkflow button:focus-visible, #aiWorkflow summary:focus-visible, #autoAiReview:focus-visible { outline: 2px solid var(--ui-primary, #126957); outline-offset: 3px; }
+#aiWorkflow button:disabled { opacity: .55; cursor: not-allowed; }
+
+.ai-review-details canvas { display: block; max-width: 100%; margin-bottom: .5rem; border-radius: .25rem; }
+#autoLocalCheck { font-size: .85rem; color: var(--ui-muted); }
+#autoAiDetails > summary { cursor: pointer; padding: .5rem 0; font-weight: 600; }

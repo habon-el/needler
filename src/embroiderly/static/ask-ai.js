@@ -195,5 +195,15 @@
     draftReady = d.status === 'fulfilled' && d.value.available && d.value.supported;
     availabilityInfo = [a, d]; showAvailability(); update();
   });
+  // Review cards compose a request here; they never send it or approve edits.
+  window.embroideryAI = {
+    isBusy: () => !!controller,
+    setRequest: (question) => {
+      if (controller || input.value.trim()) return false;
+      switchMode('draft'); input.value = question; update();
+      document.getElementById('workflowAskAI')?.click(); input.focus();
+      return true;
+    }
+  };
   switchMode('draft');
 })();
