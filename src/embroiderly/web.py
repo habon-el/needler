@@ -160,6 +160,17 @@ def create_app(workspace: Path | None = None) -> Flask:
             return jsonify(problems=collect(target,prepared,options))
         except ReleaseError as error:
             return jsonify(problems=[],note=str(error))
+    @app.get('/api/area-at/<name>')
+    def area_at_point(name):
+        # Remove stitches: the whole colour area under a click (problems.area_at).
+        if Path(name).name != name or not name.startswith('prepared_') or not (uploads/name).is_file():
+            abort(404)
+        from .problems import area_at
+        try:
+            area=area_at(uploads/name,float(request.args['x']),float(request.args['y']))
+        except (KeyError,ValueError):
+            abort(400)
+        return jsonify(area=area)
     @app.get("/")
     def index():
         if any(key in request.args for key in ('view', 'sort', 'q')):

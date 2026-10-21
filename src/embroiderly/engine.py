@@ -290,18 +290,30 @@ def digitize(source, directory, height_mm=100, colours=None):
     if piece_layout:
         from .engine_cache import digest
         policy['piece_integration']=[digest(Path(__file__).with_name(n)) for n in ('piece_generation.py','piece_layout.py')]
-    key=hashlib.sha256((cache_key(source,svg)+json.dumps(policy,sort_keys=True)+(json.dumps(piece_layout,sort_keys=True) if piece_layout else '')).encode()).hexdigest()
+    # Exact stitch removal areas (stitch_cuts.py) change the plan after generation.
+    cuts=[] if piece_layout else [c for c in settings.get('stitch_cuts',[]) if isinstance(c,dict) and len(c.get('points',[]))>=3]
+    key=hashlib.sha256((cache_key(source,svg)+json.dumps(policy,sort_keys=True)+(json.dumps(piece_layout,sort_keys=True) if piece_layout else '')
+                        +(json.dumps(cuts,sort_keys=True) if cuts else '')).encode()).hexdigest()
     cached=lookup(directory,key)
     if cached is not None:return cached
     # Both machine files come from one engine plan. PES v6 retains custom RGB.
     from .thread_recolour import reuse
-    recoloured=None if border or piece_layout else reuse(directory,svg,policy)
+    recoloured=None if border or piece_layout or cuts else reuse(directory,svg,policy)
     if recoloured:
         plan_bytes,previous_pes=recoloured
     else:
         try:plan_bytes=generate_plan(svg)
         except (ValueError,TypeError,ArithmeticError) as error:
             raise ValueError('Stitches could not be generated for this design: '+str(error)[:500]) from None
+    if cuts:
+        from shapely.geometry import Polygon
+        from .stitch_cuts import apply as cut_stitches
+        to_plan=lambda p:((float(p[0])*scale-source_origin[0])*10,(float(p[1])*scale-source_origin[1])*10)
+        areas=[Polygon([to_plan(p) for p in c['points']],[[to_plan(p) for p in hole] for hole in c.get('holes',[]) if len(hole)>=3]).buffer(0) for c in cuts]
+        plan=json.loads(plan_bytes);plan['stitches'],removed=cut_stitches(plan['stitches'],areas)
+        if not any(s[2]=='STITCH' for s in plan['stitches']):raise ValueError('Removing those stitches leaves nothing to sew. Undo the removal.')
+        plan.setdefault('extras',{})['stitches_removed']=removed
+        plan_bytes=json.dumps(plan).encode()
     raw=directory/'engine-plan.json'
     raw.write_bytes(plan_bytes)
     pattern=emb.EmbPattern(str(raw))

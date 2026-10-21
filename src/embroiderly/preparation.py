@@ -55,6 +55,11 @@ def edit_brush(edit, w, h):
     radius = int(number(edit, "radius", 8, 1, 80))
     if edit.get("shape") == "polygon":
         cv2.fillPoly(brush, [np.array(pts, np.int32)], 1)
+        # A clicked area can have holes (the circle around a star): they are kept.
+        holes = edit.get("holes") or []
+        if not isinstance(holes, list) or len(holes) > 200: raise ValueError("Invalid area holes.")
+        for hole in holes:
+            cv2.fillPoly(brush, [np.array(points(hole, w, h, 3), np.int32)], 0)
     else:
         cv2.polylines(brush, [np.array(pts, np.int32)], False, 1, radius * 2)
         for p in (pts[0], pts[-1]):

@@ -34,6 +34,37 @@ def _spot_edit(prepared, px, py, radius):
     return dict(kind='paint', colour=colour, radius=max(1, int(radius)), points=point, fix=True), 'Fill the gap'
 
 
+def area_at(prepared_path, x, y):
+    """The whole colour area under a click on the prepared picture, as an outline with holes
+    (picture pixels), grown by one pixel so its anti-aliased edge goes with it."""
+    import cv2
+    with Image.open(prepared_path) as image:
+        rgba = np.asarray(image.convert('RGBA'))
+    h, w = rgba.shape[:2]
+    x, y = int(round(x)), int(round(y))
+    if not (0 <= x < w and 0 <= y < h) or rgba[y, x, 3] <= 127:
+        return None
+    same = np.all(rgba == rgba[y, x], axis=2).astype(np.uint8)
+    _, labels = cv2.connectedComponents(same, connectivity=8)
+    area = (labels == labels[y, x]).astype(np.uint8)
+    area = cv2.dilate(area, np.ones((3, 3), np.uint8))
+    contours, hierarchy = cv2.findContours(area, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    if hierarchy is None:
+        return None
+    outer = max((i for i in range(len(contours)) if hierarchy[0, i, 3] == -1), key=lambda i: cv2.contourArea(contours[i]))
+    ring = lambda c: [[float(px), float(py)] for px, py in cv2.approxPolyDP(c, .6, True)[:, 0, :]]
+    holes, child = [], hierarchy[0, outer, 2]
+    while child != -1:
+        if cv2.contourArea(contours[child]) >= 4:
+            holes.append(ring(contours[child]))
+        child = hierarchy[0, child, 0]
+    points = ring(contours[outer])
+    if len(points) < 3:
+        return None
+    return dict(points=points, holes=[hole for hole in holes if len(hole) >= 3],
+                colour='#%02x%02x%02x' % tuple(int(v) for v in rgba[y, x, :3]))
+
+
 def collect(directory, prepared_path, options):
     """[{id, title, count, bounds (picture pixels), fix: {label, edits?, set?} | None}] most serious first."""
     from .release_gate import read_context

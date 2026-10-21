@@ -140,6 +140,15 @@ Edit panel (clean): size fields, ±10% and "About this size" stay together; belo
 options: Fabric (short stabilizer hint, full advice on hover), then "One-colour photo" and "3D puff" as
 one-line switches whose settings and one-line note appear only when switched on (fabric-controls.js
 groups them into `.design-options`).
+Remove stitches (`remove-stitches.js`, `stitch_cuts.py`): a button by "3D view", shown once stitches exist.
+Click a part to select that whole colour area (GET /api/area-at/<prepared>: the connected area of that
+colour, grown 1 px, with holes; erase edits and stitch cuts accept `holes`), or drag to draw around any
+stitches; a one-line bar says how many are selected, with Remove / Cancel
+and an "Exact cut" box. Default Remove adds an erase edit (`removed: true`) and rebuilds, so the area is
+cut out cleanly like Hatch's Knife. Exact cut saves the area in `stitch_cuts`; the engine drops only the
+stitches inside it after generation, with a tie-off + cut before each gap and a jump + tie-in after; the
+bar shows "adds about N cuts" (every crossing fill row is cut). Both survive rebuilds and use Undo; the
+areas are part of the engine cache key. Exact cut is not offered for photo modes.
 Open (from the Hatch comparison): branching / travel under later fills instead of a cut after every
 shape (`generation_policy` still forces `trim_after`), turning fills that follow the shape, colour
 blending, appliqué, stitch shortening on tight curves, more fonts.
