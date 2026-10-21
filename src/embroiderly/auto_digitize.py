@@ -280,8 +280,9 @@ class AutoDigitizer:
 
     def _paint_specks(self, path, boxes, limit=40):
         """Paint edits giving each tiny unsewable detail the commonest colour just around it."""
-        with Image.open(path) as image:
-            rgb = np.asarray(image.convert('RGB'))
+        # Blocker boxes are in the working picture (at most 768 px), like every edit.
+        from .preparation import load_image
+        rgb = np.asarray(load_image(path).convert('RGB'))
         h, w = rgb.shape[:2]
         edits = []
         for x0, y0, x1, y1 in boxes[:limit]:

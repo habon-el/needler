@@ -40,3 +40,11 @@
 .remove-bar button { min-height:28px; padding:2px 10px; }
 /* AI assistant hidden when no AI service is set up (ask-ai.js). */
 [data-ai-assistant=off] #workflowAskAI { display:none; }
+/* Problems panel: a problem opens to What / Why it matters / Fix will. */
+.problems-panel li { align-items:flex-start; }
+.problems-item { flex:1; min-width:0; }
+.problems-item summary { cursor:pointer; list-style:none; }
+.problems-item summary::before { content:'▸ '; color:var(--ui-muted, #888); }
+.problems-item[open] summary::before { content:'▾ '; }
+.problems-item p { margin:4px 0 0 14px; font-size:12px; line-height:1.4; }
+.problems-fixed { margin:0 0 6px; font-size:12px; color:var(--ui-primary); }

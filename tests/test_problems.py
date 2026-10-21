@@ -46,4 +46,7 @@ def test_problem_is_found_grouped_located_and_fixable(tmp_path):
     edit = first['fix']['edits'][0]
     assert edit['kind'] == 'paint' and edit['colour'] == '#1d4f91'    # filled with the colour around it
     assert len(problems) < 10                                          # nearby findings are one problem
+    # Plain explanation: what, why, and what the fix will do.
+    assert 'bare fabric' in first['explain']['what'] and first['explain']['why']
+    assert first['explain']['fix'].startswith('Fills this tiny spot')
     assert client.get('/api/problems/nothing.png').status_code == 404

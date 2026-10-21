@@ -291,9 +291,12 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
     if spend.room():
         raise RuntimeError(spend.room())
     with Image.open(path) as image:
-        picture, size = png_block(image), image.size
-        import numpy as np
-        pixels = np.asarray(image.convert('RGB'))
+        picture = png_block(image)
+    # Erase boxes are edits on the working picture (at most 768 px), not the upload.
+    from .preparation import load_image
+    import numpy as np
+    frame = load_image(path)
+    size, pixels = frame.size, np.asarray(frame.convert('RGB'))
     brief = dict(measured_facts=facts, first_guess=kind, request=job['request'] or '(none)',
                  recent_sewouts=recent_sewouts(Path(path).parent.parent),
                  parsed_request=wish, current_settings={k: options.get(k) for k in (

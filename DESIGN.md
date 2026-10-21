@@ -132,6 +132,9 @@ when something is wrong: one plain line per problem (nearby findings grouped), S
 about 12 mm around it) and Fix (a paint edit with the surrounding colour, or an erase when the spot is
 mostly bare; "Many thread cuts" merges small details), plus Fix all. Fixes go through acceptRefinement,
 so stitches are rebuilt and re-checked; no AI. Kept deliberately minimal: no coordinates or codes.
+Each problem's title opens three plain lines (problems.EXPLAIN / FIX_DOES): What, Why it matters, Fix will.
+After a fix, one line confirms it ("✓ Filled 2 gaps with the colour around them · Undo to go back")
+until the person changes the design themselves.
 Check stitches is otherwise clean: the panel sits under the heading and says "All checks passed" when there
 is nothing to fix (or "Stitches need to be made again" when the checks cannot run); Design health shows only
 when details cannot be stitched at all; route statistics live in the closed "Directions & jumps" section;

@@ -18,6 +18,32 @@ TITLES = {'crossing': 'Stitches cross bare fabric', 'travel': 'A jump crosses ba
           'long': 'A stitch is too long', 'short': 'A stitch is too short',
           'cuts': 'Many thread cuts'}
 
+# Plain explanations for the panel: what is wrong, why it matters on the machine.
+EXPLAIN = {
+    'crossing': ('Some stitches run over a spot that should stay bare fabric.',
+                 'The machine would sew a visible thread across that spot.'),
+    'travel': ('The needle moves across bare fabric without cutting the thread.',
+               'It leaves a loose thread on top that you would have to cut by hand, and it can snag.'),
+    'long': ('A stitch is longer than 7 mm.',
+             'Long stitches lie loose, snag easily, and many machines refuse them.'),
+    'short': ('A stitch is shorter than 0.3 mm.',
+              'Very short stitches can break the thread or bunch up.'),
+    'cuts': ('The machine will cut the thread {count} times.',
+             'Each cut stops the machine and leaves a thread end; many cuts make sewing slow.'),
+}
+FIX_DOES = {
+    'Fill the gap': 'Fills this tiny spot with the colour around it, then remakes and checks the stitches.',
+    'Remove the stray stitches': 'Removes the small stitched bit that sits on bare fabric, then remakes and checks the stitches.',
+    'Merge small details': 'Merges tiny pieces into the colour next to them, so there are fewer separate parts to cut between.',
+}
+
+
+def explain(problem):
+    what, why = EXPLAIN.get(problem['code'], ('', ''))
+    fix = problem.get('fix')
+    return dict(what=what.format(count=problem.get('count', 0)), why=why,
+                fix=FIX_DOES.get(fix['label'], '') if fix else 'No automatic fix: change the size or stitch style, or remove this part.')
+
 
 def _spot_edit(prepared, px, py, radius):
     """Fill the spot with the colour around it; if it is mostly bare, remove the stray stitching instead."""
@@ -109,4 +135,6 @@ def collect(directory, prepared_path, options):
             problems.append(dict(id='cuts', code='cuts', title=TITLES['cuts'], count=trims, bounds=None,
                                  fix=dict(label='Merge small details', set=dict(floor_mm2=round(min(25, max(2.5, floor * 2.5)), 1)))))
     order = {'crossing': 0, 'travel': 1, 'long': 2, 'short': 3, 'cuts': 4}
+    for problem in problems:
+        problem['explain'] = explain(problem)
     return sorted(problems, key=lambda p: order[p['code']])

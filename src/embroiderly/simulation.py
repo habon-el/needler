@@ -113,10 +113,15 @@ def _line_art_segments(array: np.ndarray) -> list[PreviewSegment]:
     }
     unused = {tuple(sorted((point, neighbour))) for point in points for neighbour in neighbours[point]}
     result: list[PreviewSegment] = []
+    # Line ends and junctions first, then the rest, each in sorted order: the same
+    # start the old per-trail full scan chose, without rescanning every pixel per
+    # trail (that was quadratic and froze on detailed ink drawings).
+    order = [p for p in points if len(neighbours[p]) != 2] + [p for p in points if len(neighbours[p]) == 2]
+    cursor = 0
     while unused:
-        candidates = sorted(point for point, ns in neighbours.items() if any(tuple(sorted((point, n))) in unused for n in ns))
-        starts = [point for point in candidates if len(neighbours[point]) != 2]
-        current = starts[0] if starts else candidates[0]
+        while not any(tuple(sorted((order[cursor], n))) in unused for n in neighbours[order[cursor]]):
+            cursor += 1
+        current = order[cursor]
         trail = [current]
         while True:
             next_points = [n for n in neighbours[current] if tuple(sorted((current, n))) in unused]

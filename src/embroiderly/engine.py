@@ -131,10 +131,18 @@ def digitize(source, directory, height_mm=100, colours=None):
     palette=unique_rows(array.reshape(-1,3))
     objects=0
     release_mask=np.zeros_like(alpha)
+    ink_routed=False
     if settings.get("ink_only") is True:
         if settings.get("border_style","off")!="off":raise ValueError("Black lines only requires No border.")
-        from .ink_lines import add_running_paths
-        objects=add_running_paths(document,exact,alpha,settings)
+        from .ink_lines import add_running_paths, line_settings
+        if line_settings(settings)[1]==0:
+            # Same router as line art: lines joined and retraced instead of thousands of
+            # separate pieces (detailed ink drawings froze or hit the object limit).
+            retrace=min(30.,max(2.,float(settings.get('line_retrace_mm',6.))))
+            objects,drawn=add_line_art(document,exact,alpha,scale,None,retrace,layers=[('#000000',alpha.copy())])
+            release_mask=alpha|drawn;ink_routed=True
+        else:
+            objects=add_running_paths(document,exact,alpha,settings)
         palette=[]
     if line_art and not piece_layout:
         if settings.get("border_style","off")!="off":raise ValueError("Line art requires No border.")
@@ -262,7 +270,8 @@ def digitize(source, directory, height_mm=100, colours=None):
                 except ValueError:
                     objects=before
     if not objects:raise ValueError('No filled areas selected. Choose at least one colour.')
-    if objects>(3000 if line_art or detail in ('light','all') else 500):raise ValueError('Too many separate objects: simplify the artwork before generating stitches.')
+    # Running-stitch line modes (line art, black ink, mixed lines) have many cheap separate lines.
+    if objects>(3000 if line_art or settings.get('ink_only') is True or detail in ('light','all') else 500):raise ValueError('Too many separate objects: simplify the artwork before generating stitches.')
     from .borders import border_plan,add_border
     if not settings.get('colour_knockouts'):
         release_mask=grid_allowance(release_mask,scale)
@@ -347,10 +356,10 @@ def digitize(source, directory, height_mm=100, colours=None):
     before_repair=[s[:] for s in pattern.stitches]
     from .lock_repair import repair as repair_locks
     lock_candidate=pattern.copy()
-    lock_report=repair_locks(lock_candidate,alpha if settings.get('ink_only') else release_mask,scale,origin)
+    lock_report=repair_locks(lock_candidate,alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,origin)
     from .gap_repair import repair as repair_gaps
-    gap_report=repair_gaps(lock_candidate,alpha if settings.get('ink_only') else release_mask,scale,origin)
-    candidate,repair_report=propose(lock_candidate,alpha if settings.get('ink_only') else release_mask,scale,origin)
+    gap_report=repair_gaps(lock_candidate,alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,origin)
+    candidate,repair_report=propose(lock_candidate,alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,origin)
     repair_report['locks']=lock_report
     repair_report['gaps']=gap_report
     if repair_report['automatic'] and (repair_report['changes'] or lock_report['end_locks_rebuilt'] or lock_report['start_locks_rebuilt'] or gap_report['gaps_cut']):
@@ -391,6 +400,6 @@ def digitize(source, directory, height_mm=100, colours=None):
         payload['puff']={'threads':puff_threads,'foam_mm':foam_mm}
     (directory/'playback.json').write_text(json.dumps(payload))
     from .release_gate import record_context
-    record_context(directory,alpha if settings.get('ink_only') else release_mask,scale,origin)
+    record_context(directory,alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,origin)
     publish(directory,key,policy)
     return payload
