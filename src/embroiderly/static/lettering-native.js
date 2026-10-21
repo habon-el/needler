@@ -15,7 +15,8 @@
   $('nativeFit').textContent='Width not checked for these settings. Nothing will be resized automatically.';
  }
  function values(){return {text:$('letteringWords').value,font:$('nativeFont').value,height_mm:Number($('nativeHeight').value),
-  available_width_mm:Number($('nativeWidth').value),align:$('letteringAlign').value,colour:$('letteringColour').value};}
+  available_width_mm:Number($('nativeWidth').value),align:$('letteringAlign').value,colour:$('letteringColour').value,
+  ...(window.NativePuff?.get()?{puff:true,puff_foam_mm:window.NativePuff.foam()}:{})};}
  function render(data){
   result=data;const r=data.reports.dst,p=data.reports.pes;
   $('nativePreview').src=data.image;$('nativePreview').hidden=false;
@@ -45,7 +46,8 @@
  });
  function sizeRange(){
   const option=$('nativeFont').selectedOptions[0];
-  $('nativeHeight').min=option.dataset.min||4;$('nativeHeight').max=option.dataset.max||6;
+  // Puff letters may be larger: their strokes must be as wide as the foam is thick.
+  $('nativeHeight').min=option.dataset.min||4;$('nativeHeight').max=(window.NativePuff?.get()&&option.dataset.puffMax)||option.dataset.max||6;
  }
  sizeRange();$('nativeFont').addEventListener('input',sizeRange);
  for(const [id,factor] of [['nativeSmaller',.9],['nativeLarger',1.1]])$(id).addEventListener('click',()=>{
@@ -118,6 +120,7 @@
   try{
    const data=await json('/lettering/native/'+encodeURIComponent(id),{signal:AbortSignal.timeout(15000)});
    if(version!==revision||!active())return;
+   window.NativePuff?.set(data.recipe.puff,data.recipe.puff_foam_mm);
    for(const [field,key] of [['letteringWords','text'],['letteringAlign','align'],['letteringColour','colour'],['nativeFont','font'],['nativeHeight','height_mm'],['nativeWidth','available_width_mm']])$(field).value=data.recipe[key];
    render(data);
   }catch(e){status('Saved lettering could not be loaded. '+e.message);}

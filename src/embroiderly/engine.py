@@ -16,6 +16,7 @@ from .engine_cache import serialize_output
 from .machine_files import write_pair
 from .stitch_engine import generate_plan, NAME as ENGINE_NAME
 
+PUFF_TO_MM=6.0   # widest point of an area that can puff (largest inscribed circle); the narrowest depends on the foam
 SMALL_SATIN_MM=4.5   # areas no thicker than this are sewn as satin columns
 SATIN_PULL_MM=.1     # per side: satin pulls the fabric in by about this much
 
@@ -42,11 +43,13 @@ def thickness_mm(rings,scale):
     return 2*float(cv2.distanceTransform(plane,cv2.DIST_L2,5).max())*scale
 
 
-def add_line_art(document, exact, alpha, scale, colours=None):
-    """Prepared line art -> one running-stitch element per continuous route."""
+def add_line_art(document, exact, alpha, scale, colours=None, retrace_mm=6.0, layers=None):
+    """Prepared line art -> one running-stitch element per continuous route.
+    layers: [(thread, mask)] to trace instead of the prepared colours (mixed mode)."""
     from .line_art import digitize_lines
-    layers=[]
-    for colour in unique_rows(exact[alpha]):
+    given=layers is not None
+    layers=list(layers or [])
+    for colour in ([] if given else unique_rows(exact[alpha])):
         key='#%02x%02x%02x'%tuple(colour)
         choice=(colours or {}).get(key,{'include':True,'thread':key})
         if not choice.get('include',True):continue
@@ -59,10 +62,11 @@ def add_line_art(document, exact, alpha, scale, colours=None):
         size=(alpha.shape[1]*factor,alpha.shape[0]*factor)
         layers=[(thread,cv2.resize(mask.astype(np.float32),size,interpolation=cv2.INTER_CUBIC)>.5) for thread,mask in layers]
     drawn=np.zeros(alpha.shape,np.uint8);objects=0
-    for thread,paths in digitize_lines(layers,scale/factor):
+    # Longer retrace travels back over sewn lines instead of cutting the thread.
+    for thread,paths in digitize_lines(layers,scale/factor,retrace_mm=retrace_mm):
         for path in paths:
             points=[(x/scale,y/scale) for x,y in path]
-            ET.SubElement(document,'path',id=f'line{objects}',d='M '+' L '.join(f'{x:.3f},{y:.3f}' for x,y in points),
+            ET.SubElement(document,'path',id=f'{"detail" if given else "line"}{objects}',d='M '+' L '.join(f'{x:.3f},{y:.3f}' for x,y in points),
                 style=f'fill:none;stroke:{thread};stroke-width:1',
                 attrib={'{http://inkstitch.org/namespace}stroke_method':'running_stitch',
                         '{http://inkstitch.org/namespace}running_stitch_length_mm':'1.6',
@@ -77,9 +81,11 @@ def add_line_art(document, exact, alpha, scale, colours=None):
 def digitize(source, directory, height_mm=100, colours=None):
     settings={}
     piece_layout=None
+    prep_metadata=None
     metadata_path=Path(source).with_suffix('.prep.json')
     if metadata_path.is_file():
         metadata=json.loads(metadata_path.read_text());settings=metadata.get('options',{})
+        prep_metadata=metadata
         from .piece_layout import geometry_changed
         if geometry_changed(settings):piece_layout=metadata.get('report',{}).get('piece_layout')
         from .cleanup_review import require_review
@@ -89,6 +95,11 @@ def digitize(source, directory, height_mm=100, colours=None):
             if settings.get('region_styles'):raise ValueError('Area stitch styles require colour artwork mode, not Portrait.')
             from .photo_stitch import generate
             return generate(source,directory,height_mm,settings)
+        if settings.get('photo_style')=='one_colour':
+            # One-colour photo lines (photo_lines.py, after Hatch's PhotoFlash).
+            if settings.get('border_style','off')!='off':raise ValueError('One-colour photo lines do not take a border.')
+            from .photo_lines import generate as photo_lines
+            return photo_lines(source,directory,height_mm,settings,metadata)
     directory.mkdir(parents=True,exist_ok=True)
     with Image.open(source) as image:
         rgb=artwork_rgb(image)
@@ -127,12 +138,22 @@ def digitize(source, directory, height_mm=100, colours=None):
         palette=[]
     if line_art and not piece_layout:
         if settings.get("border_style","off")!="off":raise ValueError("Line art requires No border.")
-        objects,drawn=add_line_art(document,exact,alpha,scale,colours)
+        retrace=min(30.,max(2.,float(settings.get('line_retrace_mm',6.))))
+        objects,drawn=add_line_art(document,exact,alpha,scale,colours,retrace)
         # Allowed area: the strokes themselves plus the tiny joins between them.
         release_mask=alpha|drawn
         palette=[]
     from .region_stitches import assignments, regions, region_id, apply_style
     region_styles=assignments(settings)
+    # 3D puff for every area that can hold foam; others stay flat.
+    puff_all=settings.get('puff') is True
+    from .stitch_engine import puff_min_mm
+    foam_mm=min(5.,max(1.,float(settings.get('puff_foam_mm',3))))
+    # Wilcom's puff guide: 0.3-0.5 mm pull compensation by foam thickness. This is the
+    # outer edge; the satin sews 0.05 mm inside it (stitch_satin._puff_satin).
+    puff_pull='.35' if foam_mm<2.5 else '.45'
+    if puff_all and (line_art or settings.get('ink_only') is True):
+        raise ValueError('3D puff needs colour artwork with filled areas, not line drawings.')
     if region_styles and not piece_layout:
         if settings.get('ink_only') is True or line_art:raise ValueError('Area styles cannot be applied to line drawings. Clear area assignments first.')
         missing=set(region_styles)-{key for key,_,_ in regions(exact,alpha)}
@@ -146,16 +167,30 @@ def digitize(source, directory, height_mm=100, colours=None):
     # Sew the largest colour area (usually the background) first and small
     # details last, so detail edges lie on top instead of under the fill.
     knockout=bool(settings.get('colour_knockouts'))
+    # Auto Fabric: satin pull compensation follows the chosen fabric (generation_policy).
+    from .generation_policy import preset_for
+    satin_pull=float(preset_for(settings).get('satin_pull_mm',SATIN_PULL_MM))
     if len(palette) and not piece_layout:
         present,counts=unique_rows(array[alpha],return_counts=True)
         area={tuple(c):int(n) for c,n in zip(present,counts)}
         palette=sorted(palette,key=lambda c:(-area.get(tuple(c),0),tuple(int(v) for v in c)))
+    # Pixels of each included colour, in sewing order, so a fill can reach under the
+    # colours sewn after it (fill_shaping.OVERLAP_MM).
+    from .fill_shaping import grown as overlap_rings, angle as fill_angle
+    sewn_masks=[]
+    for colour in ([] if piece_layout else palette):
+        key='#%02x%02x%02x'%tuple(colour)
+        choice=(colours or {}).get(key,{'include':prepared or not np.all(colour>=245),'thread':key})
+        if choice['include']:sewn_masks.append(np.all(array==colour,axis=2)&alpha)
+    later=np.zeros(alpha.shape,bool)
+    for m in sewn_masks:later|=m
     for colour in ([] if piece_layout else palette):
         key='#%02x%02x%02x'%tuple(colour)
         choice=(colours or {}).get(key,{'include':prepared or not np.all(colour>=245),'thread':key})
         if not choice['include']:
             continue
         mask=(np.all(array==colour,axis=2)&alpha).astype('uint8')
+        later&=~mask.astype(bool)
         release_mask |= mask.astype(bool)
         contours,hierarchy=cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
         if hierarchy is None:continue
@@ -164,31 +199,70 @@ def digitize(source, directory, height_mm=100, colours=None):
             rings=[c];child=hierarchy[0,i,2]
             while child!=-1:
                 rings.append(contours[child]);child=hierarchy[0,child,0]
+            identity=region_id(rings)
+            style=region_styles.get(identity)
+            thick=thickness_mm(rings,scale)
+            if style is None and puff_all and puff_min_mm(foam_mm)<=thick<=PUFF_TO_MM:
+                style='puff'
+            # Plain fills overlap the colours sewn after them and run along their long side.
+            plain=style is None and thick>SMALL_SATIN_MM and not knockout
+            shaped=overlap_rings(rings,later,scale) if plain and later.any() else [rings]
             parts=[]
-            for ring in rings:
-                pts=ring[:,0,:]
-                if len(pts)<3:continue
-                parts.append('M '+' L '.join(f'{x},{y}' for x,y in pts)+' Z')
+            for piece in shaped:
+                for ring in piece:
+                    pts=ring[:,0,:]
+                    if len(pts)<3:continue
+                    parts.append('M '+' L '.join(f'{x},{y}' for x,y in pts)+' Z')
             if not parts:continue
             node=ET.SubElement(document,'path',id=f'area{objects}',d=' '.join(parts),
                 style=f'fill:{choice["thread"]};fill-rule:evenodd;stroke:none')
-            identity=region_id(rings)
-            apply_style(document,node,rings,scale,region_styles.get(identity,'tatami'))
-            if identity not in region_styles and thickness_mm(rings,scale)<=SMALL_SATIN_MM:
+            if plain:
+                node.set('{http://inkstitch.org/namespace}angle',f'{fill_angle(rings):.1f}')
+            apply_style(document,node,rings,scale,style or 'tatami')
+            if style=='puff':
+                node.set('{http://inkstitch.org/namespace}puff_foam_mm',f'{foam_mm:g}')
+                node.set('{http://inkstitch.org/namespace}pull_compensation_mm',puff_pull)
+            if style=='puff' and knockout:
+                # Removed areas stay exact: no outward pull, as for flat satin.
+                node.set('{http://inkstitch.org/namespace}pull_compensation_mm','0')
+            if style=='puff' and not knockout:
+                # Puff satin is pulled past the edge on purpose; that band is sewn, not empty.
+                band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
+                grow=max(1,int(math.ceil((float(puff_pull)+.05)/scale)))
+                release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
+            if style is None and thickness_mm(rings,scale)<=SMALL_SATIN_MM:
                 # Narrow or small shapes are satin, as a digitizer would do them:
                 # rows of fill turn ragged and gappy below a few millimetres.
                 node.set('{http://inkstitch.org/namespace}fill_method','auto_satin')
                 if not knockout:
-                    node.set('{http://inkstitch.org/namespace}pull_compensation_mm',str(SATIN_PULL_MM))
+                    node.set('{http://inkstitch.org/namespace}pull_compensation_mm',str(satin_pull))
                     band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
-                    grow=max(1,int(math.ceil(SATIN_PULL_MM/scale)))
+                    grow=max(1,int(math.ceil(satin_pull/scale)))
                     release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
             if knockout:
                 # Removed areas stay exact: keep stitches inside by the file rounding.
                 node.set('{http://inkstitch.org/namespace}edge_inset_mm',str(GRID_ROUNDING_MM))
             objects+=1
+    detail=settings.get('line_details','off')
+    if detail in ('light','all') and prepared and not line_art and not piece_layout and settings.get('ink_only') is not True             and not settings.get('colour_knockouts') and objects:
+        # Mixed mode: thin lines the fills lost, sewn on top as running stitches (detail_lines.py).
+        from .detail_lines import line_layers, source_pixels
+        original=source_pixels(Path(source),prep_metadata,alpha.shape)
+        if original is not None:
+            layers=[]
+            for key,mask in line_layers(original,exact,alpha,detail):
+                choice=(colours or {}).get(key,{'include':True,'thread':key})
+                if choice.get('include',True):layers.append((choice.get('thread',key),mask))
+            if layers:
+                before=objects
+                retrace=min(30.,max(2.,float(settings.get('line_retrace_mm',6.))))
+                try:
+                    count,drawn=add_line_art(document,exact,alpha,scale,None,retrace,layers=layers)
+                    objects+=count;release_mask|=drawn&alpha
+                except ValueError:
+                    objects=before
     if not objects:raise ValueError('No filled areas selected. Choose at least one colour.')
-    if objects>(3000 if line_art else 500):raise ValueError('Too many separate objects: simplify the artwork before generating stitches.')
+    if objects>(3000 if line_art or detail in ('light','all') else 500):raise ValueError('Too many separate objects: simplify the artwork before generating stitches.')
     from .borders import border_plan,add_border
     if not settings.get('colour_knockouts'):
         release_mask=grid_allowance(release_mask,scale)
@@ -278,9 +352,14 @@ def digitize(source, directory, height_mm=100, colours=None):
         new_dst=emb.EmbPattern(str(directory/'design.dst'))
         if pattern.stitches!=old_pes.stitches or new_dst.stitches!=old_dst.stitches:
             raise ValueError('Colour-only export changed stitch commands; refusing this result.')
-    if colors != [t['color'] for t in json.loads(plan_bytes)['threadlist']]:
+    planned=[t['color'] for t in json.loads(plan_bytes)['threadlist']]
+    # PES lists a colour once when a stop repeats it (the stop for puff foam keeps the
+    # thread); the stop itself is still in the file.
+    if colors != planned and colors != [c for i,c in enumerate(planned) if not i or c!=planned[i-1]]:
         raise ValueError('PES readback changed the prepared thread palette.')
-    types={emb.STITCH:'stitch',emb.JUMP:'jump',emb.TRIM:'trim',emb.COLOR_CHANGE:'color_change',emb.END:'end'}
+    colors=planned
+    # A stop that keeps the thread (PES writes one before puff foam) counts as a thread change here.
+    types={emb.STITCH:'stitch',emb.JUMP:'jump',emb.TRIM:'trim',emb.COLOR_CHANGE:'color_change',emb.STOP:'color_change',emb.END:'end'}
     steps=[];index=0
     for x,y,flags in pattern.stitches:
         kind=types.get(flags & emb.COMMAND_MASK,'unknown')
@@ -295,6 +374,9 @@ def digitize(source, directory, height_mm=100, colours=None):
     payload['generation_policy']=generation_policy
     payload['repair_report']=repair_report
     if border:payload['border']={k:v for k,v in border.items() if k!='paths'}
+    puff_threads=json.loads(plan_bytes).get('extras',{}).get('puff_threads',[])
+    if puff_threads:
+        payload['puff']={'threads':puff_threads,'foam_mm':foam_mm}
     (directory/'playback.json').write_text(json.dumps(payload))
     from .release_gate import record_context
     record_context(directory,alpha if settings.get('ink_only') else release_mask,scale,origin)

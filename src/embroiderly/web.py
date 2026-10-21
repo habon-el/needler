@@ -43,6 +43,15 @@ def create_app(workspace: Path | None = None) -> Flask:
     register_piece_guards(app, root)
     from .size_sets import register_size_sets
     register_size_sets(app, root)
+    from .auto_digitize import register_auto_digitize
+    register_auto_digitize(app, root)
+
+    @app.get('/api/fabrics')
+    def fabrics():
+        # Auto Fabric presets for the fabric menu (generation_policy).
+        from .generation_policy import presets, DEFAULT
+        return jsonify(default=DEFAULT, fabrics=[dict(id=r['fabric'], label=r.get('label', r['fabric']),
+                                                      stabilizer=r.get('stabilizer', '')) for r in presets()])
     from .assistance import register_assistance
     register_assistance(app, root)
     from .ai_draft import register_ai_draft
@@ -134,6 +143,23 @@ def create_app(workspace: Path | None = None) -> Flask:
             abort(404)
         from .release_gate import download
         return download(target,format)
+    @app.get('/api/problems/<name>')
+    def design_problems(name):
+        # Problems panel (problems.py): findings of the generated stitches with one-click fixes.
+        if Path(name).name != name or not name.startswith('prepared_'):
+            abort(404)
+        target=root/'work'/'inkstitch-preview'/Path(name).stem
+        prepared=uploads/name
+        if not (target/'playback.json').is_file() or not prepared.is_file():
+            abort(404)
+        meta=prepared.with_suffix('.prep.json')
+        options=json.loads(meta.read_text()).get('options',{}) if meta.is_file() else {}
+        from .problems import collect
+        from .release_gate import ReleaseError
+        try:
+            return jsonify(problems=collect(target,prepared,options))
+        except ReleaseError as error:
+            return jsonify(problems=[],note=str(error))
     @app.get("/")
     def index():
         if any(key in request.args for key in ('view', 'sort', 'q')):

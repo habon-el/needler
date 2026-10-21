@@ -11,6 +11,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+# "Let Claude decide" in Digitize for me; needs ANTHROPIC_API_KEY.
+ai = ["anthropic>=1.0"]
 
 [tool.setuptools.package-data]
 embroiderly = ["fonts/*/*", "templates/*", "static/*", "static/**/*", "knowledge/*"]

@@ -42,13 +42,18 @@ def workspace_data(folder, key):
         snapshot = Path(temporary)/'design.dst'
         snapshot.write_bytes(checked if result['checks_passed'] else (folder/'design.dst').read_bytes())
         pattern = read_pattern(snapshot)
-    types = {emb.STITCH:'stitch', emb.JUMP:'jump', emb.TRIM:'trim', emb.COLOR_CHANGE:'color_change', emb.END:'end'}
+    types = {emb.STITCH:'stitch', emb.JUMP:'jump', emb.TRIM:'trim', emb.COLOR_CHANGE:'color_change', emb.STOP:'color_change', emb.END:'end'}
     steps = [dict(x=x/10,y=y/10,t=types.get(flag & emb.COMMAND_MASK,'unknown'),color=colour)
              for x,y,flag in pattern.stitches]
     playback = dict(steps=steps, colors=[colour], stitch_count=r['stitches'], trim_count=r['trims'],
                     origin_mm=[width/2,height/2], height_mm=height,
                     engine='Needler embroidery font', generation_mode='native lettering',
                     objects=result['source_columns'])
+    if result['recipe'].get('puff'):
+        # Placement lines first, then a stop for the foam: everything after it is over foam.
+        stop = any(step['t'] == 'color_change' for step in steps)
+        playback['colors'] = [colour, colour] if stop else [colour]
+        playback['puff'] = {'threads': [1 if stop else 0], 'foam_mm': float(result['recipe'].get('puff_foam_mm', 3.0))}
     return dict(result=result, image=image, playback=playback,
                 canvas_height_mm=height, canvas_width_mm=width)
 

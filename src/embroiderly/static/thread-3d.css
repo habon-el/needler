@@ -1,0 +1,41 @@
+/* 3D stitch view: an overlay on the canvas area, same --ui-* tokens. */
+.panels { position:relative; }
+.view3d { position:absolute; inset:0; z-index:5; display:block; background:var(--ui-background); overflow:hidden; }
+.view3d[hidden] { display:none; }
+.view3d canvas { position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab; touch-action:none; outline:none; }
+.view3d canvas:active { cursor:grabbing; }
+.view3d canvas:focus-visible { box-shadow:inset 0 0 0 3px var(--ui-primary); }
+#open3d[aria-pressed=true] { background:var(--ui-primary); color:var(--ui-surface); border-color:var(--ui-primary); }
+
+.view3d-bar { position:absolute; top:8px; left:8px; display:flex; flex-wrap:wrap; align-items:center; gap:4px; padding:4px; max-width:calc(100% - 16px);
+  background:color-mix(in srgb,var(--ui-surface) 88%,transparent); border:1px solid var(--ui-line); border-radius:var(--ui-radius); }
+.view3d-bar button { min-height:28px; padding:3px 9px; font-size:12px; }
+.view3d-bar label { display:inline-flex; align-items:center; gap:4px; margin:0 4px; font-size:12px; color:var(--ui-ink); }
+.view3d-bar input { accent-color:var(--ui-primary); }
+.view3d-sep { width:1px; align-self:stretch; background:var(--ui-line); margin:0 2px; }
+
+.view3d-review { position:absolute; top:52px; right:8px; bottom:34px; width:min(290px,42%); display:flex; flex-direction:column;
+  background:color-mix(in srgb,var(--ui-surface) 94%,transparent); border:1px solid var(--ui-line); border-radius:var(--ui-radius); padding:10px; }
+.review-hidden .view3d-review { display:none; }
+.view3d-review, .view3d-bar { z-index:2; }
+.view3d-review h2 { margin:0 0 4px; font-size:14px; }
+.view3d-summary { margin:0 0 8px; font-size:12px; line-height:1.4; color:var(--ui-muted); }
+.view3d-review ol { list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0; }
+.view3d-review li button { display:flex; gap:8px; width:100%; text-align:left; align-items:flex-start; padding:6px; margin:0 0 4px; border-color:transparent; background:transparent; min-height:0; }
+.view3d-review li button[aria-current=true] { border-color:var(--ui-primary); background:var(--ui-hover); }
+.view3d-review strong { display:block; font-size:12px; }
+.view3d-review small { display:block; font-size:11px; line-height:1.35; color:var(--ui-muted); }
+.view3d-num, .view3d-labels span { flex-shrink:0; display:inline-grid; place-items:center; min-width:20px; height:20px; padding:0 4px; border-radius:10px;
+  font:600 11px/1 system-ui,sans-serif; color:#fff; background:#c0392b; }
+[data-kind=stack] > .view3d-num, .view3d-labels [data-kind=stack] { background:#b9770e; }
+[data-kind=repeat] > .view3d-num, .view3d-labels [data-kind=repeat] { background:#6c5ce7; }
+
+.view3d-labels { position:absolute; inset:0; pointer-events:none; }
+.view3d-labels span { position:absolute; left:0; top:0; margin:-10px 0 0 -10px; box-shadow:0 0 0 2px rgba(255,255,255,.85); }
+.view3d-labels span.is-active { outline:3px solid var(--ui-primary); outline-offset:1px; }
+.view3d-help { position:absolute; left:10px; bottom:6px; margin:0; font-size:11px; color:var(--ui-muted); pointer-events:none;
+  background:color-mix(in srgb,var(--ui-background) 70%,transparent); padding:1px 6px; border-radius:4px; }
+.view3d-error { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); max-width:80%; padding:12px 16px; margin:0;
+  background:var(--ui-surface); border:1px solid var(--ui-danger); border-radius:var(--ui-radius); color:var(--ui-ink); }
+@media(max-width:700px) { .view3d-review { top:auto; left:8px; right:8px; width:auto; height:38%; } .view3d-help { display:none; } }
+@media(forced-colors:active) { .view3d-labels span { forced-color-adjust:none; } }

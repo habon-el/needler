@@ -21,6 +21,10 @@
    for(let i=0;i<5;i++){const x=12+i*9,y=7+i*5,w=96-i*18,h=50-i*10;if(kind==='contour')path(`M${x} ${y}h${w}v${h}h-${w}Z`);else path(`M${x} 32a${w/2} ${h/2} 0 1 0 ${w} 0a${w/2} ${h/2} 0 1 0 -${w} 0`)}
   }else if(kind==='stipple'){
    path('M12 12C44-2 28 28 14 26S8 52 30 52S52 36 38 26S50 3 68 12S62 32 60 40S84 62 94 46S70 22 100 12');
+  }else if(kind==='puff'){
+   path('M24 52C24 14 96 14 96 52',10,.18);
+   for(let x=28;x<=92;x+=4)path(`M${x} 52C${x} ${30+Math.abs(x-60)*.45} ${x+2} 22 ${x+2} 22`,1.6);
+   path('M18 52H102',1.2,.5);
   }else if(kind==='raised_satin'){
    for(let y=12;y<=52;y+=2.5){path(`M28 ${y} L92 ${y-3}`,4,.4);path(`M28 ${y-2} L92 ${y-5}`,2)}
   }else if(kind==='off'){path('M24 12H96V52H24Z',1,.25);path('M48 32H72',2)}

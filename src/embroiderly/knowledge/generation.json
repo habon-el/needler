@@ -1,12 +1,73 @@
 {
-  "version": 1,
+  "version": 2,
   "seed_data": true,
   "rows": [{
     "id": "fill.twill",
     "fabric": "twill",
+    "label": "Twill / canvas (default)",
     "row_spacing_mm": 0.4,
+    "satin_pull_mm": 0.1,
+    "fill_underlay": true,
+    "underlay_row_spacing_mm": 0,
+    "max_stitch_length_mm": 3.0,
+    "lock_scale_mm": 0.6,
+    "stabilizer": "Medium tear-away.",
     "verified_by_user": false,
     "source_note": "User-approved source-generation correction, 2026-10-08. Twill starting preset; physical sew-out pending. Other fabric presets are not inferred from rendering textures.",
     "previous_value": {"value": 0.25, "unit": "mm", "file": "src/embroiderly/engine.py", "line": 93, "date": "2026-10-08", "note": "No row spacing passed; Ink/Stitch v3.2.2 fill_stitch.py default was 0.25 mm."}
+  }, {
+    "id": "fill.cotton", "fabric": "cotton", "label": "Cotton / light woven",
+    "row_spacing_mm": 0.4, "satin_pull_mm": 0.2, "fill_underlay": true, "underlay_row_spacing_mm": 0,
+    "max_stitch_length_mm": 3.0, "lock_scale_mm": 0.6, "stabilizer": "Light to medium tear-away.",
+    "verified_by_user": false,
+    "source_note": "Auto Fabric starting values, 2026-10-20: Wilcom EmbroideryStudio 'About auto fabrics' (standard density and pull, minimal underlay) and its pull guideline of about 0.20 mm for cotton. Physical sew-out pending."
+  }, {
+    "id": "fill.denim", "fabric": "denim", "label": "Denim / heavy twill",
+    "row_spacing_mm": 0.45, "satin_pull_mm": 0.1, "fill_underlay": true, "underlay_row_spacing_mm": 0,
+    "max_stitch_length_mm": 3.5, "lock_scale_mm": 0.6, "stabilizer": "Medium tear-away.",
+    "verified_by_user": false,
+    "source_note": "Auto Fabric starting values, 2026-10-20: Wilcom 'About auto fabrics' (density reduced, minimal pull compensation, longer stitches). Physical sew-out pending."
+  }, {
+    "id": "fill.stretch", "fabric": "stretch_knit", "label": "T-shirt / stretch knit",
+    "row_spacing_mm": 0.43, "satin_pull_mm": 0.35, "fill_underlay": true, "underlay_row_spacing_mm": 1.5,
+    "max_stitch_length_mm": 3.0, "lock_scale_mm": 0.6, "stabilizer": "Cut-away (no-show mesh for light shirts). Never tear-away on knits.",
+    "verified_by_user": false,
+    "source_note": "Auto Fabric starting values, 2026-10-20: Wilcom 'About auto fabrics' (pull increased, extra underlay, density slightly reduced); Hatch blog: cut-away for knits. Physical sew-out pending."
+  }, {
+    "id": "fill.pique", "fabric": "pique", "label": "Polo / piqué knit",
+    "row_spacing_mm": 0.42, "satin_pull_mm": 0.3, "fill_underlay": true, "underlay_row_spacing_mm": 1.5,
+    "max_stitch_length_mm": 3.0, "lock_scale_mm": 0.6, "stabilizer": "Cut-away; a water-soluble topping keeps stitches out of the piqué texture.",
+    "verified_by_user": false,
+    "source_note": "Auto Fabric starting values, 2026-10-20: Wilcom 'About auto fabrics' (extra edge and zigzag underlay, density slightly looser). Physical sew-out pending."
+  }, {
+    "id": "fill.fleece", "fabric": "fleece", "label": "Fleece / sweatshirt",
+    "row_spacing_mm": 0.45, "satin_pull_mm": 0.4, "fill_underlay": true, "underlay_row_spacing_mm": 1.2,
+    "max_stitch_length_mm": 3.0, "lock_scale_mm": 0.6, "stabilizer": "Cut-away plus water-soluble topping so stitches sit on the pile.",
+    "verified_by_user": false,
+    "source_note": "Auto Fabric starting values, 2026-10-20: Wilcom 'About auto fabrics' (wider spacing, heavy underlay, pull increased) and its pull guideline of about 0.40 mm for fleece. Physical sew-out pending."
+  }, {
+    "id": "fill.towel", "fabric": "towel", "label": "Towel / terry",
+    "row_spacing_mm": 0.38, "satin_pull_mm": 0.35, "fill_underlay": true, "underlay_row_spacing_mm": 1.0,
+    "max_stitch_length_mm": 3.0, "lock_scale_mm": 0.6, "stabilizer": "Tear-away plus water-soluble topping; a dense underlay flattens the loops.",
+    "verified_by_user": false,
+    "source_note": "Auto Fabric starting values, 2026-10-20: pile fabrics need topping and a flattening underlay (backing.json pile.topping); values extrapolated from the fleece preset. Physical sew-out pending."
+  }, {
+    "id": "fill.silk", "fabric": "satin_silk", "label": "Satin / silk / fine",
+    "row_spacing_mm": 0.45, "satin_pull_mm": 0.1, "fill_underlay": false, "underlay_row_spacing_mm": 0,
+    "max_stitch_length_mm": 2.5, "lock_scale_mm": 0.5, "stabilizer": "Light cut-away or fusible; use a fine needle.",
+    "verified_by_user": false,
+    "source_note": "Auto Fabric starting values, 2026-10-20: Wilcom 'About auto fabrics' (density and pull reduced, fine stitch lengths, minimal underlay). Physical sew-out pending."
+  }, {
+    "id": "fill.nylon", "fabric": "nylon", "label": "Nylon / sports fabric",
+    "row_spacing_mm": 0.4, "satin_pull_mm": 0.25, "fill_underlay": true, "underlay_row_spacing_mm": 0,
+    "max_stitch_length_mm": 2.5, "lock_scale_mm": 0.6, "stabilizer": "Light cut-away; avoid too many needle holes close together.",
+    "verified_by_user": false,
+    "source_note": "Auto Fabric starting values, 2026-10-20: Wilcom 'About auto fabrics' (extra edge underlay, moderate pull, shorter stitches). Physical sew-out pending."
+  }, {
+    "id": "fill.cap", "fabric": "cap", "label": "Cap / structured",
+    "row_spacing_mm": 0.36, "satin_pull_mm": 0.25, "fill_underlay": true, "underlay_row_spacing_mm": 1.5,
+    "max_stitch_length_mm": 3.0, "lock_scale_mm": 0.8, "stabilizer": "Cap backing (firm tear-away).",
+    "verified_by_user": false,
+    "source_note": "Auto Fabric starting values, 2026-10-20: Wilcom 'About auto fabrics' (tighter density, strong edge underlay, increased tie-offs). Physical sew-out pending."
   }]
 }

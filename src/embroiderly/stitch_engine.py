@@ -21,6 +21,7 @@ VERSION = 1
 MODULES = ('stitch_engine.py', 'stitch_fills.py', 'stitch_satin.py', 'stitch_paths.py', 'svg_geometry.py',
            'satin_font.py', 'line_art.py')
 DEFAULT_LOCK = '1 -1 1 -1'
+PUFF_LOCK = '1 -1 1 -1 1 -1'
 
 
 def fingerprint():
@@ -61,11 +62,11 @@ def _seed(node, index):
     return int(hashlib.sha256((node.get('id') or str(index)).encode()).hexdigest()[:8], 16)
 
 
-def _lock_positions(node, end, scale_default):
+def _lock_positions(node, end, scale_default, default=DEFAULT_LOCK):
     kind = _attr(node, 'lock_'+end, 'default')
     if kind == 'none':
         return []
-    pattern = _attr(node, 'lock_custom_'+end, DEFAULT_LOCK) if kind == 'custom' else DEFAULT_LOCK
+    pattern = _attr(node, 'lock_custom_'+end, default) if kind == 'custom' else default
     if any(c.isalpha() for c in pattern):
         # SVG-path form: x coordinates are positions along the path in mm;
         # the final segment only orients the pattern and is not sewn.
@@ -149,26 +150,72 @@ def _with_locks(points, start_lock, end_lock):
 class Block:
     """One sewn run of one element: thread colour, points and routing hints."""
 
-    def __init__(self, colour, points, node, trim_after, lockable=True):
+    def __init__(self, colour, points, node, trim_after, lockable=True, puff=False, placement=False):
         self.colour, self.points, self.node = colour, points, node
-        self.trim_after, self.lockable = trim_after, lockable
+        self.trim_after, self.lockable, self.puff = trim_after, lockable, puff
+        # Placement: the outline sewn on the fabric just before the stop for foam.
+        self.placement = placement
+        # The area this block covers (fills); branching travels inside such areas.
+        self.region = None
 
 
-def _satin_area(shape, spacing, pull, min_len):
+def _satin_area(shape, spacing, pull, min_len, walk=True, columns=None, puff=False, join=True):
     """Narrow or small areas as satin columns along their centre lines (the way
     small shapes and lettering are digitized), joined by inside travel."""
     from .satin_font import area_columns
     runs = []
-    for a, b, closed, width in area_columns(shape):
+    for a, b, closed, width in (columns if columns is not None else area_columns(shape)):
         a, b = list(a), list(b)
         try:
-            points = satin([(a, closed), (b, closed)], spacing, pull, center_walk=2*width >= 1.0,
-                           indexed=len(a) == len(b))
+            points = satin([(a, closed), (b, closed)], spacing, pull, center_walk=walk and 2*width >= 1.0,
+                           indexed=len(a) == len(b), puff=puff, outline=shape if puff else None)
         except ValueError:
             continue
         if len(points) >= 2:
             runs.append(points)
-    return join_runs(runs, shape, 1.5) if runs else []
+    return (join_runs(runs, shape, 1.5) if join else runs) if runs else []
+
+
+# 3D puff: satin over foam. Columns must be about as wide as the foam is thick,
+# or the foam leans and pokes out of the sides; and narrow enough that one
+# stitch crosses them within the 7 mm machine limit.
+PUFF_MAX_MM = 6.0
+
+
+def puff_min_mm(foam_mm):
+    """Narrowest column that holds foam of this thickness: 2 mm for 2 mm foam, 3 mm for 3 mm."""
+    return max(2.0, min(3.0, float(foam_mm)))
+
+
+def puff_outline(shape):
+    """The rings of an area: placed before the foam, perforated after it."""
+    rings = []
+    for polygon in getattr(shape, 'geoms', [shape]):
+        rings += [list(polygon.exterior.coords)] + [list(r.coords) for r in polygon.interiors]
+    return [ring for ring in rings if len(ring) >= 3]
+
+
+def _starting_near(ring, point):
+    ring = list(ring[:-1]) if ring[0] == ring[-1] else list(ring)
+    here = min(range(len(ring)), key=lambda i: math.dist(ring[i], point))
+    return ring[here:] + ring[:here+1]
+
+
+def _puff_area(shape, spacing, pull, min_len, foam_mm=3.0):
+    """First a 1 mm running stitch around the shape tacks the foam down and
+    perforates it so the rest tears away; then each column with its own
+    tack-down walk, end caps, zigzag underlay and dense satin (stitch_satin).
+    Returns None when the shape cannot puff."""
+    from .satin_font import area_columns
+    columns = area_columns(shape)
+    widths = [2*w for *_, w in columns]
+    if not columns or max(widths) > PUFF_MAX_MM or max(widths) < puff_min_mm(foam_mm):
+        return None
+    runs = _satin_area(shape, spacing, pull, min_len, walk=False, columns=columns, puff=True, join=False)
+    if not runs:
+        return None
+    rings = [running(_starting_near(ring, runs[0][0]), 1.0, .05) for ring in puff_outline(shape)]
+    return join_runs(rings + runs, shape, 1.5)
 
 
 def _element_blocks(node, paths, style, scale, index, min_len):
@@ -179,10 +226,11 @@ def _element_blocks(node, paths, style, scale, index, min_len):
         return []
     trim = _bool(node, 'trim_after')
     blocks = []
-    def emit(colour, runs):
+    def emit(colour, runs, puff=False, placement=False):
         runs = [r for r in runs if len(r) >= 2]
         for i, run in enumerate(runs):
-            blocks.append(Block(colour, run, node, trim if i == len(runs)-1 else True))
+            blocks.append(Block(colour, run, node, trim if i == len(runs)-1 else True, puff=puff,
+                                placement=placement))
     satin_column = _bool(node, 'satin_column')
     if fill and not satin_column:
         shape = fill_shape([(pts, True) for pts, _ in mm], 'evenodd' if style.get('fill-rule') == 'evenodd' else 'nonzero')
@@ -202,6 +250,20 @@ def _element_blocks(node, paths, style, scale, index, min_len):
                 runs = _satin_area(shape, max(.2, _float(node, 'zigzag_spacing_mm', .4)),
                                    _float(node, 'pull_compensation_mm', 0), min_len) or \
                     tatami(shape, _float(node, 'angle', 0), spacing, 3.0, 4, min_len)
+            elif method == 'puff_satin':
+                runs = _puff_area(shape, max(.18, _float(node, 'zigzag_spacing_mm', .22)),
+                                  _float(node, 'pull_compensation_mm', .45), min_len,
+                                  _float(node, 'puff_foam_mm', 3.0))
+                if runs:
+                    # The placement line shows where the foam goes; it is sewn on the
+                    # fabric before the stop and covered by the satin afterwards.
+                    inside = shape.buffer(-.3)
+                    emit(fill, [running(ring, 2.5, .1) for ring in puff_outline(inside if not inside.is_empty else shape)],
+                         placement=True)
+                    emit(fill, runs, puff=True)
+                    return blocks
+                # Too narrow or too wide to puff: sewn flat, before the foam.
+                runs = tatami(shape, _float(node, 'angle', 0), spacing, 3.0, 4, min_len)
             elif method == 'meander_fill':
                 cell = max(.6, _float(node, 'meander_scale_percent', 100)/100*10)
                 runs = meander(shape, cell, length, min_len, _seed(node, index), tolerance=tolerance)
@@ -216,6 +278,8 @@ def _element_blocks(node, paths, style, scale, index, min_len):
                               underlay_inset=_float(node, 'fill_underlay_inset_mm', .3),
                               underlay_max_len=max(1.0, _float(node, 'fill_underlay_max_stitch_length_mm', 3.0)))
             emit(fill, runs)
+        for block in blocks:
+            block.region = shape
     if stroke:
         if satin_column and len(mm) >= 2:
             pull = [float(v) for v in str(_attr(node, 'pull_compensation_mm', '0')).split() if v] or [0.0]
@@ -224,8 +288,9 @@ def _element_blocks(node, paths, style, scale, index, min_len):
                            contour_underlay=_bool(node, 'contour_underlay'),
                            zigzag_underlay=_bool(node, 'zigzag_underlay'),
                            walk_repeats=max(1, int(_float(node, 'center_walk_underlay_repeats', 2))),
-                           indexed=_attr(node, 'satin_pairs') == 'indexed')
-            emit(stroke, [points])
+                           indexed=_attr(node, 'satin_pairs') == 'indexed', puff=_bool(node, 'puff'),
+                           caps=str(_attr(node, 'puff_caps', 'start end')).split())
+            emit(stroke, [points], puff=_bool(node, 'puff'))
         else:
             length = max(.3, _float(node, 'running_stitch_length_mm', 2.5))
             tolerance = max(0.0, _float(node, 'running_stitch_tolerance_mm', .2))
@@ -239,8 +304,60 @@ def _element_blocks(node, paths, style, scale, index, min_len):
                 if not region.is_empty:
                     runs = join_runs(runs, region, length)
             runs = [running(run, length, tolerance) for run in runs]
-            emit(stroke, [bean(run, repeats) for run in runs if len(run) >= 2])
+            emit(stroke, [bean(run, repeats) for run in runs if len(run) >= 2], puff=_bool(node, 'puff'),
+                 placement=_bool(node, 'puff_placement'))
     return blocks
+
+
+BRANCH_MAX_MM = 25.0   # longest travel run that replaces a cut
+
+
+def _branch(blocks):
+    """Branching, as professional software does it: between two parts in the same
+    thread, travel with short running stitches inside the area just sewn or under
+    areas sewn later, instead of cutting the thread. Same-colour travel on its own
+    fill barely shows; travel under later areas is covered. Travel never leaves
+    sewn areas, so the release gate still sees no stitch over empty fabric."""
+    from shapely.geometry import LineString
+    from shapely.prepared import prep
+    from shapely.ops import unary_union
+    from .stitch_paths import Travel
+    prepared = {}
+    def fast(region):
+        key = id(region)
+        if key not in prepared:
+            prepared[key] = prep(region)
+        return prepared[key]
+    for i in range(len(blocks)-1):
+        prev, nxt = blocks[i], blocks[i+1]
+        if not prev.trim_after or prev.region is None or nxt.region is None:
+            continue
+        if prev.colour != nxt.colour or prev.puff != nxt.puff or prev.placement != nxt.placement:
+            continue
+        a, b = tuple(prev.points[-1]), tuple(nxt.points[0])
+        if math.dist(a, b) > BRANCH_MAX_MM:
+            continue
+        route = None
+        if math.dist(a, b) > 1e-6:
+            # Straight: covered by the area just sewn plus areas sewn later along the line.
+            line = LineString([a, b])
+            strip = line.buffer(.5)
+            hits = [prev.region] + [k.region for k in blocks[i+1:] if k.region is not None and fast(k.region).intersects(line)]
+            cover = unary_union([r.intersection(strip) for r in {id(r): r for r in hits}.values()])
+            if cover.buffer(.02).contains(line):
+                route = [a, b]
+            elif prev.region.distance(nxt.region) < .05:
+                # Touching parts: travel around inside the two of them.
+                route = Travel(unary_union([prev.region, nxt.region])).route(a, b, direct_mm=0)
+                if route is not None and path_length(route) > 1.6*math.dist(a, b)+5:
+                    route = None
+        else:
+            route = [a, b]
+        if route is None:
+            continue
+        travel = running(route, 2.0, 0)
+        nxt.points = [*travel[:-1], *nxt.points]
+        prev.trim_after = False
 
 
 def generate(source):
@@ -255,7 +372,10 @@ def generate(source):
             except ValueError:
                 pass
     collapse = 3.0
+    branching = False
     for node in root.iter():
+        if sg.local(node.tag) == 'branching' and node.text:
+            branching = node.text.strip() == 'true'
         if sg.local(node.tag) == 'collapse_len_mm' and node.text:
             try:
                 collapse = float(node.text)
@@ -267,11 +387,18 @@ def generate(source):
         made = _element_blocks(node, paths, style, scale, index, min_len)
         for block in made:
             block.min_len = min_len
-            block.start_lock = _lock_positions(node, 'start', .6)
-            block.end_lock = _lock_positions(node, 'end', .6)
+            # Over foam, tie-offs are six 1 mm stitches: short locks pull out of the foam.
+            lock_mm, pattern = (1.0, PUFF_LOCK) if block.puff else (.6, DEFAULT_LOCK)
+            block.start_lock = _lock_positions(node, 'start', lock_mm, pattern)
+            block.end_lock = _lock_positions(node, 'end', lock_mm, pattern)
         blocks.extend(made)
     if not blocks:
         raise ValueError('The design has no stitchable objects.')
+    # Flat parts, then the foam placement lines, then (after the stop) everything over foam.
+    blocks = [b for b in blocks if not b.puff and not b.placement] + \
+        [b for b in blocks if b.placement and not b.puff] + [b for b in blocks if b.puff]
+    if branching:
+        _branch(blocks)
     origin = sg.origin(root)
     if origin is not None:
         origin = (origin[0]*scale, origin[1]*scale)
@@ -282,16 +409,18 @@ def generate(source):
 
 
 def assemble(blocks, origin, collapse):
-    threads, stitches = [], []
+    threads, stitches, puff_threads = [], [], []
     def put(point, command):
         stitches.append([round((point[0]-origin[0])*10, 3), round((point[1]-origin[1])*10, 3), command])
-    needle = None; colour = None; previous = None
+    needle = None; colour = None; previous = None; over_foam = False
     for i, block in enumerate(blocks):
         points = enforce_min(block.points, block.min_len)
         if len(points) < 2:
             continue
         follower = next((b for b in blocks[i+1:] if len(b.points) >= 2), None)
-        change = colour != block.colour
+        # The first puff block always changes thread, even to the same colour:
+        # the machine stops so the foam can be laid on the fabric.
+        change = colour != block.colour or block.puff != over_foam
         cut = previous is not None and (change or previous.trim_after)
         gap = needle is not None and math.dist(needle, points[0])
         # Short hops inside one colour are sewn directly; longer ones jump.
@@ -309,7 +438,9 @@ def assemble(blocks, origin, collapse):
             if previous is not None:
                 put(needle, 'COLOR_CHANGE')
             threads.append(block.colour)
-            colour = block.colour
+            colour, over_foam = block.colour, block.puff
+            if block.puff:
+                puff_threads.append(len(threads)-1)
         if joined:
             # Absorb penetrations closer than the minimum to the needle; a
             # block that is entirely within that distance is not sewn at all.
@@ -335,7 +466,8 @@ def assemble(blocks, origin, collapse):
     put(needle, 'END')
     return {'threadlist': [dict(color=c, description=None, catalog_number=None, details=None,
                                 brand=None, chart=None, weight=None) for c in threads],
-            'stitches': _tidy(stitches, min(b.min_len for b in blocks)), 'extras': {}}
+            'stitches': _tidy(stitches, min(b.min_len for b in blocks)),
+            'extras': {'puff_threads': puff_threads} if puff_threads else {}}
 
 
 def _tidy(stitches, minimum):

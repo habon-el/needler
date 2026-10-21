@@ -147,8 +147,67 @@ def indexed_pairs(a, b, spacing):
     return out
 
 
+# 3D puff over foam, after Wilcom's puff method: short running stitches tack the
+# foam, narrow caps close the open ends, a zigzag underlay holds and cuts the
+# foam, then dense satin covers all of it. One stitch never crosses more than
+# PUFF_LONGEST_MM: a split stitch would cut the foam into loose pieces.
+PUFF_TACK_MM, PUFF_ZIGZAG_MM, PUFF_CAP_MM, PUFF_LONGEST_MM = 1.7, 1.8, 1.0, 6.9
+
+
+def _cap(p, q, inward, depth, spacing):
+    """A narrow column across the open end p-q: short stitches from the end edge
+    into the column, side by side, so the needle cuts the foam along the end."""
+    count = max(2, int(math.ceil(math.dist(p, q)/spacing))+1)
+    out = []
+    for k in range(count):
+        e = lerp(p, q, k/(count-1))
+        i = (e[0]+inward[0]*depth, e[1]+inward[1]*depth)
+        out.extend([i, e] if k % 2 else [e, i])
+    return out
+
+
+def _puff_satin(matched, pull, spacing, closed, pairs_at, outline=None, caps=('start', 'end')):
+    longest = max((math.dist(p, q) for p, q in matched), default=0)
+    pull = max(pull) if isinstance(pull, (list, tuple)) else pull
+    # The given pull is the outer edge; stay 0.05 mm inside it so rounding to the
+    # 0.1 mm machine grid never puts a needle hole past the edge.
+    pull = max(0.0, pull-.05)
+    # Pull compensation keeps the satin from narrowing over the foam, within the machine limit.
+    pull = max(0.0, min(pull, (PUFF_LONGEST_MM-longest)/2))
+    final = compensate(matched, pull)
+    middle = [lerp(p, q, .5) for p, q in pairs_at(PUFF_TACK_MM)]
+    points = running(middle, PUFF_TACK_MM, 0)
+    def cap(index, step):
+        p, q = final[index]
+        if ('start' if index == 0 else 'end') not in caps:
+            return []
+        if closed or math.dist(p, q) < 1.0 or len(final) < 3:
+            return []
+        m, far = lerp(p, q, .5), None
+        for r, s in final[index::step]:
+            if math.dist(m, lerp(r, s, .5)) >= PUFF_CAP_MM:
+                far = lerp(r, s, .5); break
+        if far is None:
+            return []
+        d = math.dist(m, far)
+        # Where the column joins another inside the shape there is no open end to close:
+        # a cap there only piles thread on the joint.
+        if outline is not None and outline.contains(Point(m[0]-(far[0]-m[0])/d*.6, m[1]-(far[1]-m[1])/d*.6)):
+            return []
+        return _cap(p, q, ((far[0]-m[0])/d, (far[1]-m[1])/d), PUFF_CAP_MM, max(spacing, .3))
+    points += cap(-1, -1)
+    sparse = pairs_at(PUFF_ZIGZAG_MM)[::-1]
+    for i, (p, q) in enumerate(sparse):
+        points.extend([lerp(p, q, .15), lerp(q, p, .15)] if i % 2 == 0 else [lerp(q, p, .15), lerp(p, q, .15)])
+    points += cap(0, 1)
+    for p, q in final:
+        points.extend((p, q))
+    return points
+
+
 def satin(subpaths, spacing=0.4, pull=0.0, center_walk=False, contour_underlay=False,
-          zigzag_underlay=False, underlay_length=1.5, walk_repeats=2, indexed=False):
+          zigzag_underlay=False, underlay_length=1.5, walk_repeats=2, indexed=False, puff=False, outline=None,
+          caps=('start', 'end')):
     if indexed and len(subpaths) >= 2 and len(subpaths[0][0]) == len(subpaths[1][0]) >= 2:
         a, b, rungs = [tuple(p) for p in subpaths[0][0]], [tuple(p) for p in subpaths[1][0]], []
         matched = indexed_pairs(a, b, spacing)
@@ -157,6 +216,10 @@ def satin(subpaths, spacing=0.4, pull=0.0, center_walk=False, contour_underlay=F
         a, b, rungs = choose_rails(subpaths)
         matched = pairs(a, b, rungs, spacing)
         pairs_at = lambda step: pairs(a, b, rungs, step)
+    if puff:
+        # Tack-down walk to the far end, cap, zigzag back, cap, satin to the far end:
+        # the column still ends where plain satin does.
+        return _puff_satin(matched, pull, spacing, bool(subpaths[0][1]), pairs_at, outline, caps)
     points = []
     if center_walk:
         middle = [lerp(p, q, .5) for p, q in pairs_at(underlay_length)]

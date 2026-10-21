@@ -355,7 +355,13 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
                     palette[i]=palette[j];break
     for a,b in o.get("merges",{}).items():
         if a in locks: raise ValueError("Unlock a colour before merging it.")
-        palette[np.all(palette==colour(a),axis=1)]=colour(b)
+        # Exact match first; otherwise the palette colour within a small distance, because
+        # other settings (smoothing, colour count) shift the palette slightly between runs.
+        hit=np.all(palette==colour(a),axis=1)
+        if not hit.any() and len(palette):
+            gap=np.abs(palette.astype(int)-np.array(colour(a),int)).sum(1)
+            hit=(gap==gap.min())&(gap<=36)
+        palette[hit]=colour(b)
     palette,remap=unique_rows(palette,return_inverse=True)
     labels[mask]=remap[labels[mask]]
     detail_stages["merge"]=(detail_premerge,detail_rgb())

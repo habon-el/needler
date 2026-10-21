@@ -22,11 +22,11 @@ CHARACTERS = ''.join(chr(c) for c in range(33, 127))+'ÀÁÂÃÄÅÇÈÉÊËÌÍ
 FONTS = {
     'small_font': dict(name='Needler Sans', label='Needler Sans (DejaVu Sans Bold)',
                        file='dejavu/DejaVuSans-Bold.ttf', package='fonts-dejavu-core',
-                       size=4.0, min_scale=.9, max_scale=3.8, tracking=.06,
+                       size=4.0, min_scale=.9, max_scale=3.8, puff_max_scale=5.5, tracking=.06,
                        zigzag_mm=.38, pull_mm=.1),
     'lato_black': dict(name='Needler Lato', label='Needler Lato (Lato Black)',
                        file='lato/Lato-Black.ttf', package='fonts-lato',
-                       size=4.0, min_scale=1.0, max_scale=3.8, tracking=.07,
+                       size=4.0, min_scale=1.0, max_scale=3.8, puff_max_scale=6.5, tracking=.07,
                        zigzag_mm=.38, pull_mm=.1),
 }
 
@@ -128,8 +128,28 @@ def _path(points):
     return 'M '+' L '.join(f'{x:.4f},{y:.4f}' for x, y in points)
 
 
-def layout(text, key, scale_percent, align='left', colour='#000000'):
-    """SVG of satin-column lettering; user units are CSS px (96 per inch)."""
+def _joins(a, b, index, step, others):
+    """Whether the column end at `index` runs into another stroke: a point just
+    beyond the end lies inside one."""
+    from shapely.geometry import Point
+    if others.is_empty or len(a) < 2:
+        return False
+    m = _lerp(a[index], b[index], .5)
+    n = _lerp(a[index+step], b[index+step], .5)
+    d = math.dist(m, n)
+    if d < 1e-9:
+        return False
+    return others.buffer(1e-6).contains(Point(m[0]+(m[0]-n[0])/d*.6/PX_MM, m[1]+(m[1]-n[1])/d*.6/PX_MM))
+
+
+def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0):
+    """SVG of satin-column lettering; user units are CSS px (96 per inch).
+    puff: letters over foam (see stitch_satin._puff_satin). Each letter has a
+    placement line sewn before the stop for the foam, then a perforation line
+    just inside it that tacks the foam down, then its columns."""
+    from .stitch_engine import PUFF_MAX_MM, puff_min_mm
+    puff_columns = (puff_min_mm(foam_mm), PUFF_MAX_MM)
+    puff_pull = '.35' if foam_mm < 2.5 else '.45'  # outer edge; sewn 0.05 mm inside
     data = FONTS[key]
     size_mm = data['size']*scale_percent/100
     em_px = size_mm/cap_height(key)/PX_MM
@@ -171,9 +191,11 @@ def layout(text, key, scale_percent, align='left', colour='#000000'):
             place = lambda p: (shift+x+p[0]*em_px, baseline+p[1]*em_px)
             travel = None
             nodes = []
+            sewn_columns, column_nodes = [], []
             previous_end = None
             for a, b, closed, width_em in columns:
                 ra, rb = [place(p) for p in a], [place(p) for p in b]
+                sewn_columns.append((ra, rb))
                 walk = width_em*2*em_px*PX_MM >= .9
                 start = _lerp(ra[0], rb[0], .5) if walk else _lerp(ra[0], rb[0], .3)
                 if previous_end is not None:
@@ -192,6 +214,7 @@ def layout(text, key, scale_percent, align='left', colour='#000000'):
                         # outer edge, so the needle first steps back inside.
                         count += 1
                         nodes.append(ET.SubElement(group, f'{{{SVG_NS}}}path', {
+                            **({f'{{{INK_NS}}}puff': 'true'} if puff else {}),
                             'id': f'travel{count}', 'd': _path(route),
                             'style': f'fill:none;stroke:{colour};stroke-width:{.2/PX_MM:.3f}',
                             f'{{{INK_NS}}}stroke_method': 'running_stitch',
@@ -200,6 +223,12 @@ def layout(text, key, scale_percent, align='left', colour='#000000'):
                 previous_end = _lerp(rb[-1], ra[-1], .3)
                 d = ' '.join([_path(ra), _path(rb)])
                 width_mm = width_em*2*em_px*PX_MM
+                if puff and not puff_columns[0] <= width_mm <= puff_columns[1]:
+                    raise ValueError(f'3D puff on {foam_mm:g} mm foam needs letter strokes {puff_columns[0]:g}–{puff_columns[1]:g} mm wide; '
+                                     f'“{char}” has a {width_mm:.1f} mm stroke at this size. '
+                                     + (('Use a larger size or a bolder font' + (' or 2 mm foam' if foam_mm > 2 else '')
+                                         + ': thinner strokes cannot hold the foam down.')
+                                        if width_mm < puff_columns[0] else 'Use a smaller size.'))
                 count += 1
                 attributes = {
                     'id': f'column{count}', 'd': d,
@@ -212,8 +241,51 @@ def layout(text, key, scale_percent, align='left', colour='#000000'):
                 if len(ra) == len(rb):
                     # Rails are matched cross-sections: stitch vertex i to vertex i.
                     attributes[f'{{{INK_NS}}}satin_pairs'] = 'indexed'
+                if puff:
+                    attributes.update({f'{{{INK_NS}}}puff': 'true', f'{{{INK_NS}}}zigzag_spacing_mm': '.22',
+                                       f'{{{INK_NS}}}pull_compensation_mm': puff_pull})
                 node = ET.SubElement(group, f'{{{SVG_NS}}}path', attributes)
                 nodes.append(node)
+                column_nodes.append(node)
+            if puff and nodes:
+                # The sewn columns, not the font outline: corners the columns leave
+                # open stay unsewn, and the perforation must stay inside the stitches.
+                from shapely.geometry import Polygon
+                from shapely.ops import unary_union
+                shape = unary_union([Polygon(list(a) + list(b)[::-1]).buffer(0) for a, b in sewn_columns])
+                # Caps only on open ends: an end that runs into another stroke of the
+                # letter is a join, and a cap there only piles thread on it.
+                for k, ((a, b), column) in enumerate(zip(sewn_columns, column_nodes)):
+                    others = unary_union([Polygon(list(p) + list(q)[::-1]).buffer(0)
+                                          for j, (p, q) in enumerate(sewn_columns) if j != k])
+                    column.set(f'{{{INK_NS}}}puff_caps', ' '.join(
+                        end for end, index, step in (('start', 0, 1), ('end', -1, -1))
+                        if not _joins(a, b, index, step, others)) or 'none')
+                inner = shape.buffer(-.1/PX_MM)
+                rings = [list(p.exterior.coords) + [p.exterior.coords[0]] for p in getattr(inner, 'geoms', [inner]) if not p.is_empty]
+                first = _lerp(sewn_columns[0][0][0], sewn_columns[0][1][0], .5)
+                placement = shape.buffer(-.3/PX_MM)
+                placement = [list(p.exterior.coords) for p in getattr(placement, 'geoms', [placement]) if not p.is_empty] or rings
+                for index, ring in enumerate(placement):
+                    # Sewn on the fabric before the stop: where to lay the foam.
+                    count += 1
+                    ET.SubElement(group, f'{{{SVG_NS}}}path', {
+                        'id': f'placement{count}', 'd': _path(ring),
+                        'style': f'fill:none;stroke:{colour};stroke-width:{.2/PX_MM:.3f}',
+                        f'{{{INK_NS}}}stroke_method': 'running_stitch', f'{{{INK_NS}}}puff_placement': 'true',
+                        f'{{{INK_NS}}}running_stitch_length_mm': '2.5', f'{{{INK_NS}}}trim_after': 'true',
+                        f'{{{INK_NS}}}running_stitch_tolerance_mm': '.1'})
+                for index, ring in enumerate(rings):
+                    # Tack the foam down first, starting and ending beside the first column.
+                    here = min(range(len(ring)-1), key=lambda i: math.dist(ring[i], first))
+                    ring = ring[here:-1] + ring[:here+1]
+                    count += 1
+                    group.insert(index, ET.Element(f'{{{SVG_NS}}}path', {
+                        'id': f'perforate{count}', 'd': _path(ring),
+                        'style': f'fill:none;stroke:{colour};stroke-width:{.2/PX_MM:.3f}',
+                        f'{{{INK_NS}}}stroke_method': 'running_stitch', f'{{{INK_NS}}}puff': 'true',
+                        f'{{{INK_NS}}}running_stitch_length_mm': '1.0',
+                        f'{{{INK_NS}}}running_stitch_tolerance_mm': '0'}))
             if nodes:
                 nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
     return ET.tostring(root, encoding='unicode')

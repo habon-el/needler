@@ -41,7 +41,14 @@ document.addEventListener('DOMContentLoaded', () => {
  $('rulerEditSize').onclick=()=>{$('nativeHeight').scrollIntoView({block:'center'});$('nativeHeight').focus();};
  let current=null,version=0,loading=false,checking=false,dirty=false,history=[],future=[],snapshot;
  const values=()=>window.nativeLettering.values();
- function assign(recipe){for(const [id,key] of Object.entries(fields))$(id).value=recipe[key];snapshot=JSON.stringify(values());}
+ function assign(recipe){
+  for(const [id,key] of Object.entries(fields))$(id).value=recipe[key];snapshot=JSON.stringify(values());
+  // 3D puff lives in puff-controls.js, which may start after this file.
+  // Only the size range follows; no input event, so the loaded check stays valid.
+  const puff=()=>{window.NativePuff.set(recipe.puff,recipe.puff_foam_mm);const option=$('nativeFont').selectedOptions[0];
+   if(recipe.puff&&option?.dataset.puffMax)$('nativeHeight').max=option.dataset.puffMax;snapshot=JSON.stringify(values());};
+  if(window.NativePuff)puff();else setTimeout(()=>window.NativePuff&&puff(),0);
+ }
  function status(message){$('status').textContent=message;}
  function buttons(){
   $('stitch').disabled=checking||loading;

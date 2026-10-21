@@ -36,8 +36,12 @@ def recipe(body):
     colour = body.get('colour', '#202020')
     if not isinstance(colour, str) or not re.fullmatch(r'#[0-9a-fA-F]{6}', colour):
         raise ValueError('Choose a thread colour.')
-    return dict(text=text, font=body['font'], height_mm=float(body['height_mm']),
-                align=align, available_width_mm=width, colour=colour.lower())
+    settings = dict(text=text, font=body['font'], height_mm=float(body['height_mm']),
+                    align=align, available_width_mm=width, colour=colour.lower())
+    if body.get('puff') is True:
+        settings['puff'] = True
+        settings['puff_foam_mm'] = small_lettering.puff_foam(body)
+    return settings
 
 
 def identity(settings):
@@ -167,7 +171,8 @@ def register(app, root):
     def lettering_font_limits():
         fonts = small_lettering.fonts()
         return dict(native_fonts=list(fonts.items()),
-                    native_font_sizes={key: small_lettering.size_limits(font) for key, font in fonts.items()})
+                    native_font_sizes={key: small_lettering.size_limits(font) for key, font in fonts.items()},
+                    native_puff_sizes={key: small_lettering.size_limits(font, True) for key, font in fonts.items()})
 
 
     def folder_for(key):

@@ -1,0 +1,112 @@
+/* Studio layout: canvas owns the space; docks collapse and resize.
+   Same --ui-* tokens. Loaded last, so it overrides older fixed heights. */
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+
+@media(min-width:901px) {
+  main.studio-layout { display:grid; grid-template-rows:auto minmax(0,1fr) auto; height:100dvh; overflow:hidden; }
+
+  /* One 52px top bar: brand · steps · actions. */
+  main.studio-layout > header { height:52px; padding:6px 14px; gap:12px; }
+  main.studio-layout > header > div:first-child { display:flex; align-items:center; flex-shrink:0; }
+  main.studio-layout > header .brand { font-size:18px; white-space:nowrap; }
+  main.studio-layout > header .sub { margin-left:12px; }
+  main.studio-layout > header .actions { gap:6px; flex-shrink:0; }
+  main.studio-layout > header .actions button,
+  main.studio-layout > header .actions .file-button { min-height:32px; padding:5px 11px; font-size:13px; }
+  main.studio-layout #workflowSteps { flex:1; justify-content:center; padding:0; gap:2px; border:0; background:transparent; min-width:0; }
+  main.studio-layout #workflowSteps button { padding:5px 12px; min-height:32px; font-size:13px; white-space:nowrap; }
+
+  /* Bottom status bar: messages, thread order, stitch total, size. */
+  main.studio-layout > .statusbar { min-height:26px; padding:3px 14px; gap:18px; align-items:center; border-top:1px solid var(--ui-line); border-bottom:0; font-size:12px; }
+  main.studio-layout > .statusbar #status { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  main.studio-layout > .statusbar .thread-info { display:flex; align-items:center; gap:14px; padding:0; min-width:0; font-size:12px; white-space:nowrap; overflow:hidden; }
+  main.studio-layout > .statusbar .thread-info p { display:none; }
+  main.studio-layout > .statusbar #activeThread { overflow:hidden; text-overflow:ellipsis; }
+  main.studio-layout > .statusbar #pieceStitchTotal { font-variant-numeric:tabular-nums; }
+
+  /* Docks as named areas, so a collapsed dock never shifts the others. */
+  main.studio-layout .workbench,
+  main.studio-layout .workbench.with-pieces {
+    --tools-w:60px; --pieces-w:0px; --split-w:5px; --inspector-w:316px; --inspector-col:var(--inspector-w);
+    display:grid; height:auto; min-height:0;
+    grid-template-columns:var(--tools-w) var(--pieces-w) minmax(0,1fr) var(--split-w) var(--inspector-col);
+    grid-template-areas:"tools pieces canvas split inspector";
+  }
+  main.studio-layout .workbench.with-pieces { --pieces-w:220px; }
+  main.studio-layout .workbench.pieces-collapsed { --pieces-w:0px; }
+  main.studio-layout .workbench.inspector-collapsed { --inspector-col:0px; --split-w:0px; }
+  main.studio-layout .tools { grid-area:tools; }
+  main.studio-layout .piece-layers { grid-area:pieces; }
+  main.studio-layout .canvas-area { grid-area:canvas; }
+  main.studio-layout .dock-splitter { grid-area:split; }
+  main.studio-layout .inspector { grid-area:inspector; min-width:0; }
+  main.studio-layout .pieces-collapsed .piece-layers,
+  main.studio-layout .inspector-collapsed .inspector,
+  main.studio-layout .inspector-collapsed .dock-splitter { display:none; }
+  main.studio-layout .workbench > * { min-height:0; }
+
+  .dock-splitter { cursor:col-resize; background:var(--ui-background); border-left:1px solid var(--ui-line); touch-action:none; }
+  .dock-splitter:hover, .dock-splitter:focus-visible, .is-resizing .dock-splitter { background:var(--ui-primary); outline:0; }
+  .workbench.is-resizing { cursor:col-resize; user-select:none; }
+
+  /* Tool rail: narrower, labels wrap instead of spilling. */
+  main.studio-layout .tools { padding:8px 5px; gap:4px; overflow-y:auto; overflow-x:hidden; }
+  main.studio-layout .tools .caption { margin-bottom:2px; }
+  main.studio-layout .tools button { min-height:48px; padding:5px 1px; gap:2px; font-size:10px; line-height:1.15; white-space:normal; overflow-wrap:anywhere; flex-shrink:0; }
+  main.studio-layout .tools button span { font-size:10px; line-height:1.15; }
+  main.studio-layout .tools .ui-icon { width:20px; height:20px; }
+
+  /* Canvas column: no page-like scrolling; the canvas takes what is left. */
+  main.studio-layout .canvas-area { padding:8px 10px 6px; overflow:hidden; display:flex; flex-direction:column; gap:6px; }
+  main.studio-layout .canvas-area > * { flex-shrink:0; margin-top:0; margin-bottom:0; }
+  main.studio-layout .canvas-area > .panels { flex:1 1 auto; min-height:120px; }
+  main.studio-layout .canvas-area > #aiDraftPreview { flex:1 1 auto; }
+  main.studio-layout .viewbar { flex-wrap:nowrap; padding:0; gap:2px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+  main.studio-layout .viewbar button { min-height:30px; padding:4px 8px; font-size:12px; white-space:nowrap; }
+  main.studio-layout .viewbar .zoom { margin-left:auto; gap:2px; flex-shrink:0; }
+  main.studio-layout .viewbar .zoom button { padding:4px 7px; }
+  main.studio-layout #workflowResult { padding:4px 10px; font-size:12px; gap:2px 10px; line-height:1.4; max-height:4.4em; overflow:auto; }
+  main.studio-layout #outlineActions { margin:0; padding:6px; }
+  main.studio-layout .surface-toolbar { min-height:0; padding:0; }
+  main.studio-layout .surface-toolbar span { flex-basis:auto; }
+  main.studio-layout .canvas-info { display:flex; align-items:baseline; gap:12px; min-height:18px; font-size:12px; color:var(--ui-muted); }
+  main.studio-layout .canvas-info #toolHint { flex:1; min-width:0; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  main.studio-layout .canvas-info #workflowCanvasSize { margin:0 0 0 auto; white-space:nowrap; text-align:right; }
+  main.studio-layout .transport { padding:4px 6px; gap:4px; margin:0; }
+  main.studio-layout .transport button { min-height:28px; padding:3px 8px; }
+  main.studio-layout .transport select { min-height:28px; }
+
+  /* Dock toggles live at the right end of the view bar. */
+  .dock-bar { display:flex; gap:2px; margin-left:8px; padding-left:8px; border-left:1px solid var(--ui-line); flex-shrink:0; }
+  .dock-toggle { display:inline-flex; align-items:center; gap:5px; }
+  .dock-toggle .ui-icon { width:16px; height:16px; }
+  .dock-toggle[aria-pressed=false] { color:var(--ui-muted); background:transparent; }
+  .dock-toggle[aria-pressed=true] { color:var(--ui-primary); }
+  .dock-toggle:last-child[aria-pressed=true] { background:var(--ui-primary); color:var(--ui-surface); }
+
+  /* Properties: same fields, tighter chrome. */
+  main.studio-layout .inspector { padding:12px 12px 16px; }
+  main.studio-layout .inspector h1 { font-size:16px; margin-bottom:8px; }
+  main.studio-layout #workflowChoices { gap:6px; margin:8px 0; }
+  main.studio-layout #workflowChoices button { min-height:52px; padding:5px 3px; gap:3px; font-size:11px; }
+  main.studio-layout #workflowChoices #workflowAskAI { min-height:38px; }
+  main.studio-layout #workflowChoices .ui-icon { width:20px; height:20px; }
+  main.studio-layout .piece-layers { padding:10px; }
+}
+
+/* Short laptop windows: hide the sub-label and shorten step text. */
+@media(min-width:901px) and (max-width:1399px) {
+  main.studio-layout > header .sub { display:none; }
+  main.studio-layout .dock-toggle span { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  main.studio-layout .viewbar [data-view] .ui-icon { display:none; }
+}
+@media(min-width:901px) and (max-width:1199px) {
+  main.studio-layout .workbench { --inspector-w:290px; }
+  main.studio-layout .workbench.with-pieces { --pieces-w:180px; }
+  main.studio-layout #workflowSteps button { padding:5px 8px; }
+}
+@media(max-width:900px) {
+  .dock-splitter, .dock-bar { display:none; }
+  main.studio-layout .canvas-info { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12px; }
+}
+@media(forced-colors:active) { .dock-splitter { background:CanvasText; } .dock-toggle[aria-pressed=true] { outline:2px solid Highlight; } }

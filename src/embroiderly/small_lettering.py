@@ -17,10 +17,17 @@ def fonts():
     return embroidery_fonts.catalogue()
 
 
-def size_limits(font):
-    """Editable tenth-mm range inside the font's supported scale range."""
+def size_limits(font, puff=False):
+    """Editable tenth-mm range inside the font's supported scale range. Puff
+    letters go larger: their strokes must be as wide as the foam is thick."""
     return (math.ceil(font['size'] * font['min_scale'] * 10) / 10,
-            math.floor(font['size'] * font['max_scale'] * 10) / 10)
+            math.floor(font['size'] * font['puff_max_scale' if puff else 'max_scale'] * 10) / 10)
+
+
+def puff_foam(body):
+    foam=body.get('puff_foam_mm',3)
+    if foam not in (2,3,2.0,3.0):raise ValueError('Choose 2 mm or 3 mm puff foam.')
+    return float(foam)
 
 
 def validate(body):
@@ -35,11 +42,11 @@ def validate(body):
     missing=sorted(set(text)-set(font['glyphs'])-{' ','\n'})
     if missing:raise ValueError('This embroidery font does not contain: '+' '.join(missing))
     height=float(body.get('height_mm',5))
-    minimum, maximum = size_limits(font)
+    minimum, maximum = size_limits(font, body.get('puff') is True)
     if not math.isfinite(height) or not minimum <= height <= maximum:
         raise ValueError(f'Choose a font size from {minimum:g} to {maximum:g} mm for this font. Your words are unchanged.')
     scale=round(height/font['size']*100)
-    if not font['min_scale']*100<=scale<=font['max_scale']*100:
+    if not font['min_scale']*100<=scale<=font['puff_max_scale' if body.get('puff') is True else 'max_scale']*100:
         raise ValueError('That size is outside this embroidery font’s supported range.')
     align=body.get('align','left')
     if align not in ('left','center','right'):raise ValueError('Choose left, centre or right alignment.')
@@ -48,7 +55,8 @@ def validate(body):
 
 def generate(body, *, native=False):
     text,font,scale,align=validate(body)
-    vector=embroidery_fonts.layout(text,font['key'],scale,align)
+    vector=embroidery_fonts.layout(text,font['key'],scale,align,puff=body.get('puff') is True,
+                                   foam_mm=puff_foam(body))
     coverage={}
     if native:
         from .lettering_geometry import source_frame

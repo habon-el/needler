@@ -1,0 +1,34 @@
+/* Digitize for me: same --ui-* tokens as the inspector. */
+#workflowChoices #autoDigitizeOpen { grid-column:1/-1; flex-direction:row; min-height:42px; gap:8px; font-weight:650;
+  background:var(--ui-primary); border-color:var(--ui-primary); color:var(--ui-surface); }
+#workflowChoices #autoDigitizeOpen:hover { background:var(--ui-ink); }
+.auto-hidden { display:none !important; }
+.auto-panel h1 { font-size:16px; margin:0 0 6px; }
+.auto-panel label { display:block; font-size:12px; margin:12px 0 4px; }
+.auto-panel textarea { width:100%; box-sizing:border-box; min-height:64px; padding:8px; font:inherit; resize:vertical;
+  border:1px solid var(--ui-line); border-radius:var(--ui-radius); background:var(--ui-background); color:var(--ui-ink); }
+.auto-actions { display:flex; gap:8px; margin:10px 0; }
+.auto-actions #autoStart { flex:1; min-height:40px; }
+#autoSteps { list-style:none; margin:8px 0; padding:0; border-left:2px solid var(--ui-line); }
+#autoSteps li { display:flex; justify-content:space-between; gap:8px; padding:4px 0 4px 10px; font-size:12px; line-height:1.4; position:relative; }
+#autoSteps li::before { content:''; position:absolute; left:-5px; top:9px; width:8px; height:8px; border-radius:50%; background:var(--ui-primary); }
+#autoSteps small { color:var(--ui-muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
+#autoResult { border:1px solid var(--ui-line); border-left:4px solid var(--ui-primary); border-radius:var(--ui-radius); padding:10px 12px; margin-top:8px; }
+#autoResult[data-state=needs_review], #autoResult[data-state=failed] { border-left-color:var(--ui-danger); }
+#autoResult p { font-size:12px; margin:6px 0; }
+#autoResult button { width:100%; min-height:40px; margin-top:6px; }
+.auto-problem { color:var(--ui-ink); border-left:3px solid var(--ui-danger); padding-left:8px; }
+.auto-cover { position:absolute; inset:0; z-index:6; display:grid; place-items:center; background:color-mix(in srgb,var(--ui-background) 78%,transparent); }
+.auto-cover[hidden] { display:none; }
+.auto-cover div { display:flex; flex-direction:column; gap:4px; max-width:70%; padding:14px 18px; text-align:center;
+  background:var(--ui-surface); border:1px solid var(--ui-line); border-radius:var(--ui-radius); }
+.auto-cover span { font-size:12px; color:var(--ui-muted); }
+@media(prefers-reduced-motion:no-preference) { .auto-cover strong::after { content:''; display:inline-block; width:10px; height:10px; margin-left:8px;
+  border:2px solid var(--ui-primary); border-right-color:transparent; border-radius:50%; animation:auto-spin .8s linear infinite; } }
+@keyframes auto-spin { to { transform:rotate(360deg); } }
+.auto-note { border-left:3px solid #b9770e; padding-left:8px; }
+.auto-panel label.auto-claude { display:flex; gap:8px; align-items:flex-start; margin:10px 0 0; padding:10px; line-height:1.45;
+  border:1px solid var(--ui-line); border-radius:var(--ui-radius); background:var(--ui-hover); color:var(--ui-ink); }
+.auto-claude input { margin-top:3px; flex-shrink:0; accent-color:var(--ui-primary); }
+.auto-claude span span { display:block; color:var(--ui-muted); margin-top:4px; }
+.auto-summary { font-size:13px !important; line-height:1.5; }

@@ -1,0 +1,33 @@
+/* 3D puff controls: same --ui-* tokens as the inspector. */
+.puff-controls { margin:10px 0; padding:10px; border:1px solid var(--ui-line); border-radius:var(--ui-radius); }
+.puff-controls label.puff-toggle { display:flex; gap:8px; align-items:center; margin:0; font-size:13px; }
+.puff-controls input[type=checkbox] { accent-color:var(--ui-primary); width:16px; height:16px; }
+.puff-more label { display:block; font-size:12px; margin:10px 0 4px; }
+.puff-more select { width:100%; min-height:32px; border:1px solid var(--ui-line); border-radius:var(--ui-radius); background:var(--ui-surface); color:var(--ui-ink); }
+.puff-more p { margin:8px 0 0; }
+.puff-sewing { border:1px solid var(--ui-line); border-left:4px solid #b9770e; border-radius:var(--ui-radius); padding:10px 12px; margin:0 0 12px; }
+.puff-sewing h2 { font-size:14px; margin:0 0 6px; }
+.puff-sewing ol { margin:0; padding-left:18px; font-size:12px; line-height:1.5; }
+.puff-sewing li { margin:4px 0; }
+.puff-swatch { display:inline-block; width:12px; height:12px; border-radius:3px; border:1px solid var(--ui-line); vertical-align:-2px; }
+/* Auto Fabric menu, same look as the puff box. */
+.fabric-controls { margin:10px 0; }
+.fabric-controls label { display:block; font-size:12px; margin:0 0 4px; }
+.fabric-controls select { width:100%; min-height:32px; border:1px solid var(--ui-line); border-radius:var(--ui-radius); background:var(--ui-surface); color:var(--ui-ink); }
+.fabric-controls p { margin:6px 0 0; font-size:12px; }
+/* Problems panel: one line per problem, Show / Fix. */
+.problems-panel { border:1px solid var(--ui-line); border-left:4px solid var(--ui-danger); border-radius:var(--ui-radius); padding:10px 12px; margin:0 0 12px; }
+.problems-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.problems-head h2 { font-size:14px; margin:0; }
+.problems-panel ul { list-style:none; margin:8px 0 0; padding:0; }
+.problems-panel li { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:5px 0; border-top:1px solid var(--ui-line); font-size:13px; }
+.problems-actions { display:flex; gap:6px; flex:none; }
+.problems-actions button, .problems-head button { min-height:28px; padding:2px 10px; }
+.problems-panel p { margin:6px 0 0; font-size:12px; }
+.problems-panel.problems-ok { border-left-color:var(--ui-primary); }
+.problems-panel.problems-ok p { margin:0; font-size:13px; }
+/* Clean Edit panel: options as one compact group, toggles as single lines. */
+.design-options { border-top:1px solid var(--ui-line); margin-top:10px; padding-top:8px; }
+.design-options .puff-controls { border:0; padding:0; margin:6px 0; }
+.design-options .puff-more { margin:4px 0 8px 24px; }
+.design-options .fabric-controls { margin:0 0 6px; }

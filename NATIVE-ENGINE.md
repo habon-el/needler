@@ -56,3 +56,35 @@ angle, row_spacing_mm, satin_column, zigzag_spacing_mm, lock_start, trim_after,
   (K, R, 8, &) have more overlap than a commercial font.
 - Travel inside fills follows edges; complex artwork with many holes may still
   need cuts where no inside route exists.
+
+## 3D puff (added 2026-10-19)
+
+- Area style `puff` (`fill_method="puff_satin"`, `puff_foam_mm`), the design option `puff`
+  (every area whose widest point is between the foam thickness and 6 mm: 3–6 mm on 3 mm foam,
+  2–6 mm on 2 mm foam) and `puff` + `puff_foam_mm` on native lettering (same stroke rule; puff
+  letters may go up to `puff_max_scale`, 22–26 mm, because strokes must be as wide as the foam).
+- Revised 2026-10-20 after Wilcom's puff guide, so the foam stays tight:
+  1. Placement: a 2.5 mm running line 0.3 mm inside each puff area, sewn on the fabric before
+     the stop (`Block.placement`, `inkstitch:puff_placement` for lettering).
+  2. Stop: the first puff block always changes thread, even to the same colour. PES lists the
+     colour once and reads the change back as STOP; playback and the gates treat it as a change.
+  3. Tack-down / perforation: a 1 mm running stitch around the area first (inside the sewn
+     columns for lettering).
+  4. Each column (`stitch_satin._puff_satin`): a 1.7 mm centre walk, a cap at the far end (short
+     1 mm stitches side by side across the open end), a zigzag underlay back at 1.8 mm, a cap at
+     the start, then satin at 0.22 mm. Pull compensation 0.4 mm (0.3 mm on 2 mm foam; 0 with
+     colour removal), reduced so no stitch exceeds 6.9 mm: a split stitch cuts the foam apart.
+  5. Tie-offs over foam are six 1 mm stitches (`PUFF_LOCK`) instead of four 0.6 mm ones.
+  6. Caps only on open ends: an end that runs into another stroke is a join (`outline` for
+     areas, `inkstitch:puff_caps` set by the font layout for lettering).
+  7. The pull value is the outer edge (0.45 / 0.35 mm); the satin sews 0.05 mm inside it so the
+     0.1 mm machine grid never puts a needle hole past the edge.
+- Lettering verifier: the envelope raster gets one extra GRID cell, because filling the polygon
+  could move its edge inward and eat the 0.07 mm quantisation allowance (flat Lato Black
+  "HABONIMANA" at 14 mm failed on a 0.06 mm rounding). A real 0.18 mm crossing remains for flat
+  Lato Black "HABONIMANA" at 15 mm (not puff); not yet fixed.
+- Not done yet: overlapping joined columns by 3+ stitches, and slower speed / looser tension are
+  only in the sewing instructions (Check stitches), not in the file.
+- Verified: a badge (ring + lettering puffed, star and background flat) and "PUFF" Lato Black
+  lettering at 22 mm (3 mm foam) and 15 mm (2 mm foam) pass the release gate. The foam height in
+  the 3D view is illustrative; foam brands and machines differ, so a sample sew-out is required.

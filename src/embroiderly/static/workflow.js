@@ -125,10 +125,14 @@ document.addEventListener('DOMContentLoaded', () => {
   check.append(node('h1','Check your stitches'));
  }
  // Existing audit and location controls remain available, with warnings open.
- const health=$('healthSummary').closest('details');health.open=true;check.append(health);if(native)health.hidden=true;
- const route=$('routeNext').closest('details');route.open=false;check.append($('routeSummary'),$('routeWarning'),route);
+ // Kept clean: the Problems panel (problems-panel.js) lists what to fix. Design health
+ // shows only when selected details cannot be stitched at all; route statistics stay
+ // inside the closed expert section.
+ const health=$('healthSummary').closest('details');health.open=true;check.append(health);
+ const healthVisible=()=>{health.hidden=native||!/cannot be stitched/.test($('healthSummary').textContent)};
+ new MutationObserver(healthVisible).observe($('healthSummary'),{childList:true,characterData:true,subtree:true});healthVisible();
+ const route=$('routeNext').closest('details');route.open=false;route.append($('routeSummary'),$('routeWarning'));check.append(route);
  if(!native){
-  const review=button('Check picture details','workflowReview',()=>{show('edit');window.embroideryWorkspace.showTopic('review');});check.append(review);
   window.addEventListener('studio:cleanup-needed',()=>{
    show('edit');window.embroideryWorkspace.showTopic('review');
    const section=$('detailMap').closest('details');section.open=true;

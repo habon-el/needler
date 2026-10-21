@@ -633,6 +633,9 @@ window.embroideryStudio={
  focusReview:bounds=>{selectedBounds=bounds.slice();setView('review');const c=canvases[0],base=Math.min(c.width/width,c.height/height)*.92;zoom=Math.max(.5,Math.min(12,.75*Math.min(c.width/(Math.max(1,bounds[2]-bounds[0])*base),c.height/(Math.max(1,bounds[3]-bounds[1])*base))));panX=(width/2-(bounds[0]+bounds[2])/2)*base*zoom/c.width;panY=(height/2-(bounds[1]+bounds[3])/2)*base*zoom/c.height;if(playback)cursor=playback.steps.length;draw()},
  resultInfo,
  hasPlayback:()=>!!playback,
+ // Read-only view of the exported needle path for the 3D viewer.
+ playbackView:()=>playback?{plan:playback,cursor,colourMap:colourPreviewMap,fabric:$('fabric').value,threadWidth:Number($('threadVisualWidth').value),lightAngle:Number($('lightAngle').value)}:null,
+ seek,
  acceptRefinement:patch=>{if(nativeMode)throw Error('Picture recovery is not applied to embroidery letters.');if(busy)throw Error('Wait for preparation to finish.');remember();Object.assign(options,patch);options.interactions++;syncControls();schedule();clearTimeout(timer);$('confirmed').checked=true;requestPreview('digitize')},
  apply:patch=>{if(nativeMode)throw Error('Use the Text controls to edit embroidery letters. Picture edits cannot change this design.');if(busy)throw new Error('Wait for the current preparation to finish.');remember();Object.assign(options,patch);options.interactions++;syncControls();schedule();setView('prepared')},
  point:e=>point(e,canvases[0]),

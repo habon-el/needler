@@ -92,7 +92,13 @@ def test_real_regeneration_and_exact_undo(tmp_path):
     assert (min(s['x'] for s in sewn)+max(s['x'] for s in sewn))/2==pytest.approx(10,abs=.11)
     assert (min(s['y'] for s in sewn)+max(s['y'] for s in sewn))/2==pytest.approx(-10,abs=.11)
     def spacing(plan):
-        ys=sorted({s['y'] for a,s in zip(plan['steps'],plan['steps'][1:]) if a['t']==s['t']=='stitch' and abs(s['y']-a['y'])<1e-6 and abs(s['x']-a['x'])>1})
+        # Fills run along each shape's long side: measure across the rows, whatever their angle.
+        import math
+        pairs=[(a,s) for a,s in zip(plan['steps'],plan['steps'][1:]) if a['t']==s['t']=='stitch']
+        angles=[round(math.degrees(math.atan2(s['y']-a['y'],s['x']-a['x']))%180) for a,s in pairs if math.hypot(s['x']-a['x'],s['y']-a['y'])>1]
+        turn=-math.radians(max(set(angles),key=angles.count))
+        rot=lambda p:(p['x']*math.cos(turn)-p['y']*math.sin(turn),p['x']*math.sin(turn)+p['y']*math.cos(turn))
+        ys=sorted({round(rot(s)[1],2) for a,s in pairs if abs(rot(s)[1]-rot(a)[1])<.02 and abs(rot(s)[0]-rot(a)[0])>1})
         differences=[round(b-a,1) for a,b in zip(ys,ys[1:]) if b-a>.1]
         return float(np.median(differences))
     before_spacing,after_spacing=spacing(before),spacing(after)

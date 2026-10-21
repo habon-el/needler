@@ -38,7 +38,7 @@ def build_playback(paths, directory, scale):
         (directory / 'playback.json').write_text(json.dumps(payload))
         return payload
     result = export_design(Design(tuple(commands), tuple(threads)), directory, 'experimental')
-    types = {emb.STITCH:'stitch', emb.JUMP:'jump', emb.TRIM:'trim', emb.COLOR_CHANGE:'color_change', emb.END:'end'}
+    types = {emb.STITCH:'stitch', emb.JUMP:'jump', emb.TRIM:'trim', emb.COLOR_CHANGE:'color_change', emb.STOP:'color_change', emb.END:'end'}
     steps = [{'x': x/10, 'y': y/10, 't': types.get(flags & emb.COMMAND_MASK, 'unknown')}
              for x, y, flags in read_written_commands(result.dst_path)]
     # DST does not embed RGB threads: persist the ordered export palette with

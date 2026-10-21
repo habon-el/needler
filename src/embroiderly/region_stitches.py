@@ -16,6 +16,7 @@ CATALOG=[
     ('tatami','Tatami','Rows of fill stitches'),
     ('satin','Satin','Narrow, convex areas only'),
     ('raised_satin','3D satin','Three satin layers · experimental, no foam'),
+    ('puff','3D puff','Satin over foam · parts 3–6 mm wide (2 mm foam: 2–6)'),
     ('motif','Motif','Clipped diamond repeats · open fill'),
     ('embossed','Embossed','Tatami + diamond overlay · experimental texture'),
     ('ripple','Ripple','Concentric circular waves'),
@@ -136,6 +137,11 @@ def decorative_paths(rings,scale,kind):
 
 def apply_style(document,node,rings,scale,kind):
     if kind=='tatami':return
+    if kind=='puff':
+        # Dense satin over foam, sewn after a stop; see stitch_engine._puff_area.
+        node.set(NS+'fill_method','puff_satin');node.set(NS+'zigzag_spacing_mm','.22')
+        node.set(NS+'pull_compensation_mm','.45')
+        return
     if kind in ('contour','ripple','stipple'):
         node.set(NS+'fill_method',{'contour':'contour_fill','ripple':'circular_fill','stipple':'meander_fill'}[kind])
         if kind in ('ripple','stipple'):node.set(NS+'fill_underlay','false')

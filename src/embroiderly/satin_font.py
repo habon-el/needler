@@ -515,6 +515,9 @@ def glyph_columns(path, char):
 def area_columns(shape):
     """Satin columns for any filled shape (e.g. millimetres): the shape is
     scaled to the tracer's working size and the columns scaled back."""
+    if not shape.is_valid:
+        # Traced pixel outlines can touch themselves; GEOS refuses those in cuts.
+        shape = shape.buffer(0)
     left, top, right, bottom = shape.bounds
     size = max(right-left, bottom-top)
     if shape.is_empty or size <= 0:
@@ -530,6 +533,8 @@ def columns_for(shape):
     """Core: skeleton strokes -> cross-section satin columns, in sewing order."""
     mask, to_px, to_em = _raster(shape)
     outline = affine_transform(shape, [RESOLUTION, 0, 0, RESOLUTION, to_px(0, 0)[0], to_px(0, 0)[1]])
+    if not outline.is_valid:
+        outline = outline.buffer(0)
     distance = cv2.distanceTransform(mask.astype(np.uint8), cv2.DIST_L2, 5)
     skeleton = skeletonize(mask)
     nodes, edges = _graph(skeleton)
@@ -590,6 +595,16 @@ def _order(columns, shape):
         polygon = Polygon(a, [b]) if closed else Polygon(list(a)+list(b)[::-1])
         ribbons.append(polygon if polygon.is_valid else polygon.buffer(0))
     zone = shape.buffer(1e-3)
+    # Letters have a handful of columns: search exhaustively with exact coverage. Areas
+    # traced from pictures can have hundreds; there the exhaustive search with a union
+    # per step took minutes, so use prepared shapes, a spatial index and fewer starts.
+    large = len(columns) > 12
+    if large:
+        from shapely import STRtree
+        from shapely.prepared import prep
+        zone_test = prep(zone)
+        grown = [r.buffer(1e-3) for r in ribbons]
+        tree = STRtree(grown)
     def cost(position, index, reverse, remaining):
         a, b, closed, width = columns[index]
         start = ((a[-1][0]+b[-1][0])/2, (a[-1][1]+b[-1][1])/2) if reverse else ((a[0][0]+b[0][0])/2, (a[0][1]+b[0][1])/2)
@@ -597,12 +612,18 @@ def _order(columns, shape):
         if d < 1e-6:
             return 0.0
         link = LineString([position, start])
+        if large:
+            if not zone_test.contains(link):
+                return d*20+1
+            left = set(remaining)
+            covered = any(int(r) in left and grown[int(r)].contains(link) for r in tree.query(link))
+            return d*(.2 if covered else 3)
         if not zone.contains(link):
             return d*20+1
         hidden = unary_union([ribbons[r] for r in remaining]) if remaining else Polygon()
         return d*(.2 if not hidden.is_empty and hidden.buffer(1e-3).contains(link) else 3)
     best = None
-    for first in range(len(columns)):
+    for first in (range(len(columns)) if not large else range(1)):
         for reverse_first in (False, True):
             order = [(first, reverse_first)]
             remaining = [i for i in range(len(columns)) if i != first]

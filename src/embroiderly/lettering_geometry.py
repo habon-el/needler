@@ -72,7 +72,9 @@ def source_frame(svg):
     # Each endpoint snaps at most 0.05 mm per axis on the file grid. Include
     # that bounded quantisation envelope, not arbitrary gaps/letter counters.
     # The same 0.3 mm stitch-length and cut checks still run after writing.
-    envelope = envelope.buffer(math.sqrt(2)*.05)
+    # Plus one raster cell: filling the polygon on the GRID raster can move its
+    # edge inward by up to a cell, which must not eat the quantisation allowance.
+    envelope = envelope.buffer(math.sqrt(2)*.05+GRID)
     x, y, right, bottom = envelope.bounds
     origin = [1-x, 1-y]
     width, height = math.ceil((right-x+2)/GRID), math.ceil((bottom-y+2)/GRID)
