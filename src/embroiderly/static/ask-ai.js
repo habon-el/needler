@@ -21,7 +21,7 @@
   for (const [id, title, task, question] of [
     ['askAiBackgroundExample', 'Remove background', 'draft', 'Remove the background and keep the main subject.'],
     ['askAiDetailsExample', 'Keep fine details', 'draft', 'Keep the main subject, including fine hair and face details, and remove the background.'],
-    ['askAiReviewExample', 'Review details', 'ask', 'Compare the original with the stitch artwork. What details might be missing or changed? Do not change anything.'],
+    ['askAiReviewExample', 'Find missing details', 'ask', 'Compare the original with the stitch artwork. What details might be missing or changed? Do not change anything.'],
   ]) {
     examples.append(button(title, id, () => {
       if (controller) return;
@@ -48,7 +48,7 @@
     if (controller) return;
     mode = next; consent.checked = false;
     showAvailability();
-    input.placeholder = mode === 'draft' ? 'Keep Sasuke, remove the background, 100 mm wide…' : 'What details might be missing?';
+    input.placeholder = mode === 'draft' ? 'Keep the logo, remove the background, 100 mm wide…' : 'What details might be missing?';
     update();
   }
   function update() {
@@ -194,6 +194,9 @@
     cloudReady = a.status === 'fulfilled' && a.value.ai_available && a.value.questions_supported;
     draftReady = d.status === 'fulfilled' && d.value.available && d.value.supported;
     availabilityInfo = [a, d]; showAvailability(); update();
+    // Clean UI: when no AI service is set up on this computer, the assistant button is
+    // hidden instead of opening a form that cannot send. "Digitize for me" stays.
+    document.documentElement.dataset.aiAssistant = cloudReady || draftReady ? 'on' : 'off';
   });
   // Review cards compose a request here; they never send it or approve edits.
   window.embroideryAI = {

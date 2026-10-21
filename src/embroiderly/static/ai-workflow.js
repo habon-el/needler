@@ -9,14 +9,14 @@ window.addEventListener('DOMContentLoaded', () => {
   const button = (text, fn) => { const b = node('button', text); b.type = 'button'; b.addEventListener('click', fn); return b; };
   const root = node('section', null, 'aiWorkflow'); root.setAttribute('aria-label', 'Picture review');
   const header = node('div'); header.className = 'ai-workflow-header';
-  const heading = node('strong', 'AI picture review');
+  const heading = node('strong', 'Picture review');
   const toggle = node('input', null, 'autoAiReview'); toggle.type = 'checkbox';
   try { toggle.checked = localStorage.getItem(preference) === 'yes'; } catch (_) { /* Session-only consent if storage unavailable. */ }
-  const permission = node('label'); permission.append(toggle, document.createTextNode(' Auto-review · paid'));
+  const permission = node('label'); permission.append(toggle, document.createTextNode(' Auto-review my picture and stitches · paid'));
   toggle.setAttribute('aria-describedby', 'autoAiSharing');
   header.append(heading, permission);
   const sharing = node('p', 'Auto-review sends pictures to OpenAI (paid). Your spending caps apply.', 'autoAiSharing');
-  const status = node('p', 'Review is off. Manual editing still works.', 'autoAiStatus'); status.setAttribute('role', 'status');
+  const status = node('p', '', 'autoAiStatus'); status.setAttribute('role', 'status');
   const explanation = node('details'); explanation.append(node('summary', 'Privacy & limits'));
   explanation.append(node('p', 'This choice is remembered on this browser. Turn it off to stop future requests; already-sent requests may still cost money. Reviews are saved locally so reloads do not repeat a paid review. AI can miss details; highlights are approximate, not cutting outlines. File checks and a sew-out are still needed.'));
   const reviews = node('div', null, 'autoAiResults');
@@ -31,8 +31,11 @@ window.addEventListener('DOMContentLoaded', () => {
   local.append(localStatus, localReview);
   const resultsDisclosure = node('details', null, 'autoAiDetails');
   resultsDisclosure.append(node('summary', 'Review results'), reviews, explanation);
-  root.append(header, sharing, status, retry, local, resultsDisclosure);
-  document.getElementById('stitchStatus').after(root);
+  // Clean UI: one switch inside the AI assistant panel. The sharing note sits under
+  // Privacy & limits; the local detail line and its button duplicated "Review details".
+  explanation.prepend(sharing); local.hidden = true;
+  root.append(header, status, retry, resultsDisclosure); root.hidden = true;
+  (document.getElementById('askAiPanel') || document.getElementById('stitchStatus')).append(root);
   let active = null, enabled = null, failed = null, revision = 0, finalCard = null;
   const attempts = new Set();
   const snapshot = () => { const o = studio.snapshot(); delete o.interactions; return JSON.stringify(o); };
@@ -91,6 +94,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   function updateControls() {
     resultsDisclosure.querySelector('summary').textContent = 'Review results · ' + reviews.children.length + (reviews.children.length === 1 ? ' review' : ' reviews');
+    resultsDisclosure.hidden = !reviews.children.length; status.hidden = !status.textContent;
     root.setAttribute('aria-busy', String(!!active));
     localReview.disabled = studio.isBusy();
     retry.disabled = !!active || studio.isBusy() || !toggle.checked;
@@ -179,7 +183,9 @@ window.addEventListener('DOMContentLoaded', () => {
   fetch(endpoint, {signal: AbortSignal.timeout(10000)}).then(async response => {
     if (!response.ok) throw Error('Restart the app to enable automatic picture review.');
     const data = await response.json(); enabled = data.available;
-    if (!enabled) { status.textContent = data.message || 'AI is unavailable. Check your server key and spending limits.'; toggle.disabled = true; }
-    else schedule();
-  }).catch(error => { status.textContent = error.message; toggle.disabled = true; });
+    // Not set up on this computer: show nothing rather than a switch that cannot work.
+    if (!enabled) { toggle.disabled = true; root.hidden = true; }
+    else { root.hidden = false; schedule(); }
+    updateControls();
+  }).catch(() => { toggle.disabled = true; root.hidden = true; });
 });

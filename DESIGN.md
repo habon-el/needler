@@ -149,6 +149,12 @@ cut out cleanly like Hatch's Knife. Exact cut saves the area in `stitch_cuts`; t
 stitches inside it after generation, with a tie-off + cut before each gap and a jump + tie-in after; the
 bar shows "adds about N cuts" (every crossing fill row is cut). Both survive rebuilds and use Undo; the
 areas are part of the engine cache key. Exact cut is not offered for photo modes.
+AI screens (2026-10-21 clean-up): the OpenAI picture review (`ai-workflow.js`) lives inside the AI assistant
+panel as one switch ("Auto-review my picture and stitches · paid"); results show only when there are any,
+the sharing note sits under Privacy & limits, and its local detail line and duplicate "Review details"
+button are hidden. When no OpenAI review is set up the section is hidden, and when neither OpenAI service
+is set up the AI assistant button itself is hidden (`data-ai-assistant=off`), leaving "Digitize for me"
+(Claude) as the one AI entry. The assistant's example no longer names another customer's design.
 Open (from the Hatch comparison): branching / travel under later fills instead of a cut after every
 shape (`generation_policy` still forces `trim_after`), turning fills that follow the shape, colour
 blending, appliqué, stitch shortening on tight curves, more fonts.
