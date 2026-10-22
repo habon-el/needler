@@ -162,6 +162,14 @@ def create_app(workspace: Path | None = None) -> Flask:
             return jsonify(problems=collect(target,prepared,options))
         except ReleaseError as error:
             return jsonify(problems=[],note=str(error))
+    @app.get('/text-font/<key>')
+    def text_font(key):
+        # The embroidery fonts' TTF files, for the instant letter preview while typing.
+        from .embroidery_fonts import FONTS, font_path
+        if key not in FONTS:
+            abort(404)
+        path=Path(font_path(key))
+        return send_from_directory(path.parent,path.name,mimetype='font/ttf',max_age=86400)
     @app.get('/api/area-at/<name>')
     def area_at_point(name):
         # Remove stitches: the whole colour area under a click (problems.area_at).

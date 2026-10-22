@@ -158,6 +158,12 @@ the sharing note sits under Privacy & limits, and its local detail line and dupl
 button are hidden. When no OpenAI review is set up the section is hidden, and when neither OpenAI service
 is set up the AI assistant button itself is hidden (`data-ai-assistant=off`), leaving "Digitize for me"
 (Claude) as the one AI entry. The assistant's example no longer names another customer's design.
+Text designs (`text-make.js`, 2026-10-21): a full-width "Make stitches" button sits under the text settings
+(it presses the existing check); nothing is stitched until it is pressed (an automatic remake while typing
+delayed the next change), and a one-line hint says when words or settings changed since the last stitches.
+While typing, an instant preview draws the words with the real embroidery font (GET /text-font/<key>) over
+the canvas with "about N mm wide" (no stitching); real stitches replace it. The size note stays hidden until
+a measured size exists. Before this the only way to make text stitches was the small header button.
 Open (from the Hatch comparison): branching / travel under later fills instead of a cut after every
 shape (`generation_policy` still forces `trim_after`), turning fills that follow the shape, colour
 blending, appliqué, stitch shortening on tight curves, more fonts.
