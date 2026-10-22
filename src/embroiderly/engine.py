@@ -72,6 +72,10 @@ def add_line_art(document, exact, alpha, scale, colours=None, retrace_mm=6.0, la
                         '{http://inkstitch.org/namespace}running_stitch_length_mm':'1.6',
                         '{http://inkstitch.org/namespace}running_stitch_tolerance_mm':'0.12'})
             cv2.polylines(drawn,[np.rint(points).astype(np.int32)],False,1,thickness=3)
+            if sum(math.dist(p,q) for p,q in zip(path,path[1:]))<1.5:
+                # Tie-offs on a mark shorter than themselves reach past its ends: that thread is sewn.
+                reach=int(math.ceil(.7/scale))
+                for end in (points[0],points[-1]):cv2.circle(drawn,tuple(int(round(v)) for v in end),reach,1,-1)
             objects+=1
     if not objects:raise ValueError('No drawn lines were found. Line art needs light strokes on a dark background.')
     return objects,drawn.astype(bool)

@@ -106,7 +106,10 @@ def _graph(skeleton):
             if current in special:
                 visited.add((current, previous))
                 edges.append(dict(a=cluster[start], b=cluster[current], pixels=path))
-    remaining = {p for p in pixels if p not in special and not any(p in e['pixels'] for e in edges)}
+    # One lookup set instead of searching every edge's pixel list for every pixel
+    # (quadratic: detailed ink drawings took minutes). Same result.
+    covered = {p for e in edges for p in e['pixels']}
+    remaining = {p for p in pixels if p not in special and p not in covered}
     while remaining:
         start = min(remaining)
         path, previous, current = [start], None, start
