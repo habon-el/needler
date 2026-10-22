@@ -45,6 +45,14 @@ def classify(image, max_side=384):
     ink_pixels = lum < 90
     if bright > .6 and .003 < ink_pixels.mean() < .3 and float(sat[ink_pixels].mean() if ink_pixels.any() else 1) < .18:
         return 'ink', facts
+    # Shaded black-and-white art (engravings, pencil, halftone): almost no colour and
+    # many mid-greys. Black-ink mode would turn its shading into specks and a
+    # honeycomb of lines; one-colour photo lines keep the tones.
+    mid = float(((lum > 60) & (lum < 200)).mean())
+    facts['mid_greys'] = round(mid, 3)
+    if float(sat.mean()) < .06 and mid > .35:
+        facts['shaded'] = True
+        return 'photo', facts
     # Colour count from a median-cut palette; ignore colours under 1.5 %.
     small = Image.fromarray(np.asarray(rgba.convert('RGB'))).quantize(12, method=Image.Quantize.MEDIANCUT)
     counts = np.bincount(np.asarray(small)[alpha].ravel(), minlength=12) / max(1, alpha.sum())

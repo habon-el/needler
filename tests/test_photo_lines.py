@@ -43,3 +43,16 @@ def test_a_photo_sews_as_one_thread_and_passes_the_checks(tmp_path):
                               dict(artwork_type='logo', count=2, smooth=2, height_mm=60, photo_style='one_colour'), 2.0, True)
     assert not result.get('error') and not result.get('gate'), result
     assert result['trims'] <= 1 and result['colours'] == 1 and result['stitches'] > 3000
+
+
+def test_shaded_black_and_white_art_goes_to_photo_lines_not_black_ink():
+    from PIL import ImageDraw
+    from embroiderly.auto_digitize import classify
+    y, x = np.mgrid[0:300, 0:200]
+    shaded = (90 + 110 * np.sin(x / 9.0) * np.cos(y / 13.0) ** 2).clip(0, 255).astype(np.uint8)   # engraving-like greys
+    kind, facts = classify(Image.fromarray(np.dstack([shaded] * 3)))
+    assert kind == 'photo' and facts['shaded'] is True
+    assert plan(kind, facts, {}, (200, 300), {})['photo_style'] == 'one_colour'
+    clean = Image.new('RGB', (200, 300), 'white')
+    ImageDraw.Draw(clean).line((20, 20, 180, 280), fill='black', width=3)                       # clean ink line
+    assert classify(clean)[0] == 'ink'
