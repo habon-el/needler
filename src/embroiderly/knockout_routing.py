@@ -18,13 +18,36 @@ class RemovedPixels:
 
     def crosses(self, a, b):
         # EmbPattern uses tenths of a millimetre, source masks use pixels.
-        a = (np.asarray(a) / 10 + self.origin) / self.scale
-        b = (np.asarray(b) / 10 + self.origin) / self.scale
-        xy = np.rint(np.linspace(a, b, max(2, int(np.linalg.norm(b-a)*4)+1))).astype(int)
+        return self.crosses_many([(a, b)])[0]
+
+    def crosses_many(self, segments):
+        """crosses() for many segments in one numpy pass (one call per segment
+        spent most of a lettering check in numpy overhead). The samples are
+        computed exactly as np.linspace does for each segment, so every
+        answer is the same as checking the segments one by one."""
+        if not segments:
+            return []
+        ends = np.asarray(segments, dtype=float).reshape(len(segments), 2, 2)
+        a = (ends[:, 0] / 10 + self.origin) / self.scale
+        b = (ends[:, 1] / 10 + self.origin) / self.scale
+        delta = b - a
+        n = np.maximum(2, (np.sqrt((delta * delta).sum(1)) * 4).astype(int) + 1)
+        div = (n - 1).astype(float)[:, None]
+        step = delta / div
+        seg = np.repeat(np.arange(len(n)), n)
+        first = np.cumsum(n) - n
+        i = (np.arange(int(n.sum())) - first[seg]).astype(float)[:, None]
+        # np.linspace: i*step + start, or i/div*delta + start when a step is 0.
+        zero = (step == 0).any(1)
+        xy = np.where(zero[seg, None], i / div[seg] * delta[seg], i * step[seg]) + a[seg]
+        xy[first + n - 1] = b
+        xy = np.rint(xy).astype(int)
         h, w = self.core.shape
-        if ((xy[:, 0] < 0) | (xy[:, 0] >= w) | (xy[:, 1] < 0) | (xy[:, 1] >= h)).any():
-            return True
-        return bool(self.core[xy[:, 1], xy[:, 0]].any())
+        outside = (xy[:, 0] < 0) | (xy[:, 0] >= w) | (xy[:, 1] < 0) | (xy[:, 1] >= h)
+        hit = outside.copy()
+        inside = ~outside
+        hit[inside] = self.core[xy[inside, 1], xy[inside, 0]]
+        return np.logical_or.reduceat(hit, first).tolist()
 
 
 def lock(point, anchor, mask):
@@ -36,7 +59,10 @@ def lock(point, anchor, mask):
     if anchor is None or mask.crosses(point, anchor):
         raise ValueError('Cannot secure a thread beside a removed area. Adjust this detail before exporting.')
     a, b = np.asarray(point), np.asarray(anchor)
-    points = [np.rint(a + (b-a)*t).astype(int).tolist() for t in (.33, .66, .33, 0)]
+    # Thirds of a short segment are shorter than the 0.3 mm minimum stitch:
+    # below 0.9 mm retrace the whole segment instead (still the same verified line).
+    fractions = (.33, .66, .33, 0) if np.linalg.norm(b-a) >= 9 else (1, 0, 1, 0)
+    points = [np.rint(a + (b-a)*t).astype(int).tolist() for t in fractions]
     previous = point
     for target in points:
         if mask.crosses(previous, target):

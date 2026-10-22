@@ -46,7 +46,8 @@ def validate(body):
     if not math.isfinite(height) or not minimum <= height <= maximum:
         raise ValueError(f'Choose a font size from {minimum:g} to {maximum:g} mm for this font. Your words are unchanged.')
     scale=round(height/font['size']*100)
-    if not font['min_scale']*100<=scale<=font['puff_max_scale' if body.get('puff') is True else 'max_scale']*100:
+    # Rounded: 1.1*100 is 110.00000000000001 in floating point, which refused the smallest size.
+    if not round(font['min_scale']*100)<=scale<=round(font['puff_max_scale' if body.get('puff') is True else 'max_scale']*100):
         raise ValueError('That size is outside this embroidery font’s supported range.')
     align=body.get('align','left')
     if align not in ('left','center','right'):raise ValueError('Choose left, centre or right alignment.')

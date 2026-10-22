@@ -154,16 +154,26 @@ def indexed_pairs(a, b, spacing):
 PUFF_TACK_MM, PUFF_ZIGZAG_MM, PUFF_CAP_MM, PUFF_LONGEST_MM = 1.7, 1.8, 1.0, 6.9
 
 
-def _cap(p, q, inward, depth, spacing):
+def _cap(p, q, r, s, spacing):
     """A narrow column across the open end p-q: short stitches from the end edge
-    into the column, side by side, so the needle cuts the foam along the end."""
+    into the column, side by side, so the needle cuts the foam along the end.
+    Each stitch goes to the same place across the stitch line r-s about a cap
+    depth further in, so it stays inside the column even where the end is slanted
+    (one fixed direction ran past the column's side, into the letter's hole)."""
     count = max(2, int(math.ceil(math.dist(p, q)/spacing))+1)
     out = []
     for k in range(count):
-        e = lerp(p, q, k/(count-1))
-        i = (e[0]+inward[0]*depth, e[1]+inward[1]*depth)
+        e, i = lerp(p, q, k/(count-1)), lerp(r, s, k/(count-1))
         out.extend([i, e] if k % 2 else [e, i])
     return out
+
+
+def _shorten(p, q, limit):
+    d = math.dist(p, q)
+    if d <= limit:
+        return p, q
+    k = (d-limit)/2/d
+    return lerp(p, q, k), lerp(q, p, k)
 
 
 def _puff_satin(matched, pull, spacing, closed, pairs_at, outline=None, caps=('start', 'end')):
@@ -175,6 +185,21 @@ def _puff_satin(matched, pull, spacing, closed, pairs_at, outline=None, caps=('s
     # Pull compensation keeps the satin from narrowing over the foam, within the machine limit.
     pull = max(0.0, min(pull, (PUFF_LONGEST_MM-longest)/2))
     final = compensate(matched, pull)
+    # Where the column itself is wider than the limit (a slanted stitch across a
+    # joint), shorten the stitch evenly at both ends: rounding to the 0.1 mm machine
+    # grid can add up to 0.14 mm, which pushed 6.98 mm stitches to 7.02 mm.
+    final = [_shorten(p, q, PUFF_LONGEST_MM-.05) for p, q in final]
+    # The satin also sews from each stitch's end to the next one's start; where
+    # the stitches fan out that diagonal is the longest: start the next one a
+    # little further in along its own line.
+    for i in range(1, len(final)):
+        (_, back), (p, q) = final[i-1], final[i]
+        if math.dist(back, p) > PUFF_LONGEST_MM-.05:
+            lo, hi = 0.0, .5
+            for _ in range(30):
+                t = (lo+hi)/2
+                lo, hi = (lo, t) if math.dist(back, lerp(p, q, t)) <= PUFF_LONGEST_MM-.05 else (t, hi)
+            final[i] = (lerp(p, q, hi), q)
     middle = [lerp(p, q, .5) for p, q in pairs_at(PUFF_TACK_MM)]
     points = running(middle, PUFF_TACK_MM, 0)
     def cap(index, step):
@@ -186,7 +211,7 @@ def _puff_satin(matched, pull, spacing, closed, pairs_at, outline=None, caps=('s
         m, far = lerp(p, q, .5), None
         for r, s in final[index::step]:
             if math.dist(m, lerp(r, s, .5)) >= PUFF_CAP_MM:
-                far = lerp(r, s, .5); break
+                far, rung = lerp(r, s, .5), (r, s); break
         if far is None:
             return []
         d = math.dist(m, far)
@@ -194,7 +219,7 @@ def _puff_satin(matched, pull, spacing, closed, pairs_at, outline=None, caps=('s
         # a cap there only piles thread on the joint.
         if outline is not None and outline.contains(Point(m[0]-(far[0]-m[0])/d*.6, m[1]-(far[1]-m[1])/d*.6)):
             return []
-        return _cap(p, q, ((far[0]-m[0])/d, (far[1]-m[1])/d), PUFF_CAP_MM, max(spacing, .3))
+        return _cap(p, q, *rung, max(spacing, .3))
     points += cap(-1, -1)
     sparse = pairs_at(PUFF_ZIGZAG_MM)[::-1]
     for i, (p, q) in enumerate(sparse):

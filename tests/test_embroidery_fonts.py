@@ -22,7 +22,11 @@ def test_layout_is_satin_columns_grouped_by_glyph():
 @pytest.mark.parametrize('key', sorted(FONTS))
 @pytest.mark.parametrize('text,height', [('Hello World', 5), ('Baby 0689', 4), ('Café & Co.', 8)])
 def test_words_pass_every_release_check(tmp_path, key, text, height):
-    result = native.build(tmp_path, dict(text=text, font=key, height_mm=float(height), align='center',
+    # Each font has its own size range (thin scripts start larger): stay inside it.
+    from embroiderly.small_lettering import fonts, size_limits
+    low, high = size_limits(fonts()[key])
+    height = min(max(float(height), low), high)
+    result = native.build(tmp_path, dict(text=text, font=key, height_mm=height, align='center',
                                          available_width_mm=400.0, colour='#202020'))
     assert result['checks_passed'], result['message']
     report = result['reports']['dst']

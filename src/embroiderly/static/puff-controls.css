@@ -52,5 +52,15 @@
 #textMake { width:100%; min-height:40px; margin:12px 0 4px; font-weight:600; background:var(--ui-primary); border-color:var(--ui-primary); color:#08231d; }
 #textMake:disabled { opacity:.7; }
 #textMakeHint { margin:0 0 10px; font-size:12px; }
+/* Font picker (font-picker.js): each font shows the customer's words in that font. */
+#fontPick { width:100%; min-height:40px; text-align:left; font-size:20px; padding:4px 32px 4px 10px; position:relative; }
+#fontPick::after { content:'▾'; position:absolute; right:10px; top:50%; transform:translateY(-50%); font:14px system-ui, sans-serif; opacity:.7; }
+#fontList { max-height:380px; overflow-y:auto; margin:4px 0 8px; border:1px solid var(--ui-line); border-radius:var(--ui-radius); background:var(--ui-surface); }
+#fontList .font-row { display:flex; flex-direction:column; gap:2px; padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--ui-line); outline:none; }
+#fontList .font-row:last-child { border-bottom:0; }
+#fontList .font-row:hover, #fontList .font-row:focus { background:color-mix(in srgb, var(--ui-primary) 18%, transparent); }
+#fontList .font-row[aria-selected=true] { box-shadow:inset 3px 0 0 var(--ui-primary); }
+#fontList .font-sample { font-size:24px; line-height:1.2; color:var(--ui-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#fontList .font-name { font:11px system-ui, sans-serif; opacity:.7; }
 /* Instant letter preview over the canvas while typing (text-make.js). */
 .text-preview { position:absolute; z-index:4; pointer-events:none; background:transparent !important; border:0 !important; box-shadow:none !important; }

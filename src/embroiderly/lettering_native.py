@@ -90,6 +90,20 @@ def write_and_check(folder, settings, generated):
         thread.set_color(*(int(settings['colour'][i:i+2], 16) for i in (1, 3, 5)))
     write_pair(pattern, folder/'design.pes', folder/'design.dst', {'version': 6})
     source = generated['rebuild_report']
+    # Safety net: a connecting thread that still crosses bare fabric (a notch where
+    # two strokes meet) is replaced by a tie-off, a cut and a tie-in on the other
+    # side, as for picture designs. Designs that already pass are not touched.
+    written = read_pattern(folder/'design.pes')
+    if any(i['code'] in ('crossing', 'travel') for i in inspect(written, source['mask'], GRID, source['origin'])):
+        from .knockout_routing import protect
+        try:
+            generated['rebuild_report']['safety_cuts'] = protect(written, source['mask'], GRID, source['origin'])
+        except ValueError:
+            pass  # the checks below report what is left
+        else:
+            for thread in written.threadlist:
+                thread.set_color(*(int(settings['colour'][i:i+2], 16) for i in (1, 3, 5)))
+            write_pair(written, folder/'design.pes', folder/'design.dst', {'version': 6}, repair_spacing=True)
     record_context(folder, source['mask'], GRID, source['origin'])
     reports, issues = {}, {}
     for fmt in ('pes', 'dst'):

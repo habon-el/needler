@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
  if(!window.nativeTextConfig)return;
  const $=id=>document.getElementById(id);
  const words=$('letteringWords');if(!words)return;
- const fonts={};let overlay=null,host=null,stale=!words.value.trim()?false:true,frame=0;
+ const fonts={};let peeked=null,overlay=null,host=null,stale=!words.value.trim()?false:true,frame=0;
  const fontFor=key=>{
   if(!fonts[key]){fonts[key]=new FontFace('needler-'+key,`url(/text-font/${encodeURIComponent(key)})`).load()
    .then(face=>{document.fonts.add(face);return face}).catch(()=>null)}
@@ -67,8 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  async function draw(){
   const text=words.value.replace(/\s+$/,'');
-  if(!stale||!text){if(overlay)overlay.hidden=true;return}
-  const key=$('nativeFont')?.value||'small_font',size=Math.max(1,Number($('nativeHeight')?.value)||5);
+  if((!stale&&!peeked)||!text){if(overlay)overlay.hidden=true;return}
+  const key=peeked||$('nativeFont')?.value||'small_font',size=Math.max(1,Number($('nativeHeight')?.value)||5);
   const face=await fontFor(key);
   const o=place();if(!o)return;o.hidden=false;
   const g=o.getContext('2d'),family=face?`needler-${key}`:'sans-serif';
@@ -87,9 +87,12 @@ document.addEventListener('DOMContentLoaded', () => {
    g.fillText(line,x,top+i*lineMm*scale);
   });
   g.font='12px system-ui, sans-serif';g.fillStyle='#555';
-  g.fillText(`Preview · about ${Math.round(widthMm)} mm wide · press Make stitches for the real stitches`,12,o.height-12);
+  g.fillText(peeked?`Preview of this font · about ${Math.round(widthMm)} mm wide · click it to choose`
+   :`Preview · about ${Math.round(widthMm)} mm wide · press Make stitches for the real stitches`,12,o.height-12);
  }
  const later=()=>{stale=true;cancelAnimationFrame(frame);frame=requestAnimationFrame(draw)};
+ // The font picker (font-picker.js) previews a font on hover without choosing it.
+ window.NeedlerTextPreview={peek:key=>{peeked=key;cancelAnimationFrame(frame);frame=requestAnimationFrame(draw)}};
  for(const id of ['letteringWords','nativeFont','nativeHeight','letteringAlign','letteringColour'])
   $(id)?.addEventListener(id==='letteringWords'||id==='nativeHeight'?'input':'change',later);
  document.addEventListener('lettering:result',()=>{stale=false;if(overlay)overlay.hidden=true});

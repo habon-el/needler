@@ -18,6 +18,7 @@ from .machine_files import read_pattern
 from .knockout_routing import RemovedPixels
 
 VERSION=1
+_PASSED={}   # file pairs that passed checked_bytes in this process (see there)
 MIN_STITCH_MM=.3
 MAX_STITCH_MM=7.
 MAX_UNCUT_TRAVEL_MM=6.
@@ -81,6 +82,12 @@ def checked_bytes(directory, fmt):
     except OSError:raise ReleaseError('a machine file is missing; generate stitches again') from None
     if record.get('files')!={f:digest(data) for f,data in files.items()}:
         raise ReleaseError('machine files changed since generation; generate stitches again')
+    # The same bytes checked against the same source context give the same
+    # answer: skip re-parsing a pair that already passed in this process.
+    # The key binds both files' digests and the whole release context.
+    key=(record['files']['pes'],record['files']['dst'],digest(json.dumps(record,sort_keys=True).encode()))
+    if key in _PASSED:
+        return files[fmt]
     # Parsers work from an immutable byte snapshot; never reopen the live target
     # after checking it. Cache hits and legacy downloads use this exact same gate.
     with TemporaryDirectory(prefix='needlora-release-') as temp:
@@ -92,6 +99,8 @@ def checked_bytes(directory, fmt):
             check_pattern(pattern,mask,record['scale'],record['origin']);patterns[f]=pattern
         if patterns['pes'].count_stitch_commands(emb.TRIM)!=patterns['dst'].count_stitch_commands(emb.TRIM):
             raise ReleaseError('PES and DST disagree about thread cuts')
+    _PASSED[key]=True
+    while len(_PASSED)>256:_PASSED.pop(next(iter(_PASSED)))
     return files[fmt]
 
 

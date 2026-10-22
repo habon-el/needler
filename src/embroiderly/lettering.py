@@ -28,7 +28,11 @@ BUNDLED = Path(__file__).with_name('fonts')
 FONT_SOURCES = [
     (BUNDLED/'dejavu', 'fonts-dejavu-core', BUNDLED/'dejavu'/'LICENSE'),
     (BUNDLED/'lato', 'fonts-lato', BUNDLED/'lato'/'LICENSE'),
-] + [(Path(directory), package, Path('/usr/share/doc')/package/'copyright') for directory, package in (
+] + [(BUNDLED/name, 'google-fonts-'+name, BUNDLED/name/'LICENSE') for name in (
+    # SIL Open Font License fonts from github.com/google/fonts (ofl/).
+    'graduate', 'bebasneue', 'anton', 'staatliches', 'pacifico', 'lobster', 'kaushanscript',
+    'alfaslabone', 'righteous', 'russoone', 'archivoblack', 'bowlbyone', 'bungee', 'passionone',
+)] + [(Path(directory), package, Path('/usr/share/doc')/package/'copyright') for directory, package in (
     ('/usr/share/fonts/truetype/lato', 'fonts-lato'),
     ('/usr/share/fonts/truetype/dejavu', 'fonts-dejavu-core'),
     ('/usr/share/fonts/truetype/liberation', 'fonts-liberation'),

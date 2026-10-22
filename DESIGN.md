@@ -164,6 +164,9 @@ delayed the next change), and a one-line hint says when words or settings change
 While typing, an instant preview draws the words with the real embroidery font (GET /text-font/<key>) over
 the canvas with "about N mm wide" (no stitching); real stitches replace it. The size note stays hidden until
 a measured size exists. Before this the only way to make text stitches was the small header button.
+The "Unsaved changes" warning on text designs appears only when words were edited and not stitched yet:
+checked stitches are stored at /text/<id> and come back on reload, so they no longer trigger it (it used
+to fire for every unapproved design, which also blocked reloading the page).
 Open (from the Hatch comparison): branching / travel under later fills instead of a cut after every
 shape (`generation_policy` still forces `trim_after`), turning fills that follow the shape, colour
 blending, appliqué, stitch shortening on tight curves, more fonts.
@@ -197,3 +200,29 @@ No animated entrance; reduced-motion disables optional transitions. Root scrollb
 - Do preview an outlined erasure before explicit apply; preserve Undo and original uploads.
 - Don't imply professional sewability from a rendered preview.
 - Don't claim all legacy routes have been consolidated in this incremental slice.
+
+Check speed (2026-10-22): the crossing check (`RemovedPixels.crosses_many`) answers every segment of a
+file in one numpy pass with the same samples as before (identical results, tests/test_crossing_batch.py);
+`export_findings.inspect` collects its segments and keeps the issue order. `checked_bytes` remembers file
+pairs that already passed in this process, keyed by both file digests and the whole release context, so
+showing just-made stitches does not re-check them. Text "Make stitches" went from about 8 s to 1.3–2.3 s.
+
+Lettering test matrix (2026-10-22): both fonts, many sizes, plain and puff, 19 texts. Fixed: puff caps
+now aim at the matching place on a stitch about a cap depth in (one fixed direction left the column at
+slanted ends); puff satin stitches and the diagonals between them are capped at 6.85 mm before grid
+rounding; separate pieces (dots) get a cut after their tack-down line; travel between strokes is planned
+inside the sewn columns, not the font outline (the outline's unsewn notch at joints was crossed, also the
+Lato 15 mm HABONIMANA crossing); and a last safety net in lettering_native replaces any connecting
+thread still crossing bare fabric with tie-off, cut and tie-in (knockout_routing.protect), only when the
+check finds one. Regression cases in tests/test_lettering_regressions.py.
+
+More fonts and a font picker (2026-10-22): 14 SIL Open Font License fonts from github.com/google/fonts
+(ofl/), each in src/embroiderly/fonts/<name>/ with its OFL text as LICENSE, plus three styles already
+bundled (DejaVu Serif Bold, DejaVu Sans Condensed Bold, Lato Bold Italic): 19 fonts. Size ranges come from
+stroke widths like the first two fonts (thinnest 10% of strokes at least 0.34 mm, widest at most 4.2 mm,
+6 mm for puff). Alfa Slab One stops at 9.6 mm and Bowlby One at 6.6 mm without "?" (`exclude`): their round
+letters trace badly larger. Scripts keep no extra spacing so letters join; they are too uneven for puff.
+font-picker.js replaces the font menu with a list showing the customer's own words in every font
+(GET /text-font/<key>); hovering one previews it on the canvas (NeedlerTextPreview.peek in text-make.js).
+The smallest size of a font with a fractional scale was refused by a float comparison: fixed.
+knockout_routing.lock retraces the whole segment when thirds would be under 0.3 mm.

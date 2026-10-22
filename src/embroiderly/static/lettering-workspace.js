@@ -77,7 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
    const payload=await response.json();if(token!==version)return;
    if(!response.ok)throw Error(payload.error||'The checked stitch plan could not be loaded. Retry Update stitches.');
    if(!await studio.nativeAccept(payload)||token!==version)return;
-   current=data;dirty=!data.approved;
+   // Checked stitches are stored at /text/<id>, so a reload keeps them.
+   current=data;dirty=false;
    const r=data.reports.dst;
    if($('pieceStitchTotal'))$('pieceStitchTotal').textContent=r.stitches+' total stitches';
    $('healthSummary').textContent=(data.checks_passed?'File checks passed':'Check these stitches')+' · '+r.stitches+' stitches · '+r.trims+' cuts';
@@ -103,11 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
   $('nativeHeight').dispatchEvent(new Event('input',{bubbles:true}));buttons();
  }
  $('undo').onclick=()=>undo(false);$('redo').onclick=()=>undo(true);
- window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+ // Warn only when words were edited and not stitched yet; a reload loses only those edits.
+ window.addEventListener('beforeunload',e=>{if(dirty&&$('letteringWords').value.trim()){e.preventDefault();e.returnValue='';}});
  window.NativeWorkspace={action:action=>{if(action==='save')$('nativeApprove').click();else if(action==='digitize')$('nativeCheck').click();}};
  assign(initial.recipe);buttons();
  // Immutable saved recipe is authoritative; never load an old image's recipe.
- if(!initial.id){dirty=true;status('Type your words, then Check stitches.');return;}
+ if(!initial.id){status('Type your words, then Check stitches.');return;}
  const bootVersion=version;
  fetch('/lettering/native/'+initial.id,{signal:AbortSignal.timeout(15000)}).then(async response=>{
   const data=await response.json();if(dirty||bootVersion!==version)return;

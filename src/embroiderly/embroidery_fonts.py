@@ -28,6 +28,79 @@ FONTS = {
                        file='lato/Lato-Black.ttf', package='fonts-lato',
                        size=4.0, min_scale=1.0, max_scale=3.8, puff_max_scale=6.5, tracking=.07,
                        zigzag_mm=.38, pull_mm=.1),
+    # Open-licence (SIL OFL) fonts. Alfa Slab One and Bowlby One stop lower: their
+    # round letters (D, O, 0, q) trace badly larger; Bowlby One's ? never traces cleanly.
+    # Size range from stroke widths, as for the two
+    # above: the thinnest 10% of strokes at least 0.34 mm, the widest at most
+    # 4.2 mm (6 mm for puff). Scripts keep no extra spacing so letters join.
+    'graduate': dict(name='Graduate', label='Graduate · varsity',
+                      file='graduate/Graduate-Regular.ttf', package='google-fonts-graduate',
+                      size=4.0, min_scale=1.1, max_scale=3.8, puff_max_scale=10, tracking=0.06,
+                      zigzag_mm=.38, pull_mm=.1),
+    'bebas_neue': dict(name='Bebas Neue', label='Bebas Neue · tall sports',
+                        file='bebasneue/BebasNeue-Regular.ttf', package='google-fonts-bebasneue',
+                        size=4.0, min_scale=1.4, max_scale=3.8, puff_max_scale=9.2, tracking=0.06,
+                        zigzag_mm=.38, pull_mm=.1),
+    'anton': dict(name='Anton', label='Anton · bold condensed',
+                   file='anton/Anton-Regular.ttf', package='google-fonts-anton',
+                   size=4.0, min_scale=0.9, max_scale=3.8, puff_max_scale=6.9, tracking=0.06,
+                   zigzag_mm=.38, pull_mm=.1),
+    'staatliches': dict(name='Staatliches', label='Staatliches · block',
+                         file='staatliches/Staatliches-Regular.ttf', package='google-fonts-staatliches',
+                         size=4.0, min_scale=0.9, max_scale=3.8, puff_max_scale=7.7, tracking=0.06,
+                         zigzag_mm=.38, pull_mm=.1),
+    'pacifico': dict(name='Pacifico', label='Pacifico · script',
+                      file='pacifico/Pacifico-Regular.ttf', package='google-fonts-pacifico',
+                      size=4.0, min_scale=0.9, max_scale=3.8, puff_max_scale=7.1, tracking=0,
+                      zigzag_mm=.38, pull_mm=.1),
+    'lobster': dict(name='Lobster', label='Lobster · script',
+                     file='lobster/Lobster-Regular.ttf', package='google-fonts-lobster',
+                     size=4.0, min_scale=1.3, max_scale=3.8, puff_max_scale=7, tracking=0,
+                     zigzag_mm=.38, pull_mm=.1),
+    'kaushan_script': dict(name='Kaushan Script', label='Kaushan Script · brush',
+                            file='kaushanscript/KaushanScript-Regular.ttf', package='google-fonts-kaushanscript',
+                            size=4.0, min_scale=1.6, max_scale=3.8, puff_max_scale=8.7, tracking=0,
+                            zigzag_mm=.38, pull_mm=.1),
+    'alfa_slab_one': dict(name='Alfa Slab One', label='Alfa Slab One · slab',
+                           file='alfaslabone/AlfaSlabOne-Regular.ttf', package='google-fonts-alfaslabone',
+                           size=4.0, min_scale=0.9, max_scale=2.4, puff_max_scale=4, tracking=0.06,
+                           zigzag_mm=.38, pull_mm=.1),
+    'righteous': dict(name='Righteous', label='Righteous · retro',
+                       file='righteous/Righteous-Regular.ttf', package='google-fonts-righteous',
+                       size=4.0, min_scale=1, max_scale=3.8, puff_max_scale=6.1, tracking=0.06,
+                       zigzag_mm=.38, pull_mm=.1),
+    'russo_one': dict(name='Russo One', label='Russo One · tech',
+                       file='russoone/RussoOne-Regular.ttf', package='google-fonts-russoone',
+                       size=4.0, min_scale=0.9, max_scale=3.8, puff_max_scale=5.6, tracking=0.06,
+                       zigzag_mm=.38, pull_mm=.1),
+    'archivo_black': dict(name='Archivo Black', label='Archivo Black · heavy',
+                           file='archivoblack/ArchivoBlack-Regular.ttf', package='google-fonts-archivoblack',
+                           size=4.0, min_scale=0.9, max_scale=3.2, puff_max_scale=4.6, tracking=0.06,
+                           zigzag_mm=.38, pull_mm=.1),
+    'bowlby_one': dict(name='Bowlby One', label='Bowlby One · chunky',
+                        file='bowlbyone/BowlbyOne-Regular.ttf', package='google-fonts-bowlbyone',
+                        size=4.0, min_scale=0.9, max_scale=1.65, puff_max_scale=3.4, tracking=0.06,
+                        exclude='?', zigzag_mm=.38, pull_mm=.1),
+    'bungee': dict(name='Bungee', label='Bungee · signage',
+                    file='bungee/Bungee-Regular.ttf', package='google-fonts-bungee',
+                    size=4.0, min_scale=0.9, max_scale=2.7, puff_max_scale=3.9, tracking=0.06,
+                    zigzag_mm=.38, pull_mm=.1),
+    'passion_one': dict(name='Passion One', label='Passion One · rounded',
+                         file='passionone/PassionOne-Bold.ttf', package='google-fonts-passionone',
+                         size=4.0, min_scale=0.9, max_scale=2.7, puff_max_scale=3.9, tracking=0.06,
+                         zigzag_mm=.38, pull_mm=.1),
+    'dejavu_serif': dict(name='Needler Serif', label='Needler Serif · classic',
+                          file='dejavu/DejaVuSerif-Bold.ttf', package='fonts-dejavu-core',
+                          size=4.0, min_scale=1, max_scale=3.8, puff_max_scale=5.5, tracking=0.06,
+                          zigzag_mm=.38, pull_mm=.1),
+    'dejavu_condensed': dict(name='Needler Condensed', label='Needler Condensed · narrow',
+                              file='dejavu/DejaVuSansCondensed-Bold.ttf', package='fonts-dejavu-core',
+                              size=4.0, min_scale=1, max_scale=3.8, puff_max_scale=6.1, tracking=0.06,
+                              zigzag_mm=.38, pull_mm=.1),
+    'lato_italic': dict(name='Needler Italic', label='Needler Italic · slanted',
+                         file='lato/Lato-BoldItalic.ttf', package='fonts-lato',
+                         size=4.0, min_scale=1.1, max_scale=3.8, puff_max_scale=7.1, tracking=0.06,
+                         zigzag_mm=.38, pull_mm=.1),
 }
 
 
@@ -39,7 +112,8 @@ def font_path(key):
 def glyph_set(key):
     font = _font(font_path(key))
     cmap = font.getBestCmap()
-    return ''.join(c for c in CHARACTERS if ord(c) in cmap)
+    # exclude: characters whose outline does not trace into clean satin columns.
+    return ''.join(c for c in CHARACTERS if ord(c) in cmap and c not in FONTS[key].get('exclude', ''))
 
 
 def catalogue():
@@ -203,7 +277,12 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                     if travel is None:
                         from shapely.affinity import affine_transform
                         from .stitch_paths import Travel
-                        shape = glyph_columns(font_path(key), char)[2]
+                        # Inside the sewn columns, not the font outline: where two
+                        # columns meet the outline has an unsewn wedge, and a travel
+                        # across it is a thread over bare fabric.
+                        from shapely.geometry import Polygon
+                        from shapely.ops import unary_union
+                        shape = unary_union([Polygon(list(ca) + list(cb)[::-1]).buffer(0) for ca, cb, *_ in columns])
                         placed = affine_transform(shape, [em_px, 0, 0, em_px, shift+x, baseline])
                         travel = Travel(placed, inset=.15/PX_MM, slack=.05/PX_MM)
                     route = travel.route(previous_end, start, direct_mm=math.inf)
@@ -285,6 +364,9 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                         'style': f'fill:none;stroke:{colour};stroke-width:{.2/PX_MM:.3f}',
                         f'{{{INK_NS}}}stroke_method': 'running_stitch', f'{{{INK_NS}}}puff': 'true',
                         f'{{{INK_NS}}}running_stitch_length_mm': '1.0',
+                        # Separate pieces (the dot of i and j): cut between them,
+                        # never one stitch across the fabric gap.
+                        **({f'{{{INK_NS}}}trim_after': 'true'} if len(rings) > 1 else {}),
                         f'{{{INK_NS}}}running_stitch_tolerance_mm': '0'}))
             if nodes:
                 nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
