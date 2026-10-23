@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
    const big=document.createElement('span');big.className='font-sample';big.textContent=text||name(o);
    big.style.fontFamily=`"needler-${o.value}", sans-serif`;
    const small=document.createElement('span');small.className='font-name';
-   small.textContent=name(o)+(style(o)?' · '+style(o):'')+` · ${o.dataset.min}–${o.dataset.max} mm`;
+   small.textContent=name(o)+(style(o)?' · '+style(o):'');
    row.append(big,small);face(o.value);return row;
   }));
  }

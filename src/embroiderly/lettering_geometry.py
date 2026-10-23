@@ -16,6 +16,7 @@ SVG = '{http://www.w3.org/2000/svg}'
 INK = '{http://inkstitch.org/namespace}'
 MM = 25.4 / 96
 GRID = .04
+MAX_GRID = .1   # coarsest verifier raster, for the largest lettering
 
 
 def outline(svg, *, with_paths=False):
@@ -27,6 +28,18 @@ def outline(svg, *, with_paths=False):
     shapes, envelopes, paths = [], [], {}
     for node, subpaths, _, _ in svg_geometry.elements(root, tolerance=.01/MM):
         if svg_geometry.local(node.tag) != 'path':
+            continue
+        if str(node.get(INK+'letter_fill', '')).lower() == 'true':
+            # Big letters sewn as a tatami fill (embroidery_fonts.layout): the
+            # letter's own outline, holes kept; the fill stays inside it.
+            from .stitch_fills import fill_shape
+            parts = [[(float(x)*MM, float(y)*MM) for x, y in points] for points, _ in subpaths]
+            shape = fill_shape([(part, True) for part in parts], 'evenodd')
+            if shape.is_empty:
+                continue
+            shapes.append(shape)
+            envelopes.append(shape.buffer(.05))
+            paths[node.get('id')] = envelopes[-1]
             continue
         if str(node.get(INK+'satin_column', '')).lower() != 'true':
             # Font-authored underpaths must lie inside independently defined
@@ -54,7 +67,7 @@ def outline(svg, *, with_paths=False):
     return unary_union(shapes), unary_union(envelopes), len(shapes)
 
 
-def source_frame(svg):
+def source_frame(svg, with_grid=False):
     """Pin source and engine to one explicit design centre before generation."""
     shape, envelope, columns = outline(svg)
     x, y, right, bottom = shape.bounds
@@ -74,19 +87,27 @@ def source_frame(svg):
     # The same 0.3 mm stitch-length and cut checks still run after writing.
     # Plus one raster cell: filling the polygon on the GRID raster can move its
     # edge inward by up to a cell, which must not eat the quantisation allowance.
-    envelope = envelope.buffer(math.sqrt(2)*.05+GRID)
+    # Big lettering (jacket backs) gets a coarser raster, never coarser than
+    # 0.1 mm, so the verifier stays within 16 million cells up to ~400 x 400 mm.
+    x, y, right, bottom = envelope.bounds
+    grid = GRID
+    while grid < MAX_GRID-1e-9 and (right-x+2+2*(.08+MAX_GRID))*(bottom-y+2+2*(.08+MAX_GRID))/grid**2 > 16_000_000:
+        grid = round(grid+.01, 2)
+    envelope = envelope.buffer(math.sqrt(2)*.05+grid)
     x, y, right, bottom = envelope.bounds
     origin = [1-x, 1-y]
-    width, height = math.ceil((right-x+2)/GRID), math.ceil((bottom-y+2)/GRID)
+    width, height = math.ceil((right-x+2)/grid), math.ceil((bottom-y+2)/grid)
     if width*height > 16_000_000:
-        raise ValueError('This text is too large for the lettering verifier. Use fewer words or lines.')
+        raise ValueError('This text is larger than about 400 × 400 mm, more than any embroidery hoop. '
+                         'Use a smaller height, fewer words or more lines.')
     plane = Image.new('L', (width, height))
     draw = ImageDraw.Draw(plane)
     polygons = list(envelope.geoms) if envelope.geom_type == 'MultiPolygon' else [envelope]
     def coords(ring):
-        return [((px+origin[0])/GRID, (py+origin[1])/GRID) for px, py in ring.coords]
+        return [((px+origin[0])/grid, (py+origin[1])/grid) for px, py in ring.coords]
     for polygon in polygons:
         draw.polygon(coords(polygon.exterior), fill=255)
         for hole in polygon.interiors:
             draw.polygon(coords(hole), fill=0)
-    return ET.tostring(root, encoding='unicode'), np.asarray(plane)>127, origin, columns
+    result = (ET.tostring(root, encoding='unicode'), np.asarray(plane)>127, origin, columns)
+    return result+(grid,) if with_grid else result

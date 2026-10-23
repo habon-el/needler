@@ -47,7 +47,9 @@
  function sizeRange(){
   const option=$('nativeFont').selectedOptions[0];
   // Puff letters may be larger: their strokes must be as wide as the foam is thick.
-  $('nativeHeight').min=option.dataset.min||4;$('nativeHeight').max=(window.NativePuff?.get()&&option.dataset.puffMax)||option.dataset.max||6;
+  // The height is the height of the stitched words, which depends on the words:
+  // the server gives the exact range for them (small_lettering.scale_for).
+  $('nativeHeight').min=1;$('nativeHeight').max=400;
  }
  sizeRange();$('nativeFont').addEventListener('input',sizeRange);
  for(const [id,factor] of [['nativeSmaller',.9],['nativeLarger',1.1]])$(id).addEventListener('click',()=>{
@@ -72,9 +74,9 @@
   const body=values();
   for(const [id,valid,message] of [
    ['letteringWords',!!body.text.trim(),'Enter your words above.'],
-   ['nativeHeight',Number.isFinite(body.height_mm)&&body.height_mm>=Number($('nativeHeight').min)&&body.height_mm<=Number($('nativeHeight').max),`Choose a font size from ${$('nativeHeight').min} to ${$('nativeHeight').max} mm.`],
+   ['nativeHeight',Number.isFinite(body.height_mm)&&body.height_mm>=Number($('nativeHeight').min)&&body.height_mm<=Number($('nativeHeight').max),'Enter the height of your stitched words in mm.'],
    ['nativeWidth',Number.isFinite(body.available_width_mm)&&body.available_width_mm>=5&&body.available_width_mm<=400,'Enter an available width from 5 to 400 mm.']]){
-   $(id).setAttribute('aria-invalid',String(!valid));if(!valid){status(message);$(id).focus();return;}
+   $(id).setAttribute('aria-invalid',String(!valid));if(!valid){status(message);emit('failed',message);$(id).focus();return;}
   }
   invalidate();const version=revision;busy=true;controller=new AbortController();
   $('nativeCheck').disabled=true;$('nativeCheck').setAttribute('aria-busy','true');emit('busy',true);
@@ -84,7 +86,7 @@
    const data=await json('/lettering/native/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:controller.signal});
    if(version===revision&&active()&&JSON.stringify(values())===JSON.stringify(body))render(data);
    else if(version===revision&&active()){invalidate();status('The words changed while loading. Build and check again.');}
-  }catch(e){if(version===revision&&active())status(e.name==='AbortError'?'The check timed out. Your picture is unchanged. Retry shortly.':e.message);}
+  }catch(e){if(version===revision&&active()){const message=e.name==='AbortError'?'The check timed out. Your picture is unchanged. Retry shortly.':e.message;status(message);emit('failed',message);}}
   finally{clearTimeout(timeout);busy=false;$('nativeCheck').disabled=false;$('nativeCheck').removeAttribute('aria-busy');emit('busy',false);}
  });
  $('nativeApprove').addEventListener('click',async()=>{

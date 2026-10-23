@@ -5,7 +5,7 @@
 {% set limits = native_font_sizes.get('small_font', [4, 6]) %}
 <select id="nativeFont">{% for key, font in native_fonts %}{% set range = native_font_sizes[key] %}<option value="{{ key }}" data-min="{{ range[0] }}" data-max="{{ range[1] }}" data-puff-max="{{ native_puff_sizes[key][1] }}">{{ font.label }}</option>{% endfor %}</select>
 <label for="nativeHeight">Font size (mm)</label>
-<input id="nativeHeight" type="number" min="{{ limits[0] }}" max="{{ limits[1] }}" step=".1" value="5" aria-describedby="nativeHelp nativeStatus">
+<input id="nativeHeight" type="number" min="{{ limits[0] }}" max="{{ limits[1] }}" step=".1" value="12" aria-describedby="nativeHelp nativeStatus">
 <div id="nativeResize"><button id="nativeSmaller" type="button">10% smaller</button> <button id="nativeLarger" type="button">10% larger</button></div>
 <p id="nativeHelp">Font size changes rebuild the letters. This is not the whole design height. The actual stitched width and height appear after checking.</p>
 <label for="nativeWidth">Available width on your item (mm)</label>

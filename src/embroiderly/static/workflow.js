@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   edit.append(row,$('nativeResize'));
   document.querySelector('label[for=nativeWidth]').textContent='Space available (mm)';
+  // The height entered is the stitched height of the words (small_lettering.scale_for).
+  document.querySelector('label[for=nativeHeight]').textContent='Height (mm)';
+  $('nativeHeight').title='Height of your stitched words, top of the tallest letter to the bottom of the lowest, all lines.';
   $('nativeWidth').title='Maximum width available on your item. This does not shrink the text automatically.';
   const size=node('p','Check stitches to measure the finished width × height.','workflowMeasuredSize');edit.append(size);
   const hint=node('p','','workflowLetterTip');edit.append(hint);
@@ -43,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const tip=()=>{
    const value=Number($('nativeHeight').value),el=$('workflowLetterTip');
    el.dataset.level=value<4?'red':value<5?'amber':'green';
-   el.textContent=(value<4?'Very small text — check the preview and sew a sample first.':value<5?'Small text — sew a sample first.':'Sew a sample before using this on your item.')+' Font size is a setting, not measured letter height.';
+   el.textContent=(value<4?'Very small text — check the preview and sew a sample first.':value<5?'Small text — sew a sample first.':'Sew a sample before using this on your item.')+' Height is the stitched height of your words.';
   };
   $('nativeHeight').addEventListener('input',tip);tip();
   // One result, not a second preview or a second set of approval buttons.

@@ -22,9 +22,9 @@ def test_layout_is_satin_columns_grouped_by_glyph():
 @pytest.mark.parametrize('key', sorted(FONTS))
 @pytest.mark.parametrize('text,height', [('Hello World', 5), ('Baby 0689', 4), ('Café & Co.', 8)])
 def test_words_pass_every_release_check(tmp_path, key, text, height):
-    # Each font has its own size range (thin scripts start larger): stay inside it.
-    from embroiderly.small_lettering import fonts, size_limits
-    low, high = size_limits(fonts()[key])
+    # Each font allows its own heights for these words (thin scripts start larger): stay inside them.
+    from embroiderly.small_lettering import fonts, height_range
+    low, high = height_range(text, fonts()[key])
     height = min(max(float(height), low), high)
     result = native.build(tmp_path, dict(text=text, font=key, height_mm=height, align='center',
                                          available_width_mm=400.0, colour='#202020'))

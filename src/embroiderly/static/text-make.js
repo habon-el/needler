@@ -19,17 +19,23 @@ document.addEventListener('DOMContentLoaded', () => {
   || panel.querySelector('#workflowEdit .puff-controls') || $('letteringAlign')?.closest('div');
  if(anchor?.classList?.contains('puff-controls'))anchor.before(make,hint);else (anchor||words).after(make,hint);
  let busy=false,made=false;
- const ready=()=>words.value.trim()&&!document.querySelector('#workflowEdit [aria-invalid="true"]');
- const press=()=>{if(busy||!ready())return;check.click()};
+ // Always answer a press: an earlier refused size must not leave the button dead.
+ const say=(text,error)=>{hint.textContent=text;hint.classList.toggle('text-make-error',!!error)};
+ const press=()=>{if(busy)return;if(!words.value.trim()){say('Type your words first.',true);words.focus();return}
+  document.querySelectorAll('#workflowEdit [aria-invalid="true"]').forEach(el=>el.removeAttribute('aria-invalid'));check.click()};
  make.addEventListener('click',press);
  document.addEventListener('lettering:busy',e=>{
   busy=!!e.detail;make.disabled=busy;make.textContent=busy?'Making stitches…':'Make stitches';
-  if(!busy&&!made)hint.textContent='Press Make stitches when your words are ready.';
+  // A new press clears the last error; finishing keeps an error shown by lettering:failed.
+  if(busy)hint.classList.remove('text-make-error');
+  else if(!made&&!hint.classList.contains('text-make-error'))hint.textContent='Press Make stitches when your words are ready.';
  });
  // Only a real result counts as up to date (a failed check leaves the old hint).
- document.addEventListener('lettering:result',()=>{made=true;hint.textContent='Stitches are up to date.'});
+ document.addEventListener('lettering:result',()=>{made=true;say('Stitches are up to date.')});
+ // Why no stitches were made, next to the button (it was only in the status bar).
+ document.addEventListener('lettering:failed',e=>say(e.detail,true));
  // Changing the words or settings only marks the stitches as out of date.
- const later=()=>{hint.textContent=made?'Words or settings changed · press Make stitches to update.':'Press Make stitches when your words are ready.'};
+ const later=()=>{hint.classList.remove('text-make-error');hint.textContent=made?'Words or settings changed · press Make stitches to update.':'Press Make stitches when your words are ready.'};
  for(const id of ['letteringWords','nativeFont','nativeHeight','nativeWidth','letteringAlign','letteringColour','puffOn','puffFoam'])
   $(id)?.addEventListener(id==='letteringWords'||id==='nativeHeight'||id==='nativeWidth'?'input':'change',later);
  // The size note is only useful once there is a measured size.
@@ -72,19 +78,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const face=await fontFor(key);
   const o=place();if(!o)return;o.hidden=false;
   const g=o.getContext('2d'),family=face?`needler-${key}`:'sans-serif';
-  // Font size is the capital height: find that ratio for this font.
-  g.font=`100px "${family}"`;const cap=g.measureText('H').actualBoundingBoxAscent||70;
-  const lines=text.split('\n'),widths=lines.map(l=>g.measureText(l).width/cap*size);
-  const widthMm=Math.max(...widths),lineMm=size*1.55,heightMm=size+(lines.length-1)*lineMm;
+  // The height entered is the height of the stitched words (all lines), as on
+  // the server (small_lettering.scale_for): measure the block at 100 px.
+  g.font=`100px "${family}"`;
+  const lines=text.split('\n'),probe=g.measureText('Hg');
+  const step=((probe.fontBoundingBoxAscent||80)+(probe.fontBoundingBoxDescent||20))*1.05;
+  const m=lines.map(l=>g.measureText(l||' '));
+  const top=Math.min(...m.map((x,i)=>i*step-(x.actualBoundingBoxAscent||0)));
+  const bottom=Math.max(...m.map((x,i)=>i*step+(x.actualBoundingBoxDescent||0)));
+  const mmPerPx=size/Math.max(1,bottom-top),widths=m.map(x=>x.width*mmPerPx);
+  const widthMm=Math.max(...widths),heightMm=size;
   const scale=Math.min(o.width*.84/Math.max(widthMm,1),o.height*.62/Math.max(heightMm,1));
   g.clearRect(0,0,o.width,o.height);
   g.fillStyle='#ebe8e1';  // fixed opaque fabric tone: the theme's canvas colour is translucent
   g.fillRect(0,0,o.width,o.height);  // solid: old stitches must not show through
-  g.font=`${size*scale/cap*100}px "${family}"`;g.fillStyle=$('letteringColour')?.value||'#202020';
-  const align=$('letteringAlign')?.value||'center',top=(o.height-heightMm*scale)/2+size*scale;
+  const px=mmPerPx*scale;g.font=`${100*px}px "${family}"`;g.fillStyle=$('letteringColour')?.value||'#202020';
+  const align=$('letteringAlign')?.value||'center',y0=(o.height-heightMm*scale)/2-top*px;
   lines.forEach((line,i)=>{
    const w=widths[i]*scale,left=(o.width-widthMm*scale)/2,x=align==='left'?left:align==='right'?left+widthMm*scale-w:(o.width-w)/2;
-   g.fillText(line,x,top+i*lineMm*scale);
+   g.fillText(line,x,y0+i*step*px);
   });
   g.font='12px system-ui, sans-serif';g.fillStyle='#555';
   g.fillText(peeked?`Preview of this font · about ${Math.round(widthMm)} mm wide · click it to choose`

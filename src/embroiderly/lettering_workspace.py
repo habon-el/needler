@@ -81,7 +81,7 @@ def register(app, root):
         return render_template('artwork.html', name='new-text', options={},
             original='', previous=None, simulation='', knockout_seed=defaults(),
             native_text=dict(id=None, recipe=dict(text='', font='small_font',
-                height_mm=5, align='center', available_width_mm=50, colour='#202020')))
+                height_mm=12, align='center', available_width_mm=50, colour='#202020')))
 
     @app.get('/text/<key>')
     def workspace(key):

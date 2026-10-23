@@ -6,7 +6,7 @@ from embroiderly import lettering_native as ln
 
 CASES = [
     # 3D puff: a slanted column end sent the cap into the bowl of the b.
-    ('habonaxel', 'small_font', 20, True),
+    ('habonaxel', 'small_font', 23, True),  # stitched height; these words allow 22–24.1 mm
     # 3D puff: stitches 6.98 mm long rounded to 7.02 mm on the machine grid.
     ('h', 'small_font', 22, True),
     # 3D puff: the stitch between fanned satin stitches was over 7 mm.
@@ -29,3 +29,21 @@ def test_lettering_passes_checks(tmp_path, text, font, height, puff):
     result = ln.build(tmp_path, ln.recipe(body))
     assert result['issues'] == {'pes': [], 'dst': []}
     assert result['checks_passed']
+
+
+@pytest.mark.parametrize('text,font,height', [('HABONIMANA', 'small_font', 30), ('Team', 'graduate', 50), ('ABC', 'bungee', 60)])
+def test_big_letters_are_tatami_fill_at_the_height_asked(tmp_path, text, font, height):
+    # Above the satin range letters are sewn as fill, not refused (2026-10-22).
+    result = ln.build(tmp_path, ln.recipe(dict(text=text, font=font, height_mm=height, align='center',
+                                               available_width_mm=400, colour='#202020')))
+    assert result['checks_passed'], result['issues']
+    assert abs(result['reports']['dst']['height_mm'] - height) <= .2
+    assert 'letter_fill' in (tmp_path / 'source.svg').read_text()
+
+
+def test_jacket_size_letters_use_a_coarser_verifier_grid(tmp_path):
+    # 150 mm letters (379 mm wide) were refused by the 0.04 mm verifier raster.
+    result = ln.build(tmp_path, ln.recipe(dict(text='TEAM', font='anton', height_mm=150, align='center',
+                                               available_width_mm=400, colour='#202020')))
+    assert result['checks_passed'], result['issues']
+    assert abs(result['reports']['dst']['height_mm'] - 150) <= .2

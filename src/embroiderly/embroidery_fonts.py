@@ -141,6 +141,31 @@ def cap_height(key):
     return bottom-top
 
 
+def text_metrics(text, key):
+    """The words in this font, measured in capital heights (scale-free): the
+    height of the whole block as layout() places it, and the thinnest and
+    widest satin stroke. A size in mm times these gives millimetres."""
+    path, cap = font_path(key), cap_height(key)
+    font = _font(path)
+    hhea, em = font['hhea'], font['head'].unitsPerEm
+    line_em = (hhea.ascent-hhea.descent+hhea.lineGap)/em*1.05
+    tops, bottoms, strokes = [], [], []
+    for row, line in enumerate(text.split('\n')):
+        for char in line:
+            if char == ' ':
+                continue
+            columns, _, shape = glyph_columns(path, char)
+            if shape.is_empty:
+                continue
+            _, top, _, bottom = shape.bounds
+            tops.append(row*line_em+top)
+            bottoms.append(row*line_em+bottom)
+            strokes += [width*2 for *_, width in columns]
+    if not tops or not strokes:
+        return None
+    return dict(height=(max(bottoms)-min(tops))/cap, thin=min(strokes)/cap, wide=max(strokes)/cap)
+
+
 @lru_cache(maxsize=None)
 def _kerning(key):
     """Pair kerning from GPOS (format 1 and 2) or the legacy kern table, in em."""
@@ -216,7 +241,7 @@ def _joins(a, b, index, step, others):
     return others.buffer(1e-6).contains(Point(m[0]+(m[0]-n[0])/d*.6/PX_MM, m[1]+(m[1]-n[1])/d*.6/PX_MM))
 
 
-def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0):
+def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0, fill=False):
     """SVG of satin-column lettering; user units are CSS px (96 per inch).
     puff: letters over foam (see stitch_satin._puff_satin). Each letter has a
     placement line sewn before the stop for the foam, then a perforation line
@@ -263,6 +288,24 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
             group = ET.SubElement(line_group, f'{{{SVG_NS}}}g', {f'{{{INK_NS}}}letter-group': 'glyph',
                                                              f'{{{LABEL_NS}}}label': char})
             place = lambda p: (shift+x+p[0]*em_px, baseline+p[1]*em_px)
+            if fill:
+                # Big letters: strokes too wide for satin are sewn as one tatami fill
+                # per letter (holes kept), as professional lettering does.
+                from shapely.affinity import affine_transform
+                outline = affine_transform(glyph_columns(font_path(key), char)[2],
+                                           [em_px, 0, 0, em_px, shift+x, baseline])
+                rings = [ring for poly in getattr(outline, 'geoms', [outline]) if not poly.is_empty
+                         for ring in (poly.exterior, *poly.interiors)]
+                if rings:
+                    count += 1
+                    ET.SubElement(group, f'{{{SVG_NS}}}path', {
+                        'id': f'fill{count}', 'd': ' '.join(_path(list(r.coords))+' Z' for r in rings),
+                        'style': f'fill:{colour};fill-rule:evenodd;stroke:none',
+                        f'{{{INK_NS}}}letter_fill': 'true', f'{{{INK_NS}}}fill_method': 'auto_fill',
+                        f'{{{INK_NS}}}angle': '45', f'{{{INK_NS}}}row_spacing_mm': '.4',
+                        f'{{{INK_NS}}}max_stitch_length_mm': '3.5', f'{{{INK_NS}}}fill_underlay': 'true',
+                        f'{{{INK_NS}}}trim_after': 'true'})
+                continue
             travel = None
             nodes = []
             sewn_columns, column_nodes = [], []

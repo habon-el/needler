@@ -62,12 +62,14 @@ def test_puff_letters_pass_and_thin_letters_are_refused(tmp_path):
     assert workspace['playback']['puff'] == {'threads': [1], 'foam_mm': 3.0}
     assert sum(s['t'] == 'color_change' for s in workspace['playback']['steps']) == 1
     thin = client.post('/lettering/native/check', json={**body, 'height_mm': 12})
-    assert thin.status_code in (400, 422) and 'needs letter strokes 3–6 mm' in json.dumps(thin.get_json(), ensure_ascii=False)
+    # Refused before stitching, with the heights that do work for these words.
+    assert thin.status_code in (400, 422) and 'with 3D puff on 3 mm foam' in json.dumps(thin.get_json(), ensure_ascii=False)
     # 2 mm foam holds on thinner strokes.
     two = client.post('/lettering/native/check', json={**body, 'height_mm': 15, 'puff_foam_mm': 2}).get_json()
     assert two['checks_passed'] and two['recipe']['puff_foam_mm'] == 2
-    too_big = client.post('/lettering/native/check', json={**body, 'height_mm': 22, 'puff': False})
-    assert too_big.status_code in (400, 422)
+    # Flat letters above the satin range are sewn as tatami fill instead of refused.
+    big = client.post('/lettering/native/check', json={**body, 'height_mm': 22, 'puff': False}).get_json()
+    assert big['checks_passed'] and 'puff' not in big['recipe']
 
 
 def test_puff_column_is_tacked_capped_underlaid_then_covered():

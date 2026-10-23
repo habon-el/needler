@@ -12,13 +12,13 @@ def test_trial_refuses_bad_input_and_does_not_claim_release(monkeypatch):
     c=client()
     assert c.post('/lettering/small-trial',json={}).status_code==400
     monkeypatch.setattr(module,'trial',lambda body: {'release_approved':False,'pending':['Density']})
-    result=c.post('/lettering/small-trial',json={'text':'Hello','font':'small_font','height_mm':4})
+    result=c.post('/lettering/small-trial',json={'text':'Hello','font':'small_font','height_mm':6})
     assert result.status_code==200 and result.json['release_approved'] is False
     assert 'url' not in result.json
 
 
 def test_trial_busy_and_recoverable_failure(monkeypatch):
-    c=client();body={'text':'Hello','font':'small_font','height_mm':4}
+    c=client();body={'text':'Hello','font':'small_font','height_mm':6}
     module.BUSY.acquire()
     try:assert c.post('/lettering/small-trial',json=body).status_code==409
     finally:module.BUSY.release()

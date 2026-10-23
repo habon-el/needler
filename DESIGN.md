@@ -226,3 +226,22 @@ font-picker.js replaces the font menu with a list showing the customer's own wor
 (GET /text-font/<key>); hovering one previews it on the canvas (NeedlerTextPreview.peek in text-make.js).
 The smallest size of a font with a fractional scale was refused by a float comparison: fixed.
 knockout_routing.lock retraces the whole segment when thirds would be under 0.3 mm.
+
+Text height (2026-10-22): the height entered is the stitched height of the words (top of the tallest letter
+to the bottom of the lowest, all lines), not the font's capital height, which gave 8.8 mm for "graduete" at
+"10 mm". small_lettering.scale_for converts it with embroidery_fonts.text_metrics (block height and
+thinnest/widest stroke in capital heights) plus the satin edge; results are within 0.1 mm, except up to
+about 0.6 mm short at the very top of a puff range where wide strokes lose edge to stay under 6.9 mm.
+height_range gives the heights the words allow; for puff it also needs every stroke between the foam
+minimum and 6 mm, and a refusal names that range (or says the font cannot puff these words). Refusals now
+show in red under Make stitches (lettering:failed), and an earlier refused size no longer leaves the button
+dead. The field is labelled Height; it starts at 12 mm.
+
+Big letters (2026-10-22): above a font's satin range (strokes wider than about 4.2 mm) letters are no longer
+refused: embroidery_fonts.layout(fill=True) writes each letter as one tatami fill (45 degrees, 0.4 mm rows,
+underlay, holes kept, letter_fill), lettering_geometry.outline accepts those for the release mask, and
+small_lettering.scale_for switches to fill automatically up to 300 mm capitals (the fill stays inside the
+letter, so no satin edge in the height). Puff still needs satin.
+The lettering verifier raster (lettering_geometry.source_frame) starts at 0.04 mm and coarsens in 0.01 mm
+steps up to 0.1 mm so it stays within 16 million cells: designs up to about 400 x 400 mm (the largest hoops)
+are checked; the grid used is passed on as rebuild_report['grid'] and recorded in the release context.
