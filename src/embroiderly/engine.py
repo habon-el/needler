@@ -322,10 +322,9 @@ def digitize(source, directory, height_mm=100, colours=None):
                 node.set('{http://inkstitch.org/namespace}pull_compensation_mm','0')
             if style=='applique':
                 cut_pieces.append(rings)
-                # The satin cover is centred on the fabric's cut edge: half of it lies outside the area.
-                band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
-                grow=max(1,int(math.ceil((1.5+GRID_ROUNDING_MM)/scale)))
-                release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
+                # The satin cover is centred on the fabric's cut edge: half of it, and its mitred corners, lie outside.
+                from .stitch_engine import applique_coverage
+                release_mask|=applique_coverage([r[:,0,:] for r in rings],scale,mask.shape)
             if style=='puff' and not knockout:
                 # Puff satin is pulled past the edge on purpose; that band is sewn, not empty.
                 band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
@@ -409,7 +408,11 @@ def digitize(source, directory, height_mm=100, colours=None):
     # Exact stitch removal areas (stitch_cuts.py) change the plan after generation.
     cuts=[] if piece_layout else [c for c in settings.get('stitch_cuts',[]) if isinstance(c,dict) and len(c.get('points',[]))>=3]
     key=hashlib.sha256((cache_key(source,svg)+json.dumps(policy,sort_keys=True)+(json.dumps(piece_layout,sort_keys=True) if piece_layout else '')
-                        +(json.dumps(cuts,sort_keys=True) if cuts else '')).encode()).hexdigest()
+                        +(json.dumps(cuts,sort_keys=True) if cuts else '')
+                        # The allowed-stitching mask is recorded only on a fresh run; a cached result
+                        # must not keep an older mask when only the mask changed.
+                        +hashlib.sha256(np.packbits(release_mask).tobytes()+str(release_mask.shape).encode()).hexdigest()
+                        ).encode()).hexdigest()
     cached=lookup(directory,key)
     if cached is not None:return cached
     # Both machine files come from one engine plan. PES v6 retains custom RGB.

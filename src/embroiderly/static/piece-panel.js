@@ -23,7 +23,7 @@
  <div class="piece-arrange" role="group" aria-label="Arrange">
  <button type="button" data-arrange="mirror:x" title="Mirror left–right">⇋ Mirror</button><button type="button" data-arrange="mirror:y" title="Mirror top–bottom">⇅ Mirror</button>
  <button type="button" data-arrange="rotate_by:-15" title="Rotate 15° to the left">↺ 15°</button><button type="button" data-arrange="rotate_by:15" title="Rotate 15° to the right">↻ 15°</button><button type="button" data-arrange="rotate_by:45" title="Rotate 45° to the right">↻ 45°</button>
- <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceDelete" hidden title="Delete this copy">Delete copy</button>
+ <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
  </div>
  </fieldset><div class="piece-modes"><button id="pieceMove" type="button" aria-pressed="true">Drag to move</button><button id="pieceRotate" type="button" aria-pressed="false">Drag to rotate</button></div>
  <label class="piece-advanced">Group / subgroup<input id="pieceGroup" maxlength="100" placeholder="For example: Head / Eyes"></label>
@@ -32,7 +32,7 @@
  panel.insertBefore(properties,$('stitchStyles'));$('stitchStyles').querySelector('summary').textContent='Stitch type';
  $('stitchRegion').closest('label').hidden=true;$('regionStyleStatus').hidden=true;
  const total=document.createElement('output');total.id='pieceStitchTotal';total.textContent='0 total stitches';document.querySelector('.thread-info').append(total);
- let report={pieces:[]},selected=new Set(),advanced=false,linked=true,active=false,pending=false,drag=null,rotate=false;
+ let report={pieces:[]},selected=new Set(),advanced=false,linked=true,active=false,pending=false,drag=null,rotate=false,knife=null;
  const icon=(kind)=>{const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.classList.add('ui-icon');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',kind==='lock'?'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0v4':kind==='unlock'?'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0':kind==='eye'?'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6':'M3 3l18 18M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z');svg.append(path);return svg};
  function targets(){return report.pieces.filter(p=>selected.has(p.id))}
  function aggregate(items=targets()){
@@ -66,7 +66,8 @@
   $('pieceTransform').title='Reference hoop '+(report.hoop_mm||[]).join(' × ')+' mm. Rectangular reference, not a validated machine profile.';
   $('pieceAudit').textContent=items.length?`${items.some(p=>p.audit.level==='red')?'RED — check size':items.some(p=>p.audit.level==='yellow')?'YELLOW — check thin span':'GREEN — area check'} · ${[...new Set(items.flatMap(p=>p.audit.messages))].join(' ')}`:'';
   $('pieceAudit').dataset.level=items.some(p=>p.audit.level==='red')?'red':items.some(p=>p.audit.level==='yellow')?'yellow':'green';
-  properties.querySelectorAll('[data-arrange],#pieceDuplicate,#pieceDelete,#pieceSkew').forEach(control=>{control.disabled=disabled;});
+  properties.querySelectorAll('[data-arrange],#pieceDuplicate,#pieceDelete,#pieceSkew,#pieceKnife').forEach(control=>{control.disabled=disabled;});
+  $('pieceKnife').disabled=disabled||items.length!==1;
   $('pieceDelete').hidden=!items.length||!items.every(p=>p.copy);
   properties.querySelectorAll('[data-field]').forEach(input=>{input.setAttribute('aria-describedby','pieceFeedback');input.disabled=disabled;input.value=box?format(box[input.dataset.field],input.dataset.field==='rotation'):'';input.removeAttribute('aria-invalid')});
   properties.querySelectorAll('.piece-unit').forEach(node=>node.textContent=units());
@@ -120,6 +121,25 @@
  $('pieceLink').onclick=()=>{linked=!linked;sync()};$('pieceSimple').onclick=()=>{advanced=false;sync()};$('pieceAdvanced').onclick=()=>{advanced=true;sync()};
  $('pieceMove').onclick=()=>{rotate=false;$('pieceMove').setAttribute('aria-pressed','true');$('pieceRotate').setAttribute('aria-pressed','false')};$('pieceRotate').onclick=()=>{rotate=true;$('pieceMove').setAttribute('aria-pressed','false');$('pieceRotate').setAttribute('aria-pressed','true')};
  const canvas=$('prepared');
+ // Knife: drag a straight line across the one selected piece; release cuts it.
+ const knifeOn=on=>{knife=on?{}:null;$('pieceKnife').setAttribute('aria-pressed',String(on));if(on)feedback('Drag a line across the piece to cut it.');};
+ $('pieceKnife').onclick=()=>knifeOn(!knife);
+ const toMm=([x,y])=>[x*report.scale-report.origin_mm[0],y*report.scale-report.origin_mm[1]];
+ canvas.addEventListener('pointerdown',e=>{
+  if(!knife||!active||e.button!==0||pending||studio.isBusy())return;
+  if(targets().length!==1){feedback('Select one piece to cut.');return}
+  e.stopImmediatePropagation();e.preventDefault();knife.from=studio.piecePoint(e,canvas);canvas.setPointerCapture(e.pointerId);
+ },true);
+ canvas.addEventListener('pointermove',e=>{
+  if(!knife||!knife.from)return;e.stopImmediatePropagation();knife.to=studio.piecePoint(e,canvas);
+  window.stitchRegionSelection={rings:[[knife.from,knife.to,knife.from]]};studio.redraw();
+ },true);
+ canvas.addEventListener('pointerup',e=>{
+  if(!knife||!knife.from)return;e.stopImmediatePropagation();
+  const line=[knife.from,knife.to||knife.from].map(toMm);knifeOn(false);
+  if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
+  commit('knife',line);
+ },true);
  canvas.addEventListener('pointerdown',e=>{
   if(!active||$('tool').value==='measure'||studio.navigationGesture(e)||e.button!==0||pending||studio.isBusy())return;
   e.stopImmediatePropagation();const at=studio.piecePoint(e,canvas),context=canvas.getContext('2d');

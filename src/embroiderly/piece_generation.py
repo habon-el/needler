@@ -17,8 +17,10 @@ def append(document, layout, scale, settings, colours=None):
         raise ValueError('No visible pieces. Show at least one piece before generating stitches.')
     points = np.concatenate([np.asarray(r) for p in selected for r in p['rings']])
     low, high = points.min(axis=0), points.max(axis=0)
-    start = np.floor(low)-2
-    size = np.ceil(high-start).astype(int)+3
+    # An appliqué cover (and its mitred corners) sews up to ~4.5 mm past the outline: keep it on the canvas.
+    pad = 2+(int(np.ceil(5/scale)) if any(p['style'] == 'applique' for p in selected) else 0)
+    start = np.floor(low)-pad
+    size = np.ceil(high-start).astype(int)+pad+1
     if size.max() > 10000 or int(size[0])*int(size[1]) > 16000000:
         raise ValueError('The piece layout is too large. Move pieces closer together or reduce their size.')
     document.set('width', f'{size[0]*scale}mm')
@@ -32,6 +34,10 @@ def append(document, layout, scale, settings, colours=None):
         rings = [np.asarray(r, float)-start for r in (p['rings'][:1] if filled_holes.get(p['id']) == 'fill' else p['rings'])]
         local = np.zeros_like(mask)
         cv2.fillPoly(local, [np.rint(r).astype(np.int32) for r in rings], 1)
+        if p['style'] == 'applique':
+            # The appliqué satin cover is centred on the cut edge: half of it, and its mitred corners, lie outside.
+            from .stitch_engine import applique_coverage
+            local |= applique_coverage(rings, scale, mask.shape).astype(np.uint8)
         mask |= local
         thread = (colours or {}).get(p['colour'], {}).get('thread', p['colour'])
         node = ET.SubElement(document, 'path', id='piece-'+p['id'],

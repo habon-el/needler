@@ -13,13 +13,14 @@ import cv2
 import numpy as np
 
 IDENTITY = [1., 0., 0., 1., 0., 0.]
-FIELDS = {'name', 'group', 'visible', 'locked', 'matrix', 'rotation', 'source'}
+FIELDS = {'name', 'group', 'visible', 'locked', 'matrix', 'rotation', 'source', 'rings', 'cut'}
 MAX_COPIES = 100
+MAX_PART_POINTS = 20000
 
 
 def geometry_changed(options):
     return any(item.get('matrix', IDENTITY) != IDENTITY or not item.get('visible', True) or 'source' in item
-               for item in edits(options).values())
+               or item.get('cut') for item in edits(options).values())
 
 
 def copy_ids(options):
@@ -69,8 +70,19 @@ def edits(options):
         if 'source' in item and (not isinstance(item['source'], str) or not re.fullmatch('[a-f0-9]{20}', item['source'])
                                  or 'source' in value.get(item['source'], {})):
             raise ValueError('A copied piece must point to an original piece.')
+        if 'rings' in item:
+            rings = item['rings']
+            if 'source' not in item or not isinstance(rings, list) or not rings or any(
+                    not isinstance(r, list) or len(r) < 3 or any(
+                        not isinstance(p, list) or len(p) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) for v in p)
+                        for p in r) for r in rings):
+                raise ValueError('A cut part has an invalid outline.')
+        if 'cut' in item and item['cut'] is not True:
+            raise ValueError('Invalid cut piece.')
     if sum('source' in item for item in value.values()) > MAX_COPIES:
-        raise ValueError(f'Use at most {MAX_COPIES} copied pieces.')
+        raise ValueError(f'Use at most {MAX_COPIES} copied or cut pieces.')
+    if sum(len(r) for item in value.values() for r in item.get('rings', [])) > MAX_PART_POINTS:
+        raise ValueError('Cut parts have too many outline points. Simplify the artwork first.')
     return value
 
 
@@ -83,8 +95,12 @@ def inventory(region_report, options, width, height, scale):
     for key, item in saved.items():
         if 'source' in item and item['source'] in by_id:
             source = by_id[item['source']]
-            areas.append({**source, 'id': key, 'style': styles.get(key, source['style'])})
-    missing = set(saved)-{a['id'] for a in areas}
+            # Cut parts carry their own outline (picture pixels, before any transform).
+            areas.append({**source, 'id': key, 'style': styles.get(key, source['style']),
+                          **({'rings': item['rings']} if 'rings' in item else {})})
+    # A piece the knife cut is replaced by its parts.
+    areas = [a for a in areas if not saved.get(a['id'], {}).get('cut')]
+    missing = set(saved)-{a['id'] for a in areas}-{k for k, v in saved.items() if v.get('cut')}
     if missing:
         raise ValueError('Artwork shapes changed. Undo the artwork change before editing saved pieces; names and locks will not be attached to different shapes.')
     # Match the legacy engine's initial subject-centred hoop origin. Keep this
@@ -172,12 +188,15 @@ def change(options, report, command):
                 n += 1
             base = stored.get(p['id'], {})
             stored[key] = {'source': original, 'matrix': packed(shift @ matrix(base.get('matrix', IDENTITY))),
-                           'rotation': base.get('rotation', 0), 'name': (p['name']+' copy')[:100]}
+                           'rotation': base.get('rotation', 0), 'name': (p['name']+' copy')[:100],
+                           **({'rings': base['rings']} if 'rings' in base else {})}
             style = updated.get('region_styles', {}).get(p['id'])
             if style:
                 updated.setdefault('region_styles', {})[key] = style
         edits(updated)
         return updated
+    if field == 'knife':
+        return knife(updated, report, selected, value)
     if field == 'delete':
         if not set(ids) <= copies:
             raise ValueError('Only copied pieces can be deleted. Hide an original piece instead.')
@@ -244,6 +263,62 @@ def change(options, report, command):
             item['rotation'] = (p['rotation']+delta) % 360
         elif field == 'mirror':
             item['rotation'] = (-p['rotation']) % 360
+    edits(updated)
+    return updated
+
+
+def knife(updated, report, selected, value):
+    """Cut one piece along a straight line (two points in mm, as drawn on the hoop).
+    Each part becomes its own piece in the same place, with the piece's style."""
+    import hashlib
+    from shapely.geometry import Polygon
+    if len(selected) != 1:
+        raise ValueError('Select one piece to cut.')
+    if not isinstance(value, list) or len(value) != 2 or any(
+            not isinstance(p, list) or len(p) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) for v in p)
+            for p in value):
+        raise ValueError('Draw the cut as a line across the piece.')
+    p = selected[0]
+    stored = updated['piece_edits']
+    item = stored.get(p['id'], {})
+    inverse = np.linalg.inv(matrix(item.get('matrix', IDENTITY)))
+    origin, scale = np.array(report['origin_mm']), report['scale']
+    def to_source(points):
+        points = np.asarray(points, float)
+        return ((np.c_[points, np.ones(len(points))] @ inverse.T)[:, :2]+origin)/scale
+    rings = [to_source(r) for r in p['rings_mm']]
+    shape = Polygon(rings[0], rings[1:]).buffer(0)
+    a, b = to_source(value)
+    d = b-a
+    if np.hypot(*d) < 1e-9:
+        raise ValueError('Draw the cut as a line across the piece.')
+    # Two half-planes on either side of the (extended) line, large enough for the piece.
+    span = max(shape.bounds[2]-shape.bounds[0], shape.bounds[3]-shape.bounds[1])*4+10
+    u = d/np.hypot(*d); n = np.array([-u[1], u[0]])
+    far_a, far_b = a-u*span, a+u*span
+    halves = [Polygon([far_a, far_b, far_b+n*span, far_a+n*span]), Polygon([far_a, far_b, far_b-n*span, far_a-n*span])]
+    parts = []
+    for half in halves:
+        piece = shape.intersection(half)
+        parts += [g for g in getattr(piece, 'geoms', [piece]) if g.geom_type == 'Polygon' and g.area > 1.0]
+    if len(parts) < 2:
+        raise ValueError('The cut line must cross the piece from one side to the other.')
+    source = item.get('source', p['id'])
+    style = updated.get('region_styles', {}).get(p['id'])
+    for index, part in enumerate(sorted(parts, key=lambda g: -g.area)):
+        part = part.simplify(.3)
+        key = hashlib.sha256(f"{p['id']}:{a.tolist()}:{b.tolist()}:{index}".encode()).hexdigest()[:20]
+        stored[key] = {'source': source, 'rings': [[[round(x, 2), round(y, 2)] for x, y in r.coords[:-1]]
+                                                   for r in (part.exterior, *part.interiors)],
+                       'matrix': item.get('matrix', IDENTITY), 'rotation': item.get('rotation', 0),
+                       'name': f"{p['name']} part {index+1}"[:100]}
+        if style:
+            updated.setdefault('region_styles', {})[key] = style
+    if 'source' in item:
+        del stored[p['id']]
+        updated.get('region_styles', {}).pop(p['id'], None)
+    else:
+        stored.setdefault(p['id'], {})['cut'] = True
     edits(updated)
     return updated
 

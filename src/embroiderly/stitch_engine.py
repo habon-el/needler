@@ -376,6 +376,22 @@ def _applique(shape, cover):
     return [(placement, False), (tack, True), (covers, True)]
 
 
+def applique_coverage(rings_px, scale, shape_px, cover=3.0):
+    """Where an appliqué piece really sews (placement, tack-down and the satin cover,
+    whose mitred corners reach past the edge), as a pixel mask for the release check."""
+    import cv2
+    import numpy as np
+    from shapely.geometry import Polygon
+    polygon = Polygon(np.asarray(rings_px[0], float)*scale, [np.asarray(r, float)*scale for r in rings_px[1:]]).buffer(0)
+    band = np.zeros(shape_px, np.uint8)
+    for runs, _ in _applique(polygon, cover):
+        for run in runs:
+            if len(run) >= 2:
+                cv2.polylines(band, [np.rint(np.asarray(run)/scale).astype(np.int32)], False, 1, thickness=3)
+    # Satin fills the space between its legs: close the gaps between neighbouring stitches.
+    return cv2.morphologyEx(band, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8)).astype(bool)
+
+
 OUTLINE_STYLES = ('backstitch', 'stemstitch', 'blanket', 'zigzag')
 
 

@@ -109,3 +109,64 @@ def test_each_command_rebuilds_stitches_that_pass_the_release_gate(tmp_path, fie
     pieces = body['report']['piece_layout']['pieces']
     assert len(pieces) == (len(r['report']['piece_layout']['pieces'])+1 if field == 'duplicate' else len(r['report']['piece_layout']['pieces']))
     assert checked_bytes(tmp_path/'work'/'inkstitch-preview'/__import__('pathlib').Path(body['prepared_name']).stem, 'dst')
+
+
+def test_knife_cuts_a_piece_into_two_parts_in_place():
+    styled = apply({}, 'style', 'step')
+    whole = piece(styled)
+    # A vertical cut through the middle of the 20 × 10 mm box.
+    line = [[whole['x_mm'], whole['y_mm']-20], [whole['x_mm'], whole['y_mm']+20]]
+    cut = apply(styled, 'knife', line)
+    parts = layout(cut)['pieces']
+    assert len(parts) == 2 and all(p['id'] != 'a'*20 for p in parts)
+    assert sum(p['area_mm2'] for p in parts) == pytest.approx(whole['area_mm2'], rel=.02)
+    assert all(cut['region_styles'][p['id']] == 'step' for p in parts)
+    assert sorted(round(p['width_mm'], 1) for p in parts) == [10.0, 10.0]
+    # A part can be cut again, moved on its own, duplicated and deleted.
+    first = parts[0]
+    again = change(cut, layout(cut), dict(ids=[first['id']], field='knife',
+                                          value=[[first['x_mm']-20, first['y_mm']], [first['x_mm']+20, first['y_mm']]]))
+    assert len(layout(again)['pieces']) == 3
+    copied = change(cut, layout(cut), dict(ids=[first['id']], field='duplicate', value=[30, 0]))
+    assert len(layout(copied)['pieces']) == 3
+
+
+def test_knife_must_cross_the_piece():
+    whole = piece({})
+    with pytest.raises(ValueError, match='cross the piece'):
+        apply({}, 'knife', [[whole['x_mm']+50, -100], [whole['x_mm']+50, 100]])
+    with pytest.raises(ValueError, match='locked'):
+        apply(apply({}, 'locked', True), 'knife', [[whole['x_mm'], -100], [whole['x_mm'], 100]])
+
+
+def test_cut_pieces_rebuild_stitches_that_pass_the_release_gate(tmp_path):
+    from pathlib import Path
+    from embroiderly.release_gate import checked_bytes
+    client, options, r = route_setup(tmp_path)
+    p = r['report']['piece_layout']['pieces'][0]
+    line = [[p['x_mm'], p['y_mm']-p['height_mm']], [p['x_mm'], p['y_mm']+p['height_mm']]]
+    response = client.post('/artwork/p.png', json=dict(options=options, piece_revision=r['piece_revision'],
+                                                        subject_confirmed=True, digitize=True,
+                                                        piece_command=dict(ids=[p['id']], field='knife', value=line)))
+    body = response.get_json()
+    assert response.status_code == 200, body
+    assert len(body['report']['piece_layout']['pieces']) == len(r['report']['piece_layout']['pieces'])+1
+    assert body.get('playback'), body.get('error')
+    assert checked_bytes(tmp_path/'work'/'inkstitch-preview'/Path(body['prepared_name']).stem, 'dst')
+
+
+def test_applique_pieces_still_pass_after_piece_edits(tmp_path):
+    """The satin cover of an appliqué piece lies half outside it; edited pieces must allow that band."""
+    from pathlib import Path
+    from embroiderly.release_gate import checked_bytes
+    client, options, r = route_setup(tmp_path)
+    p = max(r['report']['piece_layout']['pieces'], key=lambda q: q['area_mm2'])
+    for field, value in (('style', 'applique'), ('rotate_by', 15)):
+        response = client.post('/artwork/p.png', json=dict(options=options, piece_revision=r['piece_revision'],
+                                                            subject_confirmed=True, digitize=True,
+                                                            piece_command=dict(ids=[p['id']], field=field, value=value)))
+        r = response.get_json()
+        assert response.status_code == 200, r
+        options = r['options']
+    assert r.get('playback'), r.get('error')
+    assert checked_bytes(tmp_path/'work'/'inkstitch-preview'/Path(r['prepared_name']).stem, 'dst')

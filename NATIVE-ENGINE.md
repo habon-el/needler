@@ -176,4 +176,12 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   colour with its own transform, style, lock and holes choice; at most 100. Copies force the piece path and
   are not "stale" area styles. Locked pieces refuse every command.
 - Panel: one row of buttons under Rotation (⇋ Mirror, ⇅ Mirror, ↺ 15°, ↻ 15°, ↻ 45°, Duplicate, Delete copy
-  for copies) and a Skew ° field. Knife (cut a piece along a drawn line) is not done yet.
+  for copies) and a Skew ° field.
+- Knife (`knife` command, [[x1,y1],[x2,y2]] mm): cuts one piece along the extended line. Each part is a
+  piece entry with `source` (colour) and its own `rings` (picture pixels before transforms), keeping the
+  piece's transform and style; a cut original is marked `cut` and leaves the list. Parts can be cut again,
+  moved, duplicated and deleted. Panel: ✂ Knife, then drag a line across the selected piece.
+- Appliqué release coverage: `stitch_engine.applique_coverage` marks where the placement, tack-down and satin
+  cover really sew (mitred corners included), in both the colour loop and the piece path; the piece-path
+  canvas gets a 5 mm margin when a design has appliqué. The engine cache key includes the release mask,
+  so a mask-only change can no longer reuse an outdated check.
