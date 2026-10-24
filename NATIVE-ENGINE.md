@@ -166,3 +166,14 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   release mask. Works in the colour loop (engine.py) and the piece path (piece_generation.py).
 - Area inventory reports `holes` and `holes_filled`; the area style panel shows "Sew over holes in this
   area" only when the selected areas have holes. Cutting a hole is done with Erase area.
+
+## Piece editing (added 2026-10-24)
+
+- New piece commands (`piece_layout.change`): `mirror` ("x" left-right, "y" top-bottom; the stored rotation
+  flips so fill rows mirror too), `rotate_by` (a delta, the ±15°/45° buttons), `skew` (−60° to 60°, around the
+  selection centre), `duplicate` ([dx, dy] mm) and `delete` (copies only).
+- A copy is a `piece_edits` entry with `source` = the original's id: it reuses the original's outline and
+  colour with its own transform, style, lock and holes choice; at most 100. Copies force the piece path and
+  are not "stale" area styles. Locked pieces refuse every command.
+- Panel: one row of buttons under Rotation (⇋ Mirror, ⇅ Mirror, ↺ 15°, ↻ 15°, ↻ 45°, Duplicate, Delete copy
+  for copies) and a Skew ° field. Knife (cut a piece along a drawn line) is not done yet.

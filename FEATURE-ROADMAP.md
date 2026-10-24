@@ -88,8 +88,8 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 ## 6. Arranging and editing
 | Tool | Needler | Status | P |
 |---|---|---|---|
-| Select, group, lock, hide, duplicate (with offset) | Piece panel: select, lock | ◐ | P2 |
-| Mirror X/Y, rotate (15°/45°), skew, resize ±10% | Size ±10%, piece transforms | ◐ | P2 |
+| Select, group, lock, hide, duplicate (with offset) | Piece panel: select, name, group, lock, hide, Duplicate (5 mm offset), Delete copy | ✅ 2026-10-24 | |
+| Mirror X/Y, rotate (15°/45°), skew, resize ±10% | Mirror ⇋ ⇅, rotate ↺15° ↻15° ↻45° or any angle, Skew °, size ±10% | ✅ 2026-10-24 | |
 | Align / space evenly / same size | — | ✗ | P3 |
 | Mirror-copy, wreath, circle layout, array, reflect | — | ✗ | P3 |
 | Create outlines and offsets, outline design, create border | Outer-silhouette border (`borders.py`) | ◐ no offsets per object | P2 |

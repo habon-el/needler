@@ -18,7 +18,13 @@
  <label>Height <span class="piece-unit"></span><input id="pieceH" inputmode="decimal" data-field="height_mm" title="Actual outline bounding-box height. Enter applies; Esc cancels."></label>
  </div><button id="pieceLink" type="button" aria-pressed="true">Keep proportions</button>
  <label class="piece-advanced">Rotation °<input id="pieceRotation" inputmode="decimal" data-field="rotation" title="Clockwise around the selected piece centre. A multi-selection rotates as a group."></label>
+ <label class="piece-advanced">Skew °<input id="pieceSkew" inputmode="decimal" placeholder="0" title="Lean the piece sideways, −60 to 60. Enter applies."></label>
  <p id="pieceNodes" class="piece-advanced"></p>
+ <div class="piece-arrange" role="group" aria-label="Arrange">
+ <button type="button" data-arrange="mirror:x" title="Mirror left–right">⇋ Mirror</button><button type="button" data-arrange="mirror:y" title="Mirror top–bottom">⇅ Mirror</button>
+ <button type="button" data-arrange="rotate_by:-15" title="Rotate 15° to the left">↺ 15°</button><button type="button" data-arrange="rotate_by:15" title="Rotate 15° to the right">↻ 15°</button><button type="button" data-arrange="rotate_by:45" title="Rotate 45° to the right">↻ 45°</button>
+ <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceDelete" hidden title="Delete this copy">Delete copy</button>
+ </div>
  </fieldset><div class="piece-modes"><button id="pieceMove" type="button" aria-pressed="true">Drag to move</button><button id="pieceRotate" type="button" aria-pressed="false">Drag to rotate</button></div>
  <label class="piece-advanced">Group / subgroup<input id="pieceGroup" maxlength="100" placeholder="For example: Head / Eyes"></label>
  <p id="pieceFeedback" role="status" aria-live="polite">Select a piece to edit its measurements.</p>
@@ -60,6 +66,8 @@
   $('pieceTransform').title='Reference hoop '+(report.hoop_mm||[]).join(' × ')+' mm. Rectangular reference, not a validated machine profile.';
   $('pieceAudit').textContent=items.length?`${items.some(p=>p.audit.level==='red')?'RED — check size':items.some(p=>p.audit.level==='yellow')?'YELLOW — check thin span':'GREEN — area check'} · ${[...new Set(items.flatMap(p=>p.audit.messages))].join(' ')}`:'';
   $('pieceAudit').dataset.level=items.some(p=>p.audit.level==='red')?'red':items.some(p=>p.audit.level==='yellow')?'yellow':'green';
+  properties.querySelectorAll('[data-arrange],#pieceDuplicate,#pieceDelete,#pieceSkew').forEach(control=>{control.disabled=disabled;});
+  $('pieceDelete').hidden=!items.length||!items.every(p=>p.copy);
   properties.querySelectorAll('[data-field]').forEach(input=>{input.setAttribute('aria-describedby','pieceFeedback');input.disabled=disabled;input.value=box?format(box[input.dataset.field],input.dataset.field==='rotation'):'';input.removeAttribute('aria-invalid')});
   properties.querySelectorAll('.piece-unit').forEach(node=>node.textContent=units());
   $('pieceLink').disabled=disabled||!advanced;$('pieceLink').setAttribute('aria-pressed',String(!advanced||linked));
@@ -102,6 +110,12 @@
   if(e.key==='Enter'){e.preventDefault();const raw=input.value.trim(),value=Number(raw)*(units()==='in'&&input.dataset.field!=='rotation'?25.4:1);if(!raw||!Number.isFinite(value)){sync();input.setAttribute('aria-invalid','true');feedback('Enter a valid number. The previous value was restored.');return}commit(input.dataset.field,value)}
  }));
  for(const [id,field] of [['pieceName','name'],['pieceGroup','group']])$(id).addEventListener('keydown',e=>{if(e.isComposing)return;if(e.key==='Escape'){e.preventDefault();sync()}if(e.key==='Enter'){e.preventDefault();commit(field,e.target.value.trim())}});
+ properties.querySelectorAll('[data-arrange]').forEach(button=>button.onclick=()=>{
+  const [field,value]=button.dataset.arrange.split(':');commit(field,field==='mirror'?value:Number(value));});
+ $('pieceDuplicate').onclick=()=>commit('duplicate',[5,5]);
+ $('pieceDelete').onclick=()=>commit('delete',true);
+ $('pieceSkew').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();
+  const v=Number($('pieceSkew').value);if(Number.isFinite(v)&&v){commit('skew',v);$('pieceSkew').value='';}});
  $('pieceEye').onclick=()=>commit('visible',!targets().every(p=>p.visible));$('pieceLock').onclick=()=>commit('locked',!targets().some(p=>p.locked));
  $('pieceLink').onclick=()=>{linked=!linked;sync()};$('pieceSimple').onclick=()=>{advanced=false;sync()};$('pieceAdvanced').onclick=()=>{advanced=true;sync()};
  $('pieceMove').onclick=()=>{rotate=false;$('pieceMove').setAttribute('aria-pressed','true');$('pieceRotate').setAttribute('aria-pressed','false')};$('pieceRotate').onclick=()=>{rotate=true;$('pieceMove').setAttribute('aria-pressed','false');$('pieceRotate').setAttribute('aria-pressed','true')};

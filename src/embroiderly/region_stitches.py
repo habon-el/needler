@@ -112,7 +112,9 @@ def inventory(rgb,alpha,scale,options):
             except ValueError as error:notice=str(error)
         items.append(dict(id=key,colour=colour,bounds=[x,y,w,h],rings=[r.reshape(-1,2).tolist() for r in rings],style_notice=notice,style=chosen.get(key,'tatami'),satin_reason=reason,
                           holes=len(rings)-1,holes_filled=hole_choices(options).get(key)=='fill'))
-    return dict(areas=items,stale=sorted(set(chosen)-{r['id'] for r in items}),catalog=CATALOG,unavailable='')
+    # Styles of duplicated pieces belong to the copies, not to stale picture areas.
+    from .piece_layout import copy_ids
+    return dict(areas=items,stale=sorted(set(chosen)-{r['id'] for r in items}-copy_ids(options)),catalog=CATALOG,unavailable='')
 
 
 def path_data(points):

@@ -13,12 +13,18 @@ import cv2
 import numpy as np
 
 IDENTITY = [1., 0., 0., 1., 0., 0.]
-FIELDS = {'name', 'group', 'visible', 'locked', 'matrix', 'rotation'}
+FIELDS = {'name', 'group', 'visible', 'locked', 'matrix', 'rotation', 'source'}
+MAX_COPIES = 100
 
 
 def geometry_changed(options):
-    return any(item.get('matrix', IDENTITY) != IDENTITY or not item.get('visible', True)
+    return any(item.get('matrix', IDENTITY) != IDENTITY or not item.get('visible', True) or 'source' in item
                for item in edits(options).values())
+
+
+def copy_ids(options):
+    """Pieces that are duplicates of another piece (not shapes found in the picture)."""
+    return {key for key, item in edits(options).items() if 'source' in item}
 
 
 def bounds(rings):
@@ -60,12 +66,24 @@ def edits(options):
         angle = item.get('rotation', 0)
         if type(angle) not in (int, float) or not math.isfinite(angle):
             raise ValueError('Invalid rotation.')
+        if 'source' in item and (not isinstance(item['source'], str) or not re.fullmatch('[a-f0-9]{20}', item['source'])
+                                 or 'source' in value.get(item['source'], {})):
+            raise ValueError('A copied piece must point to an original piece.')
+    if sum('source' in item for item in value.values()) > MAX_COPIES:
+        raise ValueError(f'Use at most {MAX_COPIES} copied pieces.')
     return value
 
 
 def inventory(region_report, options, width, height, scale):
     saved = edits(options)
-    areas = region_report['areas']
+    areas = list(region_report['areas'])
+    # Duplicates reuse their original's outline and colour, with their own transform and style.
+    by_id = {a['id']: a for a in areas}
+    styles = options.get('region_styles', {}) if isinstance(options.get('region_styles', {}), dict) else {}
+    for key, item in saved.items():
+        if 'source' in item and item['source'] in by_id:
+            source = by_id[item['source']]
+            areas.append({**source, 'id': key, 'style': styles.get(key, source['style'])})
     missing = set(saved)-{a['id'] for a in areas}
     if missing:
         raise ValueError('Artwork shapes changed. Undo the artwork change before editing saved pieces; names and locks will not be attached to different shapes.')
@@ -114,7 +132,7 @@ def inventory(region_report, options, width, height, scale):
         pixel_rings = [((np.asarray(r)+origin)/scale).tolist() for r in rings]
         result.append(dict(id=area['id'], order=index+1, name=item.get('name') or f'Part {index+1}',
                            group=item.get('group', ''), colour=area['colour'], style=area['style'],
-                           visible=item.get('visible', True), locked=item.get('locked', False),
+                           visible=item.get('visible', True), locked=item.get('locked', False), copy='source' in item,
                            rings_mm=rings, rings=pixel_rings, x_mm=(left+right)/2, y_mm=(top+bottom)/2,
                            width_mm=right-left, height_mm=bottom-top, rotation=item.get('rotation', 0),
                            nodes=sum(len(r) for r in rings), area_mm2=area_mm2, satin_reason=reason,
@@ -137,6 +155,38 @@ def change(options, report, command):
     if any(p['locked'] for p in selected) and not (field == 'locked' and value is False):
         raise ValueError('This piece is locked. Unlock it before changing it.')
     updated = deepcopy(options); stored = updated.setdefault('piece_edits', {})
+    copies = copy_ids(options)
+    if field == 'duplicate':
+        # Duplicate with offset: each copy keeps its original's look and moves by [dx, dy] mm.
+        if not isinstance(value, list) or len(value) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 500 for v in value):
+            raise ValueError('Enter a copy offset within 500 mm.')
+        import hashlib
+        shift = np.array([[1, 0, value[0]], [0, 1, value[1]], [0, 0, 1.]])
+        for p in selected:
+            original = stored.get(p['id'], {}).get('source', p['id'])
+            n = 0
+            while True:
+                key = hashlib.sha256(f'{original}:{n}'.encode()).hexdigest()[:20]
+                if key not in stored:
+                    break
+                n += 1
+            base = stored.get(p['id'], {})
+            stored[key] = {'source': original, 'matrix': packed(shift @ matrix(base.get('matrix', IDENTITY))),
+                           'rotation': base.get('rotation', 0), 'name': (p['name']+' copy')[:100]}
+            style = updated.get('region_styles', {}).get(p['id'])
+            if style:
+                updated.setdefault('region_styles', {})[key] = style
+        edits(updated)
+        return updated
+    if field == 'delete':
+        if not set(ids) <= copies:
+            raise ValueError('Only copied pieces can be deleted. Hide an original piece instead.')
+        for key in ids:
+            stored.pop(key, None)
+            updated.get('region_styles', {}).pop(key, None)
+            updated.get('area_holes', {}).pop(key, None)
+        edits(updated)
+        return updated
     if field in ('name', 'group', 'visible', 'locked'):
         for p in selected:
             stored.setdefault(p['id'], {})[field] = value
@@ -149,9 +199,11 @@ def change(options, report, command):
             styles[p['id']] = value
         assignments(updated)
         return updated
-    if field not in ('position', 'x_mm', 'y_mm', 'width_mm', 'height_mm', 'rotation'):
+    if field not in ('position', 'x_mm', 'y_mm', 'width_mm', 'height_mm', 'rotation', 'rotate_by', 'mirror', 'skew'):
         raise ValueError('Unsupported piece property.')
-    if field != 'position' and (type(value) not in (int, float) or not math.isfinite(value)):
+    if field == 'mirror' and value not in ('x', 'y'):
+        raise ValueError('Mirror left-right (x) or top-bottom (y).')
+    if field not in ('position', 'mirror') and (type(value) not in (int, float) or not math.isfinite(value)):
         raise ValueError('Enter a finite measurement.')
     left, top, right, bottom = bounds([r for p in selected for r in p['rings_mm']])
     cx, cy = (left+right)/2, (top+bottom)/2
@@ -163,6 +215,16 @@ def change(options, report, command):
     elif field in ('x_mm', 'y_mm'):
         axis = 0 if field == 'x_mm' else 1
         op[axis, 2] = round(value, 1)-(cx if axis == 0 else cy)
+    elif field == 'mirror':
+        # Flip around the selection's centre; rows and stitch angles mirror with it.
+        sx, sy = (-1, 1) if value == 'x' else (1, -1)
+        op = np.array([[sx, 0, cx*(1-sx)], [0, sy, cy*(1-sy)], [0, 0, 1]])
+    elif field == 'skew':
+        # Lean the shape sideways by this many degrees (top moves right for positive).
+        if not -60 <= value <= 60:
+            raise ValueError('Skew must be between -60° and 60°.')
+        t = -math.tan(math.radians(value))
+        op = np.array([[1, t, -t*cy], [0, 1, 0], [0, 0, 1]])
     elif field in ('width_mm', 'height_mm'):
         if not .1 <= value <= 1000:
             raise ValueError('Size must be between 0.1 and 1000 mm.')
@@ -171,15 +233,17 @@ def change(options, report, command):
         sy = ratio if field == 'height_mm' or command.get('linked', True) else 1
         op = np.array([[sx, 0, cx*(1-sx)], [0, sy, cy*(1-sy)], [0, 0, 1]])
     else:
-        # Single: absolute angle. Multi: requested group rotation delta.
-        delta = value-(selected[0]['rotation'] if len(selected) == 1 else 0)
+        # Single: absolute angle. Multi: requested group rotation delta. rotate_by: always a delta.
+        delta = value if field == 'rotate_by' else value-(selected[0]['rotation'] if len(selected) == 1 else 0)
         angle = math.radians(delta); c, s = math.cos(angle), math.sin(angle)
         op = np.array([[c, -s, cx-c*cx+s*cy], [s, c, cy-s*cx-c*cy], [0, 0, 1]])
     for p in selected:
         item = stored.setdefault(p['id'], {})
         item['matrix'] = packed(op @ matrix(item.get('matrix', IDENTITY)))
-        if field == 'rotation':
+        if field in ('rotation', 'rotate_by'):
             item['rotation'] = (p['rotation']+delta) % 360
+        elif field == 'mirror':
+            item['rotation'] = (-p['rotation']) % 360
     edits(updated)
     return updated
 
