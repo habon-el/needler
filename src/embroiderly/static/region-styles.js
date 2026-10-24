@@ -7,6 +7,16 @@
  const grid=document.createElement('div');grid.className='stitch-choice-grid';
  const group=document.createElement('fieldset');group.className='stitch-chooser';
  const legend=document.createElement('legend');legend.textContent='Stitch type';group.append(legend,grid);$('regionStyleGallery').append(group);
+ // Remove / fill holes: one switch, shown only when the chosen areas have holes.
+ const holes=document.createElement('label');holes.className='region-holes';holes.hidden=true;
+ const holeBox=document.createElement('input');holeBox.type='checkbox';holeBox.id='regionHoles';
+ holes.append(holeBox,' Sew over holes in this area');$('regionStyleGallery').append(holes);
+ const areaOf=id=>report.areas.find(a=>a.id===id);
+ holeBox.addEventListener('change',()=>{
+  const chosen={...(studio.snapshot().area_holes||{})};
+  for(const t of targets()){const a=areaOf(t.id);if(!a||!a.holes)continue;if(holeBox.checked)chosen[a.id]='fill';else delete chosen[a.id];}
+  try{studio.apply({area_holes:chosen})}catch(error){$('regionStyleStatus').textContent=error.message;holeBox.checked=!holeBox.checked}
+ });
  function targets(){if(window.PiecePanel)return window.PiecePanel.targets();return selected.startsWith('colour:')?report.areas.filter(a=>a.colour===selected.slice(7)):report.areas.filter(a=>a.id===selected)}
  function selectArea(){
   selected=$('stitchRegion').value;
@@ -27,6 +37,9 @@
    input.disabled=blocked||!area||limited||areas.some(a=>a.locked);
    input.closest('label').dataset.selected=String(input.checked);
   }
+  const withHoles=areas.map(t=>areaOf(t.id)).filter(a=>a&&a.holes);
+  holes.hidden=!withHoles.length;holeBox.disabled=blocked||areas.some(a=>a.locked);
+  holeBox.checked=withHoles.length>0&&withHoles.every(a=>(options.area_holes||{})[a.id]==='fill');
   $('regionStyleStatus').textContent=!ready?'Preparing current areas…':report.unavailable||(!area?(report.areas.length?'Choose a colour or one area first. Nothing is selected.':'No filled areas available.'):`${selected.startsWith('colour:')?area.colour+' · '+areas.length+' areas':'Area '+(report.areas.indexOf(area)+1)+' · '+area.colour}. Green is only a target highlight in Thread plan, not thread colour. ${styles.size>1?'Mixed stitch styles.':'Current style: '+(report.catalog.find(c=>c[0]===[...styles][0])?.[1]||'Tatami')+'.'} Choose a style, then Update stitches.`);
   if(report.stale.length)$('regionStyleStatus').textContent+=' Artwork changed: '+report.stale.length+' assignments no longer match. Reset area styles before generating.';
   $('regionStyleNote').textContent=incompatible?`${incompatible} of ${areas.length} selected areas cannot use Satin or 3D satin. Choose an individual area to inspect it. No areas will be silently skipped.`: '3D satin uses three stitched layers, not foam. Embossed is a diamond overlay on Tatami; these are experimental textures. Sew a physical sample. Decorative fills leave open fabric.';

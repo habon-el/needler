@@ -157,3 +157,12 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Export cutting: `applique-cut.svg` (pieces at actual size, mm) next to the machine files;
   `/applique-cut/<prepared name>`; a link appears in Save and download when the design has appliqué.
 - Verified in the studio: approve subject, choose Appliqué for an area, stitches build, cutting file downloads.
+
+## Holes (added 2026-10-24)
+
+- Option `area_holes` ({area id: "fill"}, checked by `region_stitches.hole_choices`): the area is sewn from its
+  outer outline only, so stitches run straight across its holes. A hole under another colour is sewn over
+  (no gap can open at its edge); an empty hole is filled. The hole counts as intended stitching in the
+  release mask. Works in the colour loop (engine.py) and the piece path (piece_generation.py).
+- Area inventory reports `holes` and `holes_filled`; the area style panel shows "Sew over holes in this
+  area" only when the selected areas have holes. Cutting a hole is done with Erase area.

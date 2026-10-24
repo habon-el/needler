@@ -26,7 +26,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Tool | Needler | Status | P |
 |---|---|---|---|
 | Digitize closed / open shape, blocks, freehand | Area editing is picture-based; point editing in editor | ◐ no vector drawing tools | P2 |
-| Digitize holes, fill holes, remove holes | — | ✗ | P2 |
+| Digitize holes, fill holes, remove holes | cut a hole: Erase area; remove / fill holes: "Sew over holes in this area" (stitches run across, an empty hole is filled) | ✅ 2026-10-24 | |
 | Add / remove stitch angles | Stitch direction review | ◐ | P2 |
 | Reshape, knife, split curve, break apart | Split at point, select/move points | ◐ | P2 |
 | Click to fill (with/without holes), turning fill, outline, centerline | Area styles, auto satin, line art | ◐ no click tool | P2 |

@@ -25,8 +25,11 @@ def append(document, layout, scale, settings, colours=None):
     document.set('height', f'{size[1]*scale}mm')
     document.set('viewBox', f'0 0 {size[0]} {size[1]}')
     mask = np.zeros((size[1], size[0]), np.uint8)
+    from .region_stitches import hole_choices
+    filled_holes = hole_choices(settings)
     for p in selected:
-        rings = [np.asarray(r, float)-start for r in p['rings']]
+        # Remove / fill holes: only the outer outline, so stitches run across the holes.
+        rings = [np.asarray(r, float)-start for r in (p['rings'][:1] if filled_holes.get(p['id']) == 'fill' else p['rings'])]
         local = np.zeros_like(mask)
         cv2.fillPoly(local, [np.rint(r).astype(np.int32) for r in rings], 1)
         mask |= local

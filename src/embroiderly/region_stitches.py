@@ -41,6 +41,16 @@ def assignments(options):
     return value
 
 
+def hole_choices(options):
+    """Areas whose holes are sewn over (remove/fill holes): {area id: 'fill'}."""
+    value=options.get('area_holes',{})
+    if not isinstance(value,dict) or len(value)>500 or any(
+            not isinstance(k,str) or len(k)!=20 or any(c not in '0123456789abcdef' for c in k) or v!='fill'
+            for k,v in value.items()):
+        raise ValueError('Invalid hole choice. Select a current area and try again.')
+    return value
+
+
 def region_id(rings):
     return hashlib.sha256(b'|'.join(np.asarray(r,dtype='<i4').tobytes() for r in rings)).hexdigest()[:20]
 
@@ -100,7 +110,8 @@ def inventory(rgb,alpha,scale,options):
                 if not decorative_paths(rings,scale,'embossed'):
                     notice='Embossed: this area is too small for a texture repeat; its base fill is preserved.'
             except ValueError as error:notice=str(error)
-        items.append(dict(id=key,colour=colour,bounds=[x,y,w,h],rings=[r.reshape(-1,2).tolist() for r in rings],style_notice=notice,style=chosen.get(key,'tatami'),satin_reason=reason))
+        items.append(dict(id=key,colour=colour,bounds=[x,y,w,h],rings=[r.reshape(-1,2).tolist() for r in rings],style_notice=notice,style=chosen.get(key,'tatami'),satin_reason=reason,
+                          holes=len(rings)-1,holes_filled=hole_choices(options).get(key)=='fill'))
     return dict(areas=items,stale=sorted(set(chosen)-{r['id'] for r in items}),catalog=CATALOG,unavailable='')
 
 

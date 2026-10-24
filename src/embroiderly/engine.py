@@ -220,6 +220,8 @@ def digitize(source, directory, height_mm=100, colours=None):
         palette=[]
     from .region_stitches import assignments, regions, region_id, apply_style
     region_styles=assignments(settings)
+    from .region_stitches import hole_choices
+    filled_holes=hole_choices(settings)
     # 3D puff for every area that can hold foam; others stay flat.
     puff_all=settings.get('puff') is True
     from .stitch_engine import puff_min_mm
@@ -285,6 +287,11 @@ def digitize(source, directory, height_mm=100, colours=None):
                 rings.append(contours[child]);child=hierarchy[0,child,0]
             identity=region_id(rings)
             style=region_styles.get(identity)
+            if filled_holes.get(identity)=='fill' and len(rings)>1:
+                # Remove / fill holes: stitches run straight across them, so no gap opens at
+                # the hole's edge; an empty hole is filled. That stitching is intended.
+                band=np.zeros_like(mask);cv2.drawContours(band,[c],-1,1,-1)
+                release_mask|=band.astype(bool);rings=[c]
             thick=thickness_mm(rings,scale)
             if style is None and puff_all and puff_min_mm(foam_mm)<=thick<=PUFF_TO_MM:
                 style='puff'
