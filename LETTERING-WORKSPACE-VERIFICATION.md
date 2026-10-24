@@ -134,7 +134,7 @@ bounded list changed by this integration, not the complete Git status:
 
 ## Limits, honestly retained
 
-- Enabled font: installed Ink/Stitch Small Font, nominal 4–6 mm. This is not
+- Enabled font: installed small embroidery font, nominal 4–6 mm. This is not
   arbitrary-font or arbitrary-language support. Unsupported characters stay
   visible with an error. Glacial Tiny remains disabled pending verification.
 - Ordinary artwork fonts are not converted into native embroidery columns by
@@ -145,7 +145,7 @@ bounded list changed by this integration, not the complete Git status:
   stored stitch-snapshot undo.
 - Density, repeated-penetration risk, exact capital-height sizing, cap-specific
   sew order and physical readability/needle safety are not certified.
-- Fresh uncached Ink/Stitch runs can differ. The identical-download result is
+- Fresh uncached engine runs can differ. The identical-download result is
   for repeated downloads of one saved checked version, not proof of cold-run
   generator determinism.
 - Physical sew-out: **pending**. Image-pipeline fidelity work: deliberately

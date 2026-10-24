@@ -2,7 +2,21 @@
 (() => {
  'use strict';
  const $=id=>document.getElementById(id), dialog=$('letteringDialog');
- const fields=['letteringWords','letteringAlign','letteringColour','nativeFont','nativeHeight','nativeWidth'];
+ const fields=['letteringWords','letteringAlign','letteringColour','nativeFont','nativeHeight','nativeWidth','nativeFabric',
+  'nativeBaseline','nativeRadius','nativeLetterSpacing','nativeLineSpacing','nativeSequence'];
+ // Layout controls and the recipe keys they set; a control left at its default sends nothing.
+ const layoutFields=[['nativeBaseline','baseline','straight'],['nativeLetterSpacing','letter_spacing_mm','0'],
+  ['nativeLineSpacing','line_spacing_percent','100'],['nativeSequence','sequence','left']];
+ function layout(){const out={};
+  for(const [id,key,plain] of layoutFields){const v=$(id).value;if(v!==plain)out[key]=$(id).type==='number'?Number(v):v;}
+  if(out.baseline)out.arc_radius_mm=Number($('nativeRadius').value);return out;}
+ const showRadius=()=>{$('nativeRadiusField').hidden=$('nativeBaseline').value==='straight';};
+ $('nativeBaseline').addEventListener('input',showRadius);
+ // Fabric preset: the satin edge follows the fabric, as in the main studio.
+ // A saved recipe can arrive before the list; keep its fabric until the options exist.
+ let fabricWanted=null;const setFabric=value=>{fabricWanted=value;$('nativeFabric').value=value;};
+ fetch('/api/fabrics').then(r=>r.json()).then(data=>{const select=$('nativeFabric'),kept=fabricWanted??select.value;
+  select.replaceChildren(...data.fabrics.map(f=>new Option(f.label,f.id===data.default?'':f.id)));select.value=kept;}).catch(()=>{});
  const active=()=>!!window.nativeTextConfig||dialog.open;
  const emit=(name,data)=>document.dispatchEvent(new CustomEvent('lettering:'+name,{detail:data}));
  window.nativeLettering={values:()=>values(),load:data=>render(data)};
@@ -16,7 +30,9 @@
  }
  function values(){return {text:$('letteringWords').value,font:$('nativeFont').value,height_mm:Number($('nativeHeight').value),
   available_width_mm:Number($('nativeWidth').value),align:$('letteringAlign').value,colour:$('letteringColour').value,
-  ...(window.NativePuff?.get()?{puff:true,puff_foam_mm:window.NativePuff.foam()}:{})};}
+  ...layout(),
+  ...(window.NativePuff?.get()?{puff:true,puff_foam_mm:window.NativePuff.foam()}:
+      $('nativeFabric').value?{fabric_preset:$('nativeFabric').value}:{})};}
  function render(data){
   result=data;const r=data.reports.dst,p=data.reports.pes;
   $('nativePreview').src=data.image;$('nativePreview').hidden=false;
@@ -124,6 +140,10 @@
    if(version!==revision||!active())return;
    window.NativePuff?.set(data.recipe.puff,data.recipe.puff_foam_mm);
    for(const [field,key] of [['letteringWords','text'],['letteringAlign','align'],['letteringColour','colour'],['nativeFont','font'],['nativeHeight','height_mm'],['nativeWidth','available_width_mm']])$(field).value=data.recipe[key];
+   setFabric(data.recipe.fabric_preset||'');
+   for(const [id,key,plain] of layoutFields)$(id).value=data.recipe[key]??plain;
+   if(data.recipe.arc_radius_mm)$('nativeRadius').value=data.recipe.arc_radius_mm;
+   showRadius();$('nativeLayout').open=layoutFields.some(([,key])=>key in data.recipe);
    render(data);
   }catch(e){status('Saved lettering could not be loaded. '+e.message);}
  });

@@ -141,14 +141,14 @@ def cap_height(key):
     return bottom-top
 
 
-def text_metrics(text, key):
+def text_metrics(text, key, line_spacing=1.0):
     """The words in this font, measured in capital heights (scale-free): the
     height of the whole block as layout() places it, and the thinnest and
     widest satin stroke. A size in mm times these gives millimetres."""
     path, cap = font_path(key), cap_height(key)
     font = _font(path)
     hhea, em = font['hhea'], font['head'].unitsPerEm
-    line_em = (hhea.ascent-hhea.descent+hhea.lineGap)/em*1.05
+    line_em = (hhea.ascent-hhea.descent+hhea.lineGap)/em*1.05*line_spacing
     tops, bottoms, strokes = [], [], []
     for row, line in enumerate(text.split('\n')):
         for char in line:
@@ -241,21 +241,72 @@ def _joins(a, b, index, step, others):
     return others.buffer(1e-6).contains(Point(m[0]+(m[0]-n[0])/d*.6/PX_MM, m[1]+(m[1]-n[1])/d*.6/PX_MM))
 
 
-def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0, fill=False):
+def size_profile(cap_mm, width_mm, zigzag_mm):
+    """Satin settings that follow the letter size, as professional lettering does
+    (published digitizing guidance: no underlay under about 5 mm, centre run to 10 mm,
+    edge run above; tiny letters sewn more open). Cut-offs are our own."""
+    walk = 5.0 <= cap_mm <= 10.0 and width_mm >= .9
+    edge = cap_mm > 10.0 and width_mm >= 1.5
+    return {
+        'zigzag_spacing_mm': f"{max(zigzag_mm, .42) if cap_mm < 6.0 else zigzag_mm:g}",
+        'center_walk_underlay': 'true' if walk or (cap_mm > 10.0 and .9 <= width_mm < 1.5) else 'false',
+        'contour_underlay': 'true' if edge else 'false',
+        'zigzag_underlay': 'true' if edge and width_mm > 3.5 else 'false',
+    }
+
+
+BASELINES = ('straight', 'arc_over', 'arc_under')
+SEQUENCES = ('left', 'centre')
+
+
+def _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, radius_px):
+    """Letter placements on an arc: each letter stays rigid, its centre on the
+    circle and turned to follow it (as professional arc baselines do). arc_over runs
+    over the top of a circle, arc_under along the bottom, both read left to right."""
+    out = {}
+    for (row, glyphs), width in zip(placed, widths):
+        shift = (widest-width)*{'left': 0, 'center': .5, 'right': 1}[align]
+        middle, line_y = shift+width/2, baseline_of(row)
+        if width > .95*2*math.pi*radius_px:
+            raise ValueError('These words do not fit around a circle this small. Use a larger radius or fewer letters.')
+        for index, (char, x, columns, advance) in enumerate(glyphs):
+            anchor = shift+x+advance*em_px/2
+            theta = (anchor-middle)/radius_px
+            if baseline == 'arc_over':
+                ax, ay, turn = middle+radius_px*math.sin(theta), line_y+radius_px*(1-math.cos(theta)), theta
+            else:
+                ax, ay, turn = middle+radius_px*math.sin(theta), line_y-radius_px*(1-math.cos(theta)), -theta
+            c, s_ = math.cos(turn), math.sin(turn)
+            dx = shift+x-anchor   # letter origin relative to its centre on the baseline
+            out[row, index] = [c*em_px, -s_*em_px, s_*em_px, c*em_px, ax+c*dx, ay+s_*dx]
+    return out
+
+
+def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0, fill=False,
+           pull_mm=None, letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', radius_mm=None,
+           sequence='left'):
     """SVG of satin-column lettering; user units are CSS px (96 per inch).
     puff: letters over foam (see stitch_satin._puff_satin). Each letter has a
     placement line sewn before the stop for the foam, then a perforation line
-    just inside it that tacks the foam down, then its columns."""
+    just inside it that tacks the foam down, then its columns. pull_mm replaces
+    the font's own pull compensation (fabric preset). letter_spacing_mm is added
+    between letters, line_spacing scales the line height; baseline/radius_mm bend
+    a single line on an arc; sequence='centre' sews from the middle letter out
+    (centre-out, for caps). Letters that touch are joined by travel
+    inside both instead of a cut."""
+    if baseline not in BASELINES or sequence not in SEQUENCES:
+        raise ValueError('Choose a listed baseline and letter order.')
     from .stitch_engine import PUFF_MAX_MM, puff_min_mm
     puff_columns = (puff_min_mm(foam_mm), PUFF_MAX_MM)
     puff_pull = '.35' if foam_mm < 2.5 else '.45'  # outer edge; sewn 0.05 mm inside
     data = FONTS[key]
+    pull_mm = data['pull_mm'] if pull_mm is None else pull_mm
     size_mm = data['size']*scale_percent/100
     em_px = size_mm/cap_height(key)/PX_MM
     font = _font(font_path(key))
     hhea = font['hhea']
     em = font['head'].unitsPerEm
-    line_px = (hhea.ascent-hhea.descent+hhea.lineGap)/em*em_px*1.05
+    line_px = (hhea.ascent-hhea.descent+hhea.lineGap)/em*em_px*1.05*line_spacing
     lines = text.split('\n')
     placed, widths = [], []
     for row, line in enumerate(lines):
@@ -265,35 +316,62 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
             columns, advance, _ = glyph_columns(font_path(key), char) if char != ' ' else ((), None, None)
             if char == ' ':
                 advance = font['hmtx'][font.getBestCmap()[32]][0]/em if 32 in font.getBestCmap() else .3
-            glyphs.append((char, x, columns))
+            glyphs.append((char, x, columns, advance))
             x += (advance+data['tracking'])*em_px
             if i+1 < len(line):
-                x += kerning(key, char, line[i+1])*em_px
+                x += kerning(key, char, line[i+1])*em_px+letter_spacing_mm/PX_MM
         widths.append(max(0.0, x-data['tracking']*em_px))
         placed.append((row, glyphs))
     widest = max(widths) if widths else 0.0
+    baseline_of = lambda row: row*line_px+line_px*.8
+    # Each letter's placement from font units (shapely affine order: a, b, d, e, xoff, yoff).
+    matrices = {(row, index): [em_px, 0, 0, em_px, (widest-width)*{'left': 0, 'center': .5, 'right': 1}[align]+x,
+                               baseline_of(row)]
+                for (row, glyphs), width in zip(placed, widths) for index, (_, x, *_) in enumerate(glyphs)}
+    size = (widest+em_px, len(lines)*line_px+em_px)
+    if baseline != 'straight':
+        if len(lines) > 1:
+            raise ValueError('Arc lettering takes one line. Remove the line breaks or use a straight baseline.')
+        if not radius_mm or not 5 <= float(radius_mm) <= 1000:
+            raise ValueError('Enter an arc radius from 5 to 1000 mm.')
+        matrices = _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, float(radius_mm)/PX_MM)
+        # Keep the bent words on the page: measure them and move them in by half an em.
+        from shapely.affinity import affine_transform
+        from shapely.ops import unary_union
+        outline = unary_union([affine_transform(glyph_columns(font_path(key), char)[2], matrices[row, index])
+                               for row, glyphs in placed for index, (char, *_) in enumerate(glyphs) if char != ' '])
+        if not outline.is_empty:
+            left, top, right, bottom = outline.bounds
+            for m in matrices.values():
+                m[4] += em_px/2-left
+                m[5] += em_px/2-top
+            size = (right-left+em_px, bottom-top+em_px)
     ET.register_namespace('', SVG_NS); ET.register_namespace('inkstitch', INK_NS)
     ET.register_namespace('inkscape', LABEL_NS)
-    root = ET.Element(f'{{{SVG_NS}}}svg', width=f'{widest+em_px:.3f}', height=f'{len(lines)*line_px+em_px:.3f}')
+    root = ET.Element(f'{{{SVG_NS}}}svg', width=f'{size[0]:.3f}', height=f'{size[1]:.3f}')
     metadata = ET.SubElement(root, f'{{{SVG_NS}}}metadata')
     ET.SubElement(metadata, f'{{{INK_NS}}}inkstitch_svg_version').text = '3'
     count = 0
-    for (row, glyphs), width in zip(placed, widths):
-        shift = (widest-width)*{'left': 0, 'center': .5, 'right': 1}[align]
+    for row, glyphs in placed:
         line_group = ET.SubElement(root, f'{{{SVG_NS}}}g', {f'{{{INK_NS}}}letter-group': 'line'})
-        baseline = row*line_px+line_px*.8
-        for char, x, columns in glyphs:
-            if char == ' ':
-                continue
+        order = [i for i, g in enumerate(glyphs) if g[0] != ' ']
+        if sequence == 'centre' and len(order) > 2:
+            # Centre-out: middle letter to the right end, then left of the middle to the left
+            # end, so a cap's front panel is sewn from the centre seam outward.
+            middle = len(order)//2
+            order = order[middle:]+order[:middle][::-1]
+        sewn_letters = []
+        for index in order:
+            char, x, columns, _ = glyphs[index]
+            m = matrices[row, index]
             group = ET.SubElement(line_group, f'{{{SVG_NS}}}g', {f'{{{INK_NS}}}letter-group': 'glyph',
                                                              f'{{{LABEL_NS}}}label': char})
-            place = lambda p: (shift+x+p[0]*em_px, baseline+p[1]*em_px)
+            place = lambda p, m=m: (m[0]*p[0]+m[1]*p[1]+m[4], m[2]*p[0]+m[3]*p[1]+m[5])
             if fill:
                 # Big letters: strokes too wide for satin are sewn as one tatami fill
                 # per letter (holes kept), as professional lettering does.
                 from shapely.affinity import affine_transform
-                outline = affine_transform(glyph_columns(font_path(key), char)[2],
-                                           [em_px, 0, 0, em_px, shift+x, baseline])
+                outline = affine_transform(glyph_columns(font_path(key), char)[2], m)
                 rings = [ring for poly in getattr(outline, 'geoms', [outline]) if not poly.is_empty
                          for ring in (poly.exterior, *poly.interiors)]
                 if rings:
@@ -326,8 +404,7 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                         from shapely.geometry import Polygon
                         from shapely.ops import unary_union
                         shape = unary_union([Polygon(list(ca) + list(cb)[::-1]).buffer(0) for ca, cb, *_ in columns])
-                        placed = affine_transform(shape, [em_px, 0, 0, em_px, shift+x, baseline])
-                        travel = Travel(placed, inset=.15/PX_MM, slack=.05/PX_MM)
+                        travel = Travel(affine_transform(shape, m), inset=.15/PX_MM, slack=.05/PX_MM)
                     route = travel.route(previous_end, start, direct_mm=math.inf)
                     if route is None:
                         nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
@@ -356,9 +433,9 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                     'id': f'column{count}', 'd': d,
                     'style': f'fill:none;stroke:{colour};stroke-width:{.2/PX_MM:.3f}',
                     f'{{{INK_NS}}}satin_column': 'true',
-                    f'{{{INK_NS}}}zigzag_spacing_mm': f"{data['zigzag_mm']:g}",
-                    f'{{{INK_NS}}}pull_compensation_mm': f"{data['pull_mm']:g}",
-                    f'{{{INK_NS}}}center_walk_underlay': 'true' if width_mm >= .9 else 'false',
+                    f'{{{INK_NS}}}pull_compensation_mm': f"{pull_mm:g}",
+                    **{f'{{{INK_NS}}}{name}': value
+                       for name, value in size_profile(size_mm, width_mm, data['zigzag_mm']).items()},
                 }
                 if len(ra) == len(rb):
                     # Rails are matched cross-sections: stitch vertex i to vertex i.
@@ -413,4 +490,36 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                         f'{{{INK_NS}}}running_stitch_tolerance_mm': '0'}))
             if nodes:
                 nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
+                if not puff and sewn_columns:
+                    first = sewn_columns[0]
+                    sewn_letters.append(dict(group=group, last=nodes[-1], end=previous_end,
+                                             start=_lerp(first[0][0], first[1][0], .5), columns=sewn_columns))
+        _join_touching(sewn_letters, colour)
     return ET.tostring(root, encoding='unicode')
+
+
+def _join_touching(letters, colour):
+    """Closest join where it is safe: consecutive letters that touch (script fonts,
+    tight pairs) are joined by travel inside both letters' sewn columns instead of
+    a cut. Letters with fabric between them keep their cut: an uncut thread over
+    bare fabric fails the machine-file checks."""
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    from .stitch_paths import Travel
+    def area(letter):
+        return unary_union([Polygon(list(a)+list(b)[::-1]).buffer(0) for a, b in letter['columns']])
+    for here, there in zip(letters, letters[1:]):
+        a, b = area(here), area(there)
+        if a.distance(b) > .02/PX_MM or here['end'] is None:
+            continue
+        route = Travel(unary_union([a, b]), inset=.15/PX_MM, slack=.05/PX_MM).route(
+            here['end'], there['start'], direct_mm=math.inf)
+        if route is None:
+            continue
+        here['last'].attrib.pop(f'{{{INK_NS}}}trim_after', None)
+        there['group'].insert(0, ET.Element(f'{{{SVG_NS}}}path', {
+            'id': f"join-{here['last'].get('id')}", 'd': _path(route),
+            'style': f'fill:none;stroke:{colour};stroke-width:{.2/PX_MM:.3f}',
+            f'{{{INK_NS}}}stroke_method': 'running_stitch',
+            f'{{{INK_NS}}}running_stitch_length_mm': '1.2',
+            f'{{{INK_NS}}}running_stitch_tolerance_mm': '0'}))

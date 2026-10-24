@@ -183,6 +183,12 @@ document.addEventListener('DOMContentLoaded', () => {
    if(version===downloadVersion){downloadError.replaceChildren(node('strong','Download did not finish'),node('p',error.name==='TimeoutError'?'The download took too long. Try again.':'Check your connection and try again. Your design is unchanged.'));downloadError.hidden=false;}
   }finally{downloading=false;getFile.textContent=originalLabel;sync();}
  });getFile.className='primary';format.onchange=()=>{getFile.textContent='Download '+format.value.toUpperCase();};download.append(getFile);
+ // Appliqué: the fabric shapes at actual size, for a cutter or a paper template.
+ const cutting=node('a','Download appliqué cutting shapes (SVG)','workflowCutting');cutting.hidden=true;download.append(cutting);
+ // Same stitched design as the machine-file link (outputs are kept under the prepared picture's name).
+ window.addEventListener('studio:preview',e=>{
+  const source=$('exportDst')?.getAttribute('href')?.match(/\/studio-export\/([^/]+)\//);
+  cutting.hidden=!e.detail?.applique||!source;if(source)cutting.href='/applique-cut/'+source[1];});
  download.append(node('p','Always test the file on your own fabric and machine before a production run.'));
  if(native)oldChildren.forEach(child=>{child.hidden=true;});
  inspector.append(edit,check,download);

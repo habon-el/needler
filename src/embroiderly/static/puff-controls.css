@@ -10,7 +10,7 @@
 .puff-sewing ol { margin:0; padding-left:18px; font-size:12px; line-height:1.5; }
 .puff-sewing li { margin:4px 0; }
 .puff-swatch { display:inline-block; width:12px; height:12px; border-radius:3px; border:1px solid var(--ui-line); vertical-align:-2px; }
-/* Auto Fabric menu, same look as the puff box. */
+/* Fabric menu, same look as the puff box. */
 .fabric-controls { margin:10px 0; }
 .fabric-controls label { display:block; font-size:12px; margin:0 0 4px; }
 .fabric-controls select { width:100%; min-height:32px; border:1px solid var(--ui-line); border-radius:var(--ui-radius); background:var(--ui-surface); color:var(--ui-ink); }

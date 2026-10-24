@@ -1,4 +1,4 @@
-"""One-colour photo lines, after the idea of Hatch's PhotoFlash.
+"""One-colour photo lines.
 
 A photo is drawn with one thread in parallel rows. Each row is a zigzag whose
 width follows the darkness of the photo under it: nearly touching its

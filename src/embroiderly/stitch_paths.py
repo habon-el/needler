@@ -86,6 +86,98 @@ def path_length(points):
     return sum(math.dist(a, b) for a, b in zip(points, points[1:]))
 
 
+# Decorative outlines (backstitch, stemstitch, blanket and zigzag outline
+# types). Geometry and default proportions are our own.
+
+def stations(points, step):
+    """Points every `step` mm along a polyline (ends included, evenly divided),
+    each with the unit normal to the left of the direction of travel."""
+    pts = dedupe(points)
+    total = path_length(pts)
+    if len(pts) < 2 or total < 1e-9:
+        return []
+    count = max(2, int(math.ceil(total/step))+1)
+    at = resample(pts, count)
+    closed = math.dist(pts[0], pts[-1]) < 1e-6
+    out = []
+    for i, p in enumerate(at):
+        prev = at[i-1] if i > 0 else (at[-2] if closed else p)
+        nxt = at[i+1] if i+1 < len(at) else (at[1] if closed else p)
+        dx, dy = nxt[0]-prev[0], nxt[1]-prev[1]
+        d = math.hypot(dx, dy) or 1.0
+        out.append((p, (-dy/d, dx/d)))
+    return out
+
+
+def _offset(p, n, distance):
+    return (p[0]+n[0]*distance, p[1]+n[1]*distance)
+
+
+def resample_at(points, distances):
+    """Points at the given arc-length distances along a polyline."""
+    cumulative = [0.0]
+    for a, b in zip(points, points[1:]):
+        cumulative.append(cumulative[-1]+math.dist(a, b))
+    out, j = [], 0
+    for target in distances:
+        while j < len(points)-2 and cumulative[j+1] < target:
+            j += 1
+        span = cumulative[j+1]-cumulative[j]
+        out.append(lerp(points[j], points[j+1], 0 if span <= 0 else (target-cumulative[j])/span))
+    return out
+
+
+def backstitch(points, length=2.5, overlap=.3):
+    """Each stitch goes forward `length`, then back over `overlap` of it before the
+    next one: a firmer, raised line than running stitch."""
+    pts = dedupe(points)
+    total = path_length(pts)
+    if len(pts) < 2 or total <= length:
+        return pts
+    count = max(1, int(math.ceil((total-length)/(length*(1-overlap)))))
+    advance = (total-length)/count
+    marks = []
+    for k in range(count+1):
+        marks.append(k*advance+length)
+        if k < count:
+            marks.append((k+1)*advance)
+    return [pts[0]]+resample_at(pts, marks)
+
+
+def stemstitch(points, length=3.0, width=1.2):
+    """Slanted stitches across a band `width` wide, each starting halfway back
+    along the previous one, so they overlap like a twisted rope."""
+    marks = stations(points, length/2)
+    if len(marks) < 3:
+        return dedupe(points)
+    out = []
+    for (p, n), (q, m) in zip(marks, marks[2:]):
+        out.extend((_offset(p, n, -width/2), _offset(q, m, width/2)))
+    return out
+
+
+def blanket(points, spacing=2.0, width=2.0, side=1):
+    """Running stitch along the line with a spike `width` long every `spacing`
+    mm (E-stitch). side=1 points the spikes to the left of travel, -1 right."""
+    out = []
+    for p, n in stations(points, spacing):
+        out.extend((p, _offset(p, n, side*width), p))
+    return dedupe(out)
+
+
+def zigzag_outline(points, spacing=1.0, width=2.0):
+    """Stitches swinging from side to side of a band `width` wide."""
+    marks = stations(points, spacing/2)
+    return [_offset(p, n, (width if i % 2 else -width)/2) for i, (p, n) in enumerate(marks)]
+
+
+def inward_side(points):
+    """For a closed ring: 1 when the inside is to the left of travel (as stations()
+    measures it), else -1."""
+    area = sum(p[0]*q[1]-q[0]*p[1] for p, q in zip(points, points[1:]+points[:1]))
+    return 1 if area > 0 else -1
+
+
 def resample(points, count):
     """`count` points evenly spaced by arc length along a polyline."""
     pts = dedupe(points)

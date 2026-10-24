@@ -32,3 +32,5 @@
 .auto-claude input { margin-top:3px; flex-shrink:0; accent-color:var(--ui-primary); }
 .auto-claude span span { display:block; color:var(--ui-muted); margin-top:4px; }
 .auto-summary { font-size:13px !important; line-height:1.5; }
+.auto-detail { display:flex; align-items:center; gap:8px; font-size:12px; }
+.auto-detail input { flex:1; }

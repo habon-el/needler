@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
  <label for="autoRequest">Anything it should know? <span class="muted">(optional)</span></label>
  <textarea id="autoRequest" maxlength="300" placeholder="For example: cap front, 6 cm wide, 3 colours"></textarea>
  <p class="muted">It understands sizes (mm, cm, inches; wide or tall), a number of colours, and “line art”, “black lines” or “logo”.</p>
+ <label for="autoDetail">Detail</label>
+ <div class="auto-detail"><span class="muted">Fewer</span><input type="range" id="autoDetail" min="1" max="5" step="1" value="3"><span class="muted">More</span></div>
+ <label class="auto-claude"><input type="checkbox" id="autoOutline"> <span>Add a dark outline around each colour</span></label>
  <label class="auto-claude" id="autoClaudeRow" hidden><input type="checkbox" id="autoClaude"> <span><strong>Let Claude decide</strong> (AI). It looks at your picture and at each result, like a human digitizer. Costs about 5–40 cents per design from your Claude credit. <span id="autoClaudeSpend"></span></span></label>
  <div class="auto-actions"><button type="button" id="autoStart" class="primary">Start</button><button type="button" id="autoClose">Back</button></div>
  <ol id="autoSteps" aria-live="polite"></ol>
@@ -63,7 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if(running)return;
   if(studio.isBusy()){result.hidden=false;result.replaceChildren(node('p','Wait for the current preparation to finish, then start.','auto-problem'));return}
   running=true;start.disabled=true;$('autoClose').disabled=true;cover.hidden=false;steps.replaceChildren();result.hidden=true;
-  const response=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:$('autoRequest').value,use_claude:$('autoClaude').checked})}).catch(()=>null);
+  const response=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:$('autoRequest').value,use_claude:$('autoClaude').checked,
+   outlines:$('autoOutline').checked,detail:Number($('autoDetail').value)})}).catch(()=>null);
   if(!response||!response.ok&&response.status!==202){
    const body=await response?.json().catch(()=>({}))||{};
    running=false;start.disabled=false;$('autoClose').disabled=false;cover.hidden=true;

@@ -48,10 +48,11 @@ def create_app(workspace: Path | None = None) -> Flask:
 
     @app.get('/api/fabrics')
     def fabrics():
-        # Auto Fabric presets for the fabric menu (generation_policy).
+        # Fabric presets for the fabric menu (generation_policy).
         from .generation_policy import presets, DEFAULT
         return jsonify(default=DEFAULT, fabrics=[dict(id=r['fabric'], label=r.get('label', r['fabric']),
-                                                      stabilizer=r.get('stabilizer', '')) for r in presets()])
+                                                      stabilizer=r.get('stabilizer', ''), backing=r.get('backing'),
+                                                      topping=r.get('topping')) for r in presets()])
     from .assistance import register_assistance
     register_assistance(app, root)
     from .ai_draft import register_ai_draft
@@ -145,6 +146,16 @@ def create_app(workspace: Path | None = None) -> Flask:
             abort(404)
         from .release_gate import download
         return download(target,format)
+    @app.get('/applique-cut/<name>')
+    def applique_cut(name):
+        # Appliqué fabric shapes at actual size (engine.cutting_svg), written with the stitches.
+        if Path(name).name != name:
+            abort(404)
+        target=root/'work'/'inkstitch-preview'/Path(name).stem/'applique-cut.svg'
+        if not target.is_file():
+            abort(404)
+        from flask import send_file
+        return send_file(target,mimetype='image/svg+xml',as_attachment=True,download_name='applique-cutting.svg')
     @app.get('/api/problems/<name>')
     def design_problems(name):
         # Problems panel (problems.py): findings of the generated stitches with one-click fixes.

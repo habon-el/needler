@@ -28,7 +28,7 @@ def _bounds(text, font, puff, foam):
     """Measurements of the words, the satin edge, and the capital heights the
     font allows for them (for puff: every stroke wide enough for the foam)."""
     from .stitch_engine import PUFF_MAX_MM, puff_min_mm
-    m=embroidery_fonts.text_metrics(text,font['key'])
+    m=embroidery_fonts.text_metrics(text,font['key'],font.get('layout',{}).get('line_spacing',1.0))
     if m is None:raise ValueError('Enter some letters to stitch.')
     # The satin's outer edge sits this far outside the letter (embroidery_fonts.layout).
     pull=((.35 if foam<2.5 else .45)-.05) if puff else font['pull_mm']
@@ -75,6 +75,35 @@ def scale_for(text, font, height, puff=False, foam=3.0):
     return cap/font['size']*100
 
 
+def layout_options(body):
+    """Letter spacing, line spacing, baseline and letter order (lettering
+    layout), checked. Defaults reproduce the plain left-to-right straight line."""
+    def number(name,default,low,high,label):
+        value=body.get(name,default)
+        try:value=float(value)
+        except (TypeError,ValueError):value=math.nan
+        if not math.isfinite(value) or not low<=value<=high:raise ValueError(label)
+        return value
+    options=dict(letter_spacing_mm=number('letter_spacing_mm',0,-2,10,'Enter letter spacing from -2 to 10 mm.'),
+                 line_spacing=number('line_spacing_percent',100,70,250,'Enter line spacing from 70 to 250%.')/100,
+                 baseline=body.get('baseline','straight'),sequence=body.get('sequence','left'))
+    if options['baseline'] not in embroidery_fonts.BASELINES:raise ValueError('Choose a straight or arc baseline.')
+    if options['sequence'] not in embroidery_fonts.SEQUENCES:raise ValueError('Choose left to right or centre out.')
+    if options['baseline']!='straight':
+        options['radius_mm']=number('arc_radius_mm',60,5,1000,'Enter an arc radius from 5 to 1000 mm.')
+    return options
+
+
+def fabric_pull_extra(body):
+    """Extra satin pull (mm per side) for the chosen fabric: half of how much more the
+    fabric pulls than twill, at most 0.15 mm, so small letters keep open counters."""
+    if not body.get('fabric_preset') or body.get('puff') is True:
+        return 0.0
+    from .generation_policy import preset_for
+    pull=float(preset_for({'fabric_preset':body['fabric_preset']}).get('satin_pull_mm',.1))
+    return max(0.0,min(.15,(pull-.1)/2))
+
+
 def puff_foam(body):
     foam=body.get('puff_foam_mm',3)
     if foam not in (2,3,2.0,3.0):raise ValueError('Choose 2 mm or 3 mm puff foam.')
@@ -92,6 +121,8 @@ def validate(body):
     if font is None:raise ValueError('Select an installed small embroidery font.')
     missing=sorted(set(text)-set(font['glyphs'])-{' ','\n'})
     if missing:raise ValueError('This embroidery font does not contain: '+' '.join(missing))
+    # Fabric preset: the satin edge sits a little further out on fabrics that pull in more.
+    font=dict(font,pull_mm=round(font['pull_mm']+fabric_pull_extra(body),3),layout=layout_options(body))
     height=float(body.get('height_mm',5))
     if not math.isfinite(height) or height<=0:
         raise ValueError('Enter the height of your stitched words in mm.')
@@ -105,7 +136,8 @@ def generate(body, *, native=False):
     text,font,scale,align=validate(body)
     puff=body.get('puff') is True
     vector=embroidery_fonts.layout(text,font['key'],scale,align,puff=puff,foam_mm=puff_foam(body),
-                                   fill=not puff and scale>font['max_scale']*100+1e-6)
+                                   fill=not puff and scale>font['max_scale']*100+1e-6,pull_mm=font['pull_mm'],
+                                   **font['layout'])
     coverage={}
     if native:
         from .lettering_geometry import source_frame

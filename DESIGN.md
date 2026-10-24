@@ -67,7 +67,7 @@ Only fabric/lighting, fine-tuning and longer explanations stay in Expert setting
 Native font settings that do not exist are not simulated with dummy inputs.
 The canvas owns remaining desktop height; the inspector independently scrolls. Below 900px the inspector
 follows the canvas in document flow. All topic choices and advanced controls remain reachable.
-Studio layout (`studio-layout.css/js`, 2026-10-19, modelled on desktop digitizers such as Hatch):
+Studio layout (`studio-layout.css/js`, 2026-10-19, modelled on desktop digitizing software):
 one 52px top bar (brand · steps · actions) and one bottom status bar (status, thread order, stitch
 total, size). The canvas column does not scroll; the canvas takes the remaining height. Pieces and
 properties are docks: both collapse from toggles at the end of the view bar, properties resize from a
@@ -108,8 +108,8 @@ Mixed mode (`detail_lines.py`, option `line_details` off/light/all): thin lines 
 in the original picture (top-hat / black-hat), given the nearest palette thread, and traced with the
 line-art router as running stitches over the fills; Claude's `make_stitches` takes `line_details`, and
 the rules turn on `light` for colour art on dark backgrounds.
-Auto Fabric (2026-10-20, after Hatch's Auto Fabric): `fabric_preset` from `knowledge/generation.json`
-(10 fabrics; Wilcom-guided starting values, not sew-out verified) sets fill density, satin pull, fill
+Fabric presets (2026-10-20): `fabric_preset` from `knowledge/generation.json`
+(10 fabrics; starting values from published guidance, not sew-out verified) sets fill density, satin pull, fill
 underlay, fill stitch length and tie-off size; a Fabric menu under the size fields shows the stabilizer;
 requests ("polo", "cap", "t-shirt"...) and Claude's `fabric` choose it.
 Fill shaping (`fill_shaping.py`, 2026-10-20): plain tatami areas reach 0.35 mm under the colours sewn
@@ -122,7 +122,7 @@ fabric or areas already sewn. Claude's tools (2026-10-20): `merge_colours` (fold
 another; merges match the nearest palette colour), `border` (satin/running outline), `per_colour` cut
 counts in each result, and `recent_sewouts` from the sew-out review history in its brief. On the samurai,
 Claude folded scattered colours and cut the thread cuts from 568 to 322.
-One-colour photo lines (`photo_lines.py`, option `photo_style: one_colour`, after Hatch's PhotoFlash): the
+One-colour photo lines (`photo_lines.py`, option `photo_style: one_colour`): the
 original photo's tone (CLAHE, 2-98 % stretch) sets the width of a zigzag in rows 1 mm apart (0.6-2 mm,
 any angle, light-thread-on-dark inversion); rows snake into one continuous thread with tie-offs, so a
 rectangular photo has no cuts. "Digitize for me" now sends photos here (before: 6-colour logo mode);
@@ -148,7 +148,7 @@ Click a part to select that whole colour area (GET /api/area-at/<prepared>: the 
 colour, grown 1 px, with holes; erase edits and stitch cuts accept `holes`), or drag to draw around any
 stitches; a one-line bar says how many are selected, with Remove / Cancel
 and an "Exact cut" box. Default Remove adds an erase edit (`removed: true`) and rebuilds, so the area is
-cut out cleanly like Hatch's Knife. Exact cut saves the area in `stitch_cuts`; the engine drops only the
+cut out cleanly like a knife tool. Exact cut saves the area in `stitch_cuts`; the engine drops only the
 stitches inside it after generation, with a tie-off + cut before each gap and a jump + tie-in after; the
 bar shows "adds about N cuts" (every crossing fill row is cut). Both survive rebuilds and use Undo; the
 areas are part of the engine cache key. Exact cut is not offered for photo modes.
@@ -167,7 +167,7 @@ a measured size exists. Before this the only way to make text stitches was the s
 The "Unsaved changes" warning on text designs appears only when words were edited and not stitched yet:
 checked stitches are stored at /text/<id> and come back on reload, so they no longer trigger it (it used
 to fire for every unapproved design, which also blocked reloading the page).
-Open (from the Hatch comparison): branching / travel under later fills instead of a cut after every
+Open (from the feature comparison): branching / travel under later fills instead of a cut after every
 shape (`generation_policy` still forces `trim_after`), turning fills that follow the shape, colour
 blending, appliqué, stitch shortening on tight curves, more fonts.
 Spacing uses the 0.5rem unit. Section padding 2 units; controls at least 32px high.

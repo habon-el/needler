@@ -27,6 +27,24 @@
    path('M18 52H102',1.2,.5);
   }else if(kind==='raised_satin'){
    for(let y=12;y<=52;y+=2.5){path(`M28 ${y} L92 ${y-3}`,4,.4);path(`M28 ${y-2} L92 ${y-5}`,2)}
+  }else if(kind==='step'){
+   for(let y=10,i=0;y<58;y+=4,i++){path('M12 '+y+'H108',2);const o=[0,4,8,12,8,4][i%6];for(let x=20+o;x<108;x+=24)path('M'+x+' '+(y-1)+'v2',1.2,.5)}
+  }else if(kind==='gradient'){
+   for(let y=8,g=2;y<60;y+=g,g*=1.18)path('M12 '+y.toFixed(1)+'H108',2);
+  }else if(kind==='radial'){
+   for(let i=0;i<24;i++){const a=i*Math.PI/12,r0=i%4?10:2;path(`M${(60+Math.cos(a)*r0).toFixed(1)} ${(32+Math.sin(a)*r0).toFixed(1)}L${(60+Math.cos(a)*28).toFixed(1)} ${(32+Math.sin(a)*28).toFixed(1)}`,1.6)}
+  }else if(kind==='applique'){
+   path('M30 14H90V50H30Z',1,.35);
+   for(let x=26;x<=94;x+=2.5){path(`M${x} 10V18`,1.4);path(`M${x} 46V54`,1.4)}
+   for(let y=18;y<=46;y+=2.5){path(`M26 ${y}H34`,1.4);path(`M86 ${y}H94`,1.4)}
+  }else if(kind==='backstitch'){
+   for(let x=14;x<100;x+=12)path(`M${x} 32H${x+16}`,2.2,x%24?1:.6);
+  }else if(kind==='stemstitch'){
+   for(let x=14;x<98;x+=7)path(`M${x} 38L${x+14} 26`,2);
+  }else if(kind==='blanket'){
+   path('M14 44H106',1.8);for(let x=18;x<=102;x+=12)path(`M${x} 44V22`,1.8);
+  }else if(kind==='zigzag'){
+   path('M14 42'+Array.from({length:12},(_,i)=>`L${20+i*7.5} ${i%2?42:22}`).join(''),1.8);
   }else if(kind==='off'){path('M24 12H96V52H24Z',1,.25);path('M48 32H72',2)}
   else if(kind==='satin'){
    for(let y=12;y<=52;y+=2.5)path(`M28 ${y} L92 ${y-3}`,2);
@@ -84,5 +102,9 @@
   ['off','None','off','No added outline'],
   ['running','Running','running','Fine edge line'],
   ['satin','Satin','satin','Wide stitched band'],
+  ['backstitch','Backstitch','backstitch','Firm hand-drawn line'],
+  ['stemstitch','Stemstitch','stemstitch','Twisted rope line'],
+  ['blanket','Blanket','blanket','Edge with inward spikes'],
+  ['zigzag','Zigzag','zigzag','Open zigzag band'],
  ],'change');
 })();

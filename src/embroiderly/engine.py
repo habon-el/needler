@@ -43,6 +43,69 @@ def thickness_mm(rings,scale):
     return 2*float(cv2.distanceTransform(plane,cv2.DIST_L2,5).max())*scale
 
 
+HAIRLINE_MM=.45   # areas thinner than about one thread are sewn as a run, not satin
+
+
+def contours_too_thin(contours,hierarchy,scale):
+    """Outer contours with no fillable area (under 4 px²) that are long enough to sew
+    as a line (fill_coverage.HAIR_MIN_MM); shorter specks stay reported as missing."""
+    from .fill_coverage import HAIR_MIN_MM
+    for i,c in enumerate(contours):
+        if hierarchy[0,i,3]==-1 and cv2.contourArea(c)<4:
+            x,y,w,h=cv2.boundingRect(c)
+            if max(w,h)*scale>=HAIR_MIN_MM:yield c
+
+
+def add_hairline(document,points,thread,index,closed):
+    pts=[(float(x),float(y)) for x,y in points]+([tuple(map(float,points[0]))] if closed else [])
+    ET.SubElement(document,'path',id=f'hair{index}',d='M '+' L '.join(f'{x},{y}' for x,y in pts),
+        style=f'fill:none;stroke:{thread};stroke-width:1',
+        attrib={'{http://inkstitch.org/namespace}stroke_method':'running_stitch',
+                '{http://inkstitch.org/namespace}running_stitch_length_mm':'1.5',
+                '{http://inkstitch.org/namespace}running_stitch_tolerance_mm':'0',
+                '{http://inkstitch.org/namespace}trim_after':'true'})
+
+
+def colour_outlines(document,exact,alpha,masks,scale,thread,retrace_mm):
+    """Add outlines: one running line along every colour boundary and the
+    outer edge, routed as continuous branched runs (line_art) and sewn last."""
+    label=np.full(alpha.shape,-1,np.int32)
+    for k,m in enumerate(masks):label[m]=k
+    edge=np.zeros(alpha.shape,bool)
+    for shifted in (np.roll(label,1,0),np.roll(label,-1,0),np.roll(label,1,1),np.roll(label,-1,1)):
+        edge|=label!=shifted
+    edge[[0,-1],:]|=label[[0,-1],:]>=0;edge[:,[0,-1]]|=label[:,[0,-1]]>=0
+    edge&=label>=0
+    if not edge.any():return 0,np.zeros(alpha.shape,bool)
+    return add_line_art(document,exact,alpha,scale,None,retrace_mm,layers=[(thread,edge)])
+
+
+def cutting_svg(pieces,scale):
+    """Appliqué pieces as an SVG in millimetres: one closed outline per piece (holes kept),
+    laid out where they sit in the design so each piece is easy to match."""
+    points=np.vstack([r[:,0,:] for rings in pieces for r in rings]).astype(float)*scale
+    left,top=points.min(axis=0)-2;right,bottom=points.max(axis=0)+2
+    paths=[]
+    for rings in pieces:
+        d=' '.join('M '+' L '.join(f'{x*scale-left:.2f},{y*scale-top:.2f}' for x,y in r[:,0,:])+' Z' for r in rings)
+        paths.append(f'<path d="{d}" fill="none" stroke="#000" stroke-width="0.2" fill-rule="evenodd"/>')
+    w,h=right-left,bottom-top
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{w:.2f}mm" height="{h:.2f}mm" viewBox="0 0 {w:.2f} {h:.2f}">'
+            '<title>Appliqué cutting shapes, actual size</title>'+''.join(paths)+'</svg>')
+
+
+def closest_join(indices,contours,start):
+    """Closest join: sew a colour's areas nearest-first from where the last area
+    ended (its centre), instead of in contour-finder order, so travel stays short."""
+    left=list(indices);order=[];here=np.asarray(start,float)
+    # A few points around each area are enough to compare distances (photos have thousands of specks).
+    probe={i:contours[i][::max(1,len(contours[i])//16),0,:] for i in left}
+    while left:
+        best=min(left,key=lambda i:float(np.min(np.sum((probe[i]-here)**2,axis=1))))
+        left.remove(best);order.append(best);here=contours[best][:,0,:].mean(axis=0)
+    return order
+
+
 def add_line_art(document, exact, alpha, scale, colours=None, retrace_mm=6.0, layers=None):
     """Prepared line art -> one running-stitch element per continuous route.
     layers: [(thread, mask)] to trace instead of the prepared colours (mixed mode)."""
@@ -100,7 +163,7 @@ def digitize(source, directory, height_mm=100, colours=None):
             from .photo_stitch import generate
             return generate(source,directory,height_mm,settings)
         if settings.get('photo_style')=='one_colour':
-            # One-colour photo lines (photo_lines.py, after Hatch's PhotoFlash).
+            # One-colour photo lines (photo_lines.py).
             if settings.get('border_style','off')!='off':raise ValueError('One-colour photo lines do not take a border.')
             from .photo_lines import generate as photo_lines
             return photo_lines(source,directory,height_mm,settings,metadata)
@@ -161,7 +224,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     puff_all=settings.get('puff') is True
     from .stitch_engine import puff_min_mm
     foam_mm=min(5.,max(1.,float(settings.get('puff_foam_mm',3))))
-    # Wilcom's puff guide: 0.3-0.5 mm pull compensation by foam thickness. This is the
+    # Published puff guidance: 0.3-0.5 mm pull compensation by foam thickness. This is the
     # outer edge; the satin sews 0.05 mm inside it (stitch_satin._puff_satin).
     puff_pull='.35' if foam_mm<2.5 else '.45'
     if puff_all and (line_art or settings.get('ink_only') is True):
@@ -179,9 +242,11 @@ def digitize(source, directory, height_mm=100, colours=None):
     # Sew the largest colour area (usually the background) first and small
     # details last, so detail edges lie on top instead of under the fill.
     knockout=bool(settings.get('colour_knockouts'))
-    # Auto Fabric: satin pull compensation follows the chosen fabric (generation_policy).
+    # Fabric preset: satin pull compensation and spacing follow the chosen fabric (generation_policy).
     from .generation_policy import preset_for
-    satin_pull=float(preset_for(settings).get('satin_pull_mm',SATIN_PULL_MM))
+    fabric=preset_for(settings)
+    satin_pull=float(fabric.get('satin_pull_mm',SATIN_PULL_MM))
+    satin_spacing=fabric.get('satin_spacing_mm')
     if len(palette) and not piece_layout:
         present,counts=unique_rows(array[alpha],return_counts=True)
         area={tuple(c):int(n) for c,n in zip(present,counts)}
@@ -196,6 +261,8 @@ def digitize(source, directory, height_mm=100, colours=None):
         if choice['include']:sewn_masks.append(np.all(array==colour,axis=2)&alpha)
     later=np.zeros(alpha.shape,bool)
     for m in sewn_masks:later|=m
+    here=np.zeros(2)  # where the last area ended (pixels); the design starts top left
+    cut_pieces=[]     # appliqué outlines (pixel rings) for the fabric cutting file
     for colour in ([] if piece_layout else palette):
         key='#%02x%02x%02x'%tuple(colour)
         choice=(colours or {}).get(key,{'include':prepared or not np.all(colour>=245),'thread':key})
@@ -206,8 +273,13 @@ def digitize(source, directory, height_mm=100, colours=None):
         release_mask |= mask.astype(bool)
         contours,hierarchy=cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
         if hierarchy is None:continue
-        for i,c in enumerate(contours):
-            if hierarchy[0,i,3]!=-1 or cv2.contourArea(c)<4:continue
+        outer=[i for i,c in enumerate(contours) if hierarchy[0,i,3]==-1 and cv2.contourArea(c)>=4]
+        for c in contours_too_thin(contours,hierarchy,scale):
+            # Lines a pixel wide have no area to fill: a run along them and back.
+            add_hairline(document,c[:,0,:],choice['thread'],objects,closed=False);objects+=1
+        for i in closest_join(outer,contours,here):
+            c=contours[i]
+            here=c[:,0,:].mean(axis=0)
             rings=[c];child=hierarchy[0,i,2]
             while child!=-1:
                 rings.append(contours[child]);child=hierarchy[0,child,0]
@@ -216,6 +288,10 @@ def digitize(source, directory, height_mm=100, colours=None):
             thick=thickness_mm(rings,scale)
             if style is None and puff_all and puff_min_mm(foam_mm)<=thick<=PUFF_TO_MM:
                 style='puff'
+            if style is None and thick<HAIRLINE_MM:
+                # Thinner than one thread: no satin forms; a run around its edge sews the line.
+                add_hairline(document,c[:,0,:],choice['thread'],objects,closed=True);objects+=1
+                continue
             # Plain fills overlap the colours sewn after them and run along their long side.
             plain=style is None and thick>SMALL_SATIN_MM and not knockout
             shaped=overlap_rings(rings,later,scale) if plain and later.any() else [rings]
@@ -237,6 +313,12 @@ def digitize(source, directory, height_mm=100, colours=None):
             if style=='puff' and knockout:
                 # Removed areas stay exact: no outward pull, as for flat satin.
                 node.set('{http://inkstitch.org/namespace}pull_compensation_mm','0')
+            if style=='applique':
+                cut_pieces.append(rings)
+                # The satin cover is centred on the fabric's cut edge: half of it lies outside the area.
+                band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
+                grow=max(1,int(math.ceil((1.5+GRID_ROUNDING_MM)/scale)))
+                release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
             if style=='puff' and not knockout:
                 # Puff satin is pulled past the edge on purpose; that band is sewn, not empty.
                 band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
@@ -246,6 +328,8 @@ def digitize(source, directory, height_mm=100, colours=None):
                 # Narrow or small shapes are satin, as a digitizer would do them:
                 # rows of fill turn ragged and gappy below a few millimetres.
                 node.set('{http://inkstitch.org/namespace}fill_method','auto_satin')
+                if satin_spacing:
+                    node.set('{http://inkstitch.org/namespace}zigzag_spacing_mm',f'{float(satin_spacing):g}')
                 if not knockout:
                     node.set('{http://inkstitch.org/namespace}pull_compensation_mm',str(satin_pull))
                     band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
@@ -255,6 +339,14 @@ def digitize(source, directory, height_mm=100, colours=None):
                 # Removed areas stay exact: keep stitches inside by the file rounding.
                 node.set('{http://inkstitch.org/namespace}edge_inset_mm',str(GRID_ROUNDING_MM))
             objects+=1
+    outline_thread=settings.get('outline_colour','#202020')
+    if settings.get('outlines') is True and not line_art and not piece_layout and settings.get('ink_only') is not True and objects:
+        if not (isinstance(outline_thread,str) and len(outline_thread)==7 and outline_thread[0]=='#'
+                and all(ch in '0123456789abcdefABCDEF' for ch in outline_thread[1:])):
+            raise ValueError('Choose an outline thread colour.')
+        count,drawn=colour_outlines(document,exact,alpha,sewn_masks,scale,outline_thread.lower(),
+                                    min(30.,max(2.,float(settings.get('line_retrace_mm',6.)))))
+        objects+=count;release_mask|=drawn&alpha
     detail=settings.get('line_details','off')
     if detail in ('light','all') and prepared and not line_art and not piece_layout and settings.get('ink_only') is not True             and not settings.get('colour_knockouts') and objects:
         # Mixed mode: thin lines the fills lost, sewn on top as running stitches (detail_lines.py).
@@ -296,6 +388,10 @@ def digitize(source, directory, height_mm=100, colours=None):
     generation_policy=apply_generation_policy(document,settings)
     svg=directory/'design.svg'
     ET.ElementTree(document).write(svg,encoding='utf-8',xml_declaration=True)
+    # Cutting file: the appliqué fabric shapes at true size, for a cutter or a paper template.
+    cut_file=directory/'applique-cut.svg'
+    if cut_pieces:cut_file.write_text(cutting_svg(cut_pieces,scale),encoding='utf-8')
+    elif cut_file.exists():cut_file.unlink()
     from .engine_cache import cache_key, lookup, publish
     import hashlib
     from .thread_recolour import routing_policy
@@ -402,6 +498,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     puff_threads=json.loads(plan_bytes).get('extras',{}).get('puff_threads',[])
     if puff_threads:
         payload['puff']={'threads':puff_threads,'foam_mm':foam_mm}
+    if cut_pieces:payload['applique']={'pieces':len(cut_pieces),'cut_file':'applique-cut.svg'}
     (directory/'playback.json').write_text(json.dumps(payload))
     from .release_gate import record_context
     record_context(directory,alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,origin)

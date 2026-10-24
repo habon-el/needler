@@ -1,13 +1,13 @@
 # Automatic repair: step 1 investigation
 
 Target: prepared_eb53b7a9f4ff3d83fd7ce53d, 32 mm tall.
-Installed engine: Ink/Stitch v3.2.2. No AGENTS.md found in the project tree.
+Installed engine: the previous outside stitch engine. No AGENTS.md found in the project tree.
 No application code, customer design, cache or export baseline changed in this pass.
 The source-setting experiment ran only in a temporary directory.
 
 ## Confirmed settings
 
-All 80 generated path elements have no Ink/Stitch parameter overrides.
+All 80 generated path elements have no stitch parameter overrides.
 SVG metadata contains the version marker but no minimum-length override.
 User engine configuration sets default_min_stitch_len_mm to 0.1.
 Effective row spacing: 0.25 mm; global minimum: 0.1 mm; maximum fill

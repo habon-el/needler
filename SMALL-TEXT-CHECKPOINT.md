@@ -12,7 +12,7 @@ connected to Tools → Text and does not expose an approved machine-file downloa
 
 ## Readback results
 
-Installed Ink/Stitch Small Font; nominal font heights, not yet measured capital
+Installed small embroidery font; nominal font heights, not yet measured capital
 heights. Measurements are identical in PES and DST. Values below are stitch
 length tests only: holes, visible travel, density and mark counts are not certified.
 

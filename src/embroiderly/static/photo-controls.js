@@ -1,5 +1,5 @@
 /* One-colour photo lines (photo_lines.py): one thread in rows whose zigzag
-   follows the shading, like Hatch's PhotoFlash. Values live in the
+   follows the shading. Values live in the
    preparation options like every other setting. */
 document.addEventListener('DOMContentLoaded', () => {
  'use strict';

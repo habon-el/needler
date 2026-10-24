@@ -1,6 +1,6 @@
 """Alternative for short, path-following locks on authored font underpaths.
 
-Ink/Stitch's custom mm locks follow an existing path and can be shortened on a
+Custom mm locks follow an existing path and can be shortened on a
 tiny route. Its documented custom SVG form instead defines an explicit 0.6 mm
 retracing pattern; the last segment supplies orientation and is not stitched.
 https://inkstitch.org/docs/stitches/lock-stitches/

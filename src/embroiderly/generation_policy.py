@@ -1,8 +1,8 @@
 """Explicit generation limits; rendering fabric textures are not sewing presets.
 
-Auto Fabric (fabric_preset): density, satin pull compensation, fill underlay,
-fill stitch length and tie-off size per fabric, from knowledge/generation.json.
-Values are starting points from Wilcom's published guidance, not sew-out
+Fabric presets (fabric_preset): density, satin spacing and pull compensation, fill
+underlay, fill stitch length, tie-off size and backing/topping advice per fabric, from knowledge/generation.json.
+Values are starting points from published digitizing guidance, not sew-out
 verified (each row says so)."""
 import json
 from pathlib import Path
@@ -13,7 +13,7 @@ DEFAULT = 'twill'
 
 
 def presets():
-    return json.loads(Path(__file__).with_name('knowledge').joinpath('generation.json').read_text())['rows']
+    return json.loads(Path(__file__).with_name('knowledge').joinpath('generation.json').read_text(encoding='utf-8'))['rows']
 
 
 def preset_for(settings):
@@ -63,7 +63,8 @@ def apply(document, settings):
         node.set(NS+'lock_end_scale_mm', lock)
         count += 1
     return {'fabric_preset': fabric, 'row_spacing_mm': preset['row_spacing_mm'],
-            'satin_pull_mm': preset.get('satin_pull_mm'), 'stabilizer': preset.get('stabilizer'),
+            'satin_pull_mm': preset.get('satin_pull_mm'), 'satin_spacing_mm': preset.get('satin_spacing_mm'),
+            'stabilizer': preset.get('stabilizer'), 'backing': preset.get('backing'), 'topping': preset.get('topping'),
             'min_stitch_length_mm': 0.45, 'collapse_len_mm': 0,
             'elements': count, 'trim_policy': 'conservative component cuts',
             'lock_style': 'custom: 1 -1 1 -1', 'lock_scale_mm': float(lock)}

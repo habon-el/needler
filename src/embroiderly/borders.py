@@ -7,11 +7,13 @@ from shapely.geometry import Polygon
 import xml.etree.ElementTree as ET
 
 NS='http://inkstitch.org/namespace'
+# Running-line borders with a decorative stitch (stitch_engine.OUTLINE_STYLES); width is the band they cover.
+OUTLINES=('backstitch','stemstitch','blanket','zigzag')
 
 def border_plan(mask,height_mm,options):
     kind=options.get('border_style','off')
     if kind=='off':return None
-    if kind not in ('running','satin'):raise ValueError('Choose running or satin; 3D puff is not supported.')
+    if kind not in ('running','satin')+OUTLINES:raise ValueError('Choose a listed border stitch; 3D puff is not supported.')
     if options.get('artwork_type')=='portrait':raise ValueError('Borders currently require Logo mode, not the experimental portrait engine.')
     width=float(options.get('border_width',2));spacing=float(options.get('border_spacing',.4))
     if not math.isfinite(width) or not .8<=width<=6:raise ValueError(knowledge_message('borders.02'))
@@ -37,7 +39,7 @@ def border_plan(mask,height_mm,options):
         coords=[[float(x),float(y)] for x,y in line.exterior.coords]
         if kind=='satin':satin_rails(coords,width/(2*scale))
         paths.append(coords)
-        extent=line.buffer(width/(2*scale)) if kind=='satin' else line
+        extent=line.buffer(band_mm(kind,width)/(2*scale)) if kind!='running' else line
         x,y,r,b=extent.bounds
         if x<0 or y<0 or r>=mask.shape[1] or b>=mask.shape[0]:warnings.append('Border extends beyond the artwork canvas. Check hoop clearance and use Fit stitches.')
     if not paths:raise ValueError('No outer boundary available for a border.')
@@ -71,6 +73,11 @@ def satin_rails(points,radius):
     mid=len(p)//2
     return [(a[:mid+1],b[:mid+1]),(a[mid:],b[mid:])]
 
+def band_mm(kind,width):
+    """Width of the stitched band centred on the border line (blanket spikes reach one side)."""
+    return {'backstitch':.6,'blanket':2*width}.get(kind,width)
+
+
 def coverage(plan,shape):
     """Source-pixel band the requested border sews over; part of the release mask."""
     band=np.zeros(shape,np.uint8)
@@ -81,7 +88,8 @@ def coverage(plan,shape):
                 ring=np.rint(np.vstack((a,b[::-1]))).astype(np.int32)
                 cv2.fillPoly(band,[ring],1);cv2.polylines(band,[ring],True,1,thickness=3)
         else:
-            cv2.polylines(band,[np.rint(np.asarray(points)).astype(np.int32)],True,1,thickness=max(3,int(math.ceil(.6/plan['scale']))+2))
+            wide=band_mm(plan['style'],plan['width_mm']) if plan['style'] in OUTLINES else .6
+            cv2.polylines(band,[np.rint(np.asarray(points)).astype(np.int32)],True,1,thickness=max(3,int(math.ceil(wide/plan['scale']))+2))
     return band.astype(bool)
 
 def add_border(document,plan):
@@ -99,6 +107,9 @@ def add_border(document,plan):
         if plan['style']=='satin':
             attrs.update({f'{{{NS}}}satin_column':'true',f'{{{NS}}}center_walk_underlay':'true',f'{{{NS}}}zigzag_spacing_mm':str(plan['spacing_mm'])})
         else:attrs.update({f'{{{NS}}}stroke_method':'running_stitch',f'{{{NS}}}running_stitch_length_mm':'2'})
+        if plan['style'] in OUTLINES:
+            attrs.update({f'{{{NS}}}outline_style':plan['style'],f'{{{NS}}}outline_width_mm':str(plan['width_mm']),
+                          f'{{{NS}}}running_stitch_length_mm':'2.5' if plan['style']=='backstitch' else '3'})
         attrs[f'{{{NS}}}trim_after']='true'
         ET.SubElement(document,'path',attrs)
     return len(columns)

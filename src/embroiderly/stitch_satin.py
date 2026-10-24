@@ -113,8 +113,10 @@ def _at(line, fraction):
     return (p.x, p.y)
 
 
-def compensate(pairs_, pull):
-    if not pull:
+def compensate(pairs_, pull, percent=0.0):
+    """Widen each stitch by `pull` mm per side, plus `percent` of its width
+    shared between both sides (wide columns pull in more than narrow ones)."""
+    if not pull and not percent:
         return pairs_
     left, right = (pull, pull) if not isinstance(pull, (list, tuple)) else (pull[0], pull[-1])
     out = []
@@ -122,9 +124,109 @@ def compensate(pairs_, pull):
         d = math.dist(a, b)
         if d < 1e-9:
             out.append((a, b)); continue
+        extra = d*percent/200
         ux, uy = (a[0]-b[0])/d, (a[1]-b[1])/d
-        out.append(((a[0]+ux*left, a[1]+uy*left), (b[0]-ux*right, b[1]-uy*right)))
+        out.append(((a[0]+ux*(left+extra), a[1]+uy*(left+extra)), (b[0]-ux*(right+extra), b[1]-uy*(right+extra))))
     return out
+
+
+# Auto spacing: thread fills a narrow column quickly, so narrow columns sew a
+# little more open and wide ones a little denser. Our own curve, after published
+# advice that satin spacing should follow column width.
+def auto_spacing(base, width):
+    if width < 2.0:
+        return base+.06*min(1.0, (2.0-width)/1.5)
+    if width > 5.0:
+        return max(min(base, .25), base-.03*min(1.0, (width-5.0)/3.0))
+    return base
+
+
+def spaced_by_width(pairs_at, base):
+    """Pairs whose distance along the column follows auto_spacing(width),
+    placed between the fine samples so the spacing isn't rounded to them."""
+    fine = pairs_at(.05)
+    if len(fine) < 3:
+        return fine
+    out, walked = [fine[0]], 0.0
+    for prev, here in zip(fine, fine[1:]):
+        step = math.dist(lerp(*prev, .5), lerp(*here, .5))
+        start = 0.0
+        while step > 1e-12:
+            target = auto_spacing(base, math.dist(*lerp_pair(prev, here, start/step)))
+            if walked+(step-start) < target-1e-9:
+                walked += step-start
+                break
+            start += target-walked
+            out.append(lerp_pair(prev, here, start/step)); walked = 0.0
+    if math.dist(lerp(*out[-1], .5), lerp(*fine[-1], .5)) > 1e-6:
+        out.append(fine[-1])
+    return out
+
+
+def lerp_pair(p, q, t):
+    return lerp(p[0], q[0], t), lerp(p[1], q[1], t)
+
+
+# Underlay chosen from the column width when the author set none (auto
+# underlay). Cut-offs are ours: published guidance gives centre run for columns of
+# about 2–3 mm, edge run for larger shapes and zigzag added on wide ones.
+def auto_underlay(width):
+    if width < 1.5:
+        return dict(center_walk=False, contour_underlay=False, zigzag_underlay=False)
+    if width < 3.0:
+        return dict(center_walk=True, contour_underlay=False, zigzag_underlay=False)
+    return dict(center_walk=False, contour_underlay=True, zigzag_underlay=width >= 6.0)
+
+
+def median_width(pairs_):
+    widths = sorted(math.dist(p, q) for p, q in pairs_)
+    return widths[len(widths)//2] if widths else 0.0
+
+
+# Shortening (automatic corners): on the inside of a tight curve the needle
+# holes crowd together. Where one rail advances less than half as far as the
+# other, every other stitch stops this share of the width short of the inner rail.
+SHORTEN_SHARE = .35
+
+
+def shorten_inner(final):
+    out = list(final)
+    for i in range(1, len(final)-1, 2):
+        (pa, pb), (a, b), (na, nb) = final[i-1], final[i], final[i+1]
+        step_a, step_b = math.dist(pa, na), math.dist(pb, nb)
+        if max(step_a, step_b) < 1e-9 or min(step_a, step_b) >= .5*max(step_a, step_b):
+            continue
+        out[i] = (lerp(a, b, SHORTEN_SHARE), b) if step_a < step_b else (a, lerp(b, a, SHORTEN_SHARE))
+    return out
+
+
+# Auto Split: a satin stitch longer than this is split into shorter stitches.
+# The split points move from row to row, so the needle holes don't line up into
+# a visible groove down the column (splitting every stitch at its middle did).
+SPLIT_MM = 7.0
+_SPLIT_SHIFT = (0.0, 1/3, -1/3, 1/6, -1/6)
+
+
+def split_rows(final, limit=SPLIT_MM):
+    """Sewing order p0, q0, p1, q1… where every leg across the column (there
+    and back) longer than `limit` is divided at staggered points."""
+    order = [point for pair in final for point in pair]
+    points = order[:1]
+    for leg, (p, q) in enumerate(zip(order, order[1:])):
+        d = math.dist(p, q)
+        if limit and d > limit:
+            shift = _SPLIT_SHIFT[leg % len(_SPLIT_SHIFT)]
+            # The longest part is (1+|shift|)/n of the leg; pick n so it fits, with
+            # room for the 0.1 mm machine grid moving both ends.
+            n = int(math.ceil(d*(1+1/3)/max(.5, limit-.15)))
+            # Positions are measured from the same rail on every leg (legs run there
+            # and back), so neighbouring legs never share a hole.
+            spots = [(k+shift)/n for k in range(1, n)]
+            if leg % 2:
+                spots = [1-s for s in reversed(spots)]
+            points.extend(lerp(p, q, s) for s in spots)
+        points.append(q)
+    return points
 
 
 def indexed_pairs(a, b, spacing):
@@ -147,7 +249,7 @@ def indexed_pairs(a, b, spacing):
     return out
 
 
-# 3D puff over foam, after Wilcom's puff method: short running stitches tack the
+# 3D puff over foam, after the usual puff method: short running stitches tack the
 # foam, narrow caps close the open ends, a zigzag underlay holds and cuts the
 # foam, then dense satin covers all of it. One stitch never crosses more than
 # PUFF_LONGEST_MM: a split stitch would cut the foam into loose pieces.
@@ -232,7 +334,9 @@ def _puff_satin(matched, pull, spacing, closed, pairs_at, outline=None, caps=('s
 
 def satin(subpaths, spacing=0.4, pull=0.0, center_walk=False, contour_underlay=False,
           zigzag_underlay=False, underlay_length=1.5, walk_repeats=2, indexed=False, puff=False, outline=None,
-          caps=('start', 'end')):
+          caps=('start', 'end'), auto_space=False, underlay=None, pull_percent=0.0, split=0.0, shorten=False):
+    """underlay='auto' picks the underlay from the column width (auto_underlay);
+    auto_space varies spacing with width; split > 0 divides longer stitches."""
     if indexed and len(subpaths) >= 2 and len(subpaths[0][0]) == len(subpaths[1][0]) >= 2:
         a, b, rungs = [tuple(p) for p in subpaths[0][0]], [tuple(p) for p in subpaths[1][0]], []
         matched = indexed_pairs(a, b, spacing)
@@ -245,6 +349,12 @@ def satin(subpaths, spacing=0.4, pull=0.0, center_walk=False, contour_underlay=F
         # Tack-down walk to the far end, cap, zigzag back, cap, satin to the far end:
         # the column still ends where plain satin does.
         return _puff_satin(matched, pull, spacing, bool(subpaths[0][1]), pairs_at, outline, caps)
+    if auto_space:
+        matched = spaced_by_width(pairs_at, spacing)
+    if underlay == 'auto':
+        chosen = auto_underlay(median_width(matched))
+        center_walk, contour_underlay, zigzag_underlay = (
+            chosen['center_walk'], chosen['contour_underlay'], chosen['zigzag_underlay'])
     points = []
     if center_walk:
         middle = [lerp(p, q, .5) for p, q in pairs_at(underlay_length)]
@@ -267,11 +377,16 @@ def satin(subpaths, spacing=0.4, pull=0.0, center_walk=False, contour_underlay=F
             zig.extend([lerp(p, q, .2), lerp(q, p, .2)] if i % 2 == 0 else [lerp(q, p, .2), lerp(p, q, .2)])
         points.extend(zig)
     # Satin starts from whichever end the underlay finished at.
-    final = compensate(matched, pull)
+    final = compensate(matched, pull, pull_percent)
+    if shorten:
+        final = shorten_inner(final)
     if points and math.dist(points[-1], final[-1][0]) < math.dist(points[-1], final[0][0]):
         final = final[::-1]
-    for p, q in final:
-        points.extend((p, q))
+    if split:
+        points.extend(split_rows(final, split))
+    else:
+        for p, q in final:
+            points.extend((p, q))
     return points
 
 

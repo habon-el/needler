@@ -3,7 +3,7 @@
 'use strict';
 const exact={
  'Original':'Artwork','Artwork':'Plan','Prepared':'Plan',
- 'Ink/Stitch trial':'Stitch generation','Design layers':'Plan preview',
+ 'Design layers':'Plan preview',
  'Layer preview':'Plan preview','Drop':'Remove','Apply outline':'Keep outline',
  'Apply proposal':'Accept proposal','Apply portrait mode':'Use portrait mode',
  'Apply detail recovery':'Recover detail','Execute':'Confirm',

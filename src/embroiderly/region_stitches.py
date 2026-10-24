@@ -14,6 +14,10 @@ from shapely.geometry import Polygon, LineString
 NS='{http://inkstitch.org/namespace}'
 CATALOG=[
     ('tatami','Tatami','Rows of fill stitches'),
+    ('step','Step fill','Tatami with stepped needle holes'),
+    ('gradient','Gradient','Dense to open across the area'),
+    ('radial','Radial','Rays from the centre'),
+    ('applique','Appliqué','Fabric piece, satin edge · 2 stops'),
     ('satin','Satin','Narrow, convex areas only'),
     ('raised_satin','3D satin','Three satin layers · experimental, no foam'),
     ('puff','3D puff','Satin over foam · parts 3–6 mm wide (2 mm foam: 2–6)'),
@@ -137,6 +141,16 @@ def decorative_paths(rings,scale,kind):
 
 def apply_style(document,node,rings,scale,kind):
     if kind=='tatami':return
+    if kind=='applique':
+        # Placement, stop, tack-down, stop, satin cover (stitch_engine._applique).
+        node.set(NS+'fill_method','applique');node.set(NS+'applique_cover_mm','3')
+        return
+    if kind in ('step','gradient','radial'):
+        # Specialty fills (stitch_fills); rows run along the area's long side.
+        from .fill_shaping import angle as fill_angle
+        node.set(NS+'fill_method',kind+'_fill');node.set(NS+'angle',f'{fill_angle(rings):.1f}')
+        if kind=='gradient':node.set(NS+'fill_underlay','false')  # underlay would show through the open end
+        return
     if kind=='puff':
         # Dense satin over foam, sewn after a stop; see stitch_engine._puff_area.
         node.set(NS+'fill_method','puff_satin');node.set(NS+'zigzag_spacing_mm','.22')

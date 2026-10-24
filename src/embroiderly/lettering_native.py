@@ -38,9 +38,20 @@ def recipe(body):
         raise ValueError('Choose a thread colour.')
     settings = dict(text=text, font=body['font'], height_mm=float(body['height_mm']),
                     align=align, available_width_mm=width, colour=colour.lower())
+    # Layout (spacing, baseline, letter order): only what differs from the plain line,
+    # so earlier saved lettering keeps its cache key.
+    plain = dict(letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', sequence='left')
+    names = {'line_spacing': 'line_spacing_percent', 'radius_mm': 'arc_radius_mm'}
+    for name, value in small_lettering.layout_options(body).items():
+        if plain.get(name) != value:
+            settings[names.get(name, name)] = round(value*100, 3) if name == 'line_spacing' else value
     if body.get('puff') is True:
         settings['puff'] = True
         settings['puff_foam_mm'] = small_lettering.puff_foam(body)
+    elif body.get('fabric_preset'):
+        # Fabric preset for lettering; an unknown fabric is refused (generation_policy).
+        from .generation_policy import preset_for
+        settings['fabric_preset'] = preset_for({'fabric_preset': body['fabric_preset']})['fabric']
     return settings
 
 

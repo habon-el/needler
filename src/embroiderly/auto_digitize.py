@@ -14,6 +14,8 @@ import numpy as np
 from PIL import Image
 
 MAX_ATTEMPTS = 4
+# Detail slider step -> smallest colour area kept, mm² (3 is the usual 1 mm²).
+DETAIL_FLOOR_MM2 = {1: 8.0, 2: 3.0, 3: 1.0, 4: .5, 5: .25}
 KINDS = {
     'line_art': 'Light line drawing on a dark background',
     'photo_lines': 'Photo in one thread colour (rows of zigzag that follow the shading)',
@@ -84,16 +86,21 @@ def parse_request(text):
     match = re.search(r'(\d+)\s*(?:thread\s*)?colou?rs?', text)
     if match:
         wish['colours'] = max(2, min(8, int(match.group(1))))
-    # Auto Fabric: the item or fabric named in the request.
-    for pattern, fabric in ((r't-?shirt|tee\b|jersey|stretch|lycra|spandex', 'stretch_knit'),
+    # Fabric preset: the item or fabric named in the request.
+    for pattern, fabric in ((r'leather|suede|vinyl', 'leather'), (r'velvet|corduroy|velour', 'velvet'),
+                            (r'chiffon|organza|tulle|sheer', 'sheer'), (r'\bmesh\b', 'mesh'),
+                            (r'\bwool|hand ?knit|cardigan', 'wool'), (r'\blinen', 'linen'),
+                            (r't-?shirt|tee\b|jersey|stretch|lycra|spandex', 'stretch_knit'),
                             (r'\bpolo|piqu', 'pique'), (r'fleece|hoodie|sweat ?shirt|sweater', 'fleece'),
                             (r'towel|terry|bathrobe', 'towel'), (r'\bcaps?\b|\bhats?\b|beanie', 'cap'),
                             (r'denim|jean', 'denim'), (r'\bsilk|\bsatin\b', 'satin_silk'),
-                            (r'nylon|jacket|windbreaker|sport', 'nylon'), (r'cotton|linen', 'cotton'),
+                            (r'nylon|jacket|windbreaker|sport', 'nylon'), (r'cotton', 'cotton'),
                             (r'twill|canvas|tote', 'twill')):
         if re.search(pattern, text):
             wish['fabric'] = fabric
             break
+    if re.search(r'\boutlines?\b|\boutlined\b', text):
+        wish['outlines'] = True
     if re.search(r'keep\b.{0,25}back ?ground|back ?ground.{0,20}\b(stitch|sew|fill|keep)', text):
         wish['keep_background'] = True
     if re.search(r'\bpuff|\bfoam|\b3d\b|raised', text):
@@ -128,6 +135,12 @@ def plan(kind, facts, wish, image_size, saved):
         options.update(puff=True, puff_foam_mm=wish.get('foam_mm', 3))
     if wish.get('fabric'):
         options['fabric_preset'] = wish['fabric']
+    if wish.get('outlines') and kind == 'logo':
+        # Add outlines: one dark running line around every colour, sewn last.
+        options.update(outlines=True, outline_colour=wish.get('outline_colour', '#202020'))
+    if wish.get('floor_mm2') and kind in ('logo', 'photo'):
+        # The Detail slider: the smallest colour area kept (a details slider).
+        options['floor_mm2'] = wish['floor_mm2']
     if kind in ('logo', 'photo') and facts.get('dark', 0) > .55 and facts.get('colourful', 0) >= .03:
         # Colour art on a dark background usually has light linework the fills lose (mixed mode).
         options.setdefault('line_details', 'light')
@@ -203,7 +216,7 @@ class AutoDigitizer:
         self.uploads, self.decisions = self.root / 'work' / 'uploads', self.root / 'work' / 'decisions'
         self.jobs, self.lock = {}, threading.Lock()
 
-    def start(self, name, request_text='', use_claude=False):
+    def start(self, name, request_text='', use_claude=False, choices=None):
         path = self.uploads / Path(name).name
         if not path.is_file():
             raise FileNotFoundError(name)
@@ -214,7 +227,7 @@ class AutoDigitizer:
             if job and job['state'] == 'running':
                 raise RuntimeError('Digitize for me is already working on this design.')
             job = dict(state='running', steps=[], request=request_text[:300], started=time.time(), result=None,
-                       use_claude=bool(use_claude))
+                       use_claude=bool(use_claude), choices=choices or {})
             self.jobs[path.name] = job
         threading.Thread(target=self._run, args=(path, job), daemon=True).start()
         return job
@@ -308,7 +321,7 @@ class AutoDigitizer:
             with Image.open(path) as image:
                 kind, facts = classify(image)
                 size = image.size
-            wish = parse_request(job['request'])
+            wish = {**parse_request(job['request']), **job.get('choices', {})}
             if wish.get('kind'):
                 self._log(job, f"You asked for {KINDS[wish['kind']].lower()}.")
                 kind = wish['kind']
@@ -322,6 +335,15 @@ class AutoDigitizer:
             saved_file = self.decisions / (path.name + '.preparation.json')
             saved = json.loads(saved_file.read_text()) if saved_file.is_file() else {}
             options = plan(kind, facts, wish, size, saved)
+            if kind == 'logo' and not wish.get('keep_background') and not options.get('colour_knockouts'):
+                # Colour roles: a plain border colour is background (omitted), not a thread.
+                from .colour_knockout import proposal_patch
+                with Image.open(path) as image:
+                    patch = proposal_patch(image, options)
+                if patch:
+                    options.update(patch)
+                    self._log(job, f"Leaving out the plain background ({patch['colour_knockouts'][-1]['colour']}); "
+                                   "say “keep the background” to stitch it.")
             attempts, finish = [], None
             if job.get('use_claude'):
                 from . import auto_claude
@@ -421,8 +443,14 @@ def register_auto_digitize(app, root):
     @app.post('/api/auto-digitize/<name>')
     def auto_digitize_start(name):
         body = request.get_json(silent=True) or {}
+        # Panel controls: outline checkbox and Detail slider (1 fewer … 5 more; 3 keeps the default).
+        choices = {}
+        if body.get('outlines') is True:
+            choices['outlines'] = True
+        if body.get('detail') in (1, 2, 4, 5):
+            choices['floor_mm2'] = DETAIL_FLOOR_MM2[body['detail']]
         try:
-            job = runner.start(name, str(body.get('request', '')), body.get('use_claude') is True)
+            job = runner.start(name, str(body.get('request', '')), body.get('use_claude') is True, choices)
         except FileNotFoundError:
             abort(404)
         except (RuntimeError, ValueError) as error:

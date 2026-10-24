@@ -325,7 +325,7 @@ async function requestPreview(action,pieceCommand=null,restoreOptions=null){
   await new Promise((resolve,reject)=>{isolated.onload=resolve;isolated.onerror=reject;isolated.src=result.isolated});
   if(version!==revision){queued=true;return}
   renderPalette(result.palette);metrics(result.report);
-  window.dispatchEvent(new CustomEvent('studio:preview',{detail:{options:JSON.parse(JSON.stringify(options)),report:result.report,stitchCount:result.playback?.stitch_count??playback?.stitch_count??0,portraitAudit:result.playback?.portrait_audit,hasPlayback:!!result.playback||!!playback}}));
+  window.dispatchEvent(new CustomEvent('studio:preview',{detail:{options:JSON.parse(JSON.stringify(options)),report:result.report,stitchCount:result.playback?.stitch_count??playback?.stitch_count??0,portraitAudit:result.playback?.portrait_audit,applique:result.playback?.applique,hasPlayback:!!result.playback||!!playback}}));
   if(reviewRequired){
    setView('prepared');draw();status(result.error);
    window.dispatchEvent(new Event('studio:cleanup-needed'));

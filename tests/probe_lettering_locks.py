@@ -1,7 +1,7 @@
 """Diagnostic experiment only: explicit SVG locks instead of path-following locks.
 
 Does not edit source/fonts or approve downloads. Uses the real app in temporary
-storage and its unchanged written-file gates. See Ink/Stitch lock-stitch docs.
+storage and its unchanged written-file gates.
 """
 import json
 from pathlib import Path

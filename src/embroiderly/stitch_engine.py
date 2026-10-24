@@ -11,9 +11,11 @@ import json
 import math
 from pathlib import Path
 from . import svg_geometry as sg
-from .stitch_fills import contour, fill_shape, join_runs, meander, spiral, tatami
-from .stitch_paths import bean, chain, enforce_min, order_runs, path_length, running, split_long
-from .stitch_satin import satin
+from .stitch_fills import contour, fill_shape, gradient, join_runs, meander, radial, spiral, step_fill, tatami
+from .stitch_paths import (backstitch, bean, blanket, chain, enforce_min, inward_side, order_runs, path_length, polygons,
+                           running, split_long, stemstitch, zigzag_outline)
+from .stitch_satin import SPLIT_MM, satin
+from shapely.geometry import LineString
 
 NS = '{http://inkstitch.org/namespace}'
 NAME = 'Needler native engine'
@@ -157,18 +159,25 @@ class Block:
         self.placement = placement
         # The area this block covers (fills); branching travels inside such areas.
         self.region = None
+        # Open fills (gradient) leave fabric showing: travel across them would show.
+        self.open = False
+        # The machine stops before this block (appliqué: lay the fabric, then trim it).
+        self.stop_before = False
 
 
-def _satin_area(shape, spacing, pull, min_len, walk=True, columns=None, puff=False, join=True):
+def _satin_area(shape, spacing, pull, min_len, walk=True, columns=None, puff=False, join=True, pull_percent=0.0):
     """Narrow or small areas as satin columns along their centre lines (the way
-    small shapes and lettering are digitized), joined by inside travel."""
+    small shapes and lettering are digitized), joined by inside travel. Flat
+    columns take underlay and spacing from their width (automatic)."""
     from .satin_font import area_columns
     runs = []
     for a, b, closed, width in (columns if columns is not None else area_columns(shape)):
         a, b = list(a), list(b)
         try:
-            points = satin([(a, closed), (b, closed)], spacing, pull, center_walk=walk and 2*width >= 1.0,
-                           indexed=len(a) == len(b), puff=puff, outline=shape if puff else None)
+            points = satin([(a, closed), (b, closed)], spacing, pull, indexed=len(a) == len(b), puff=puff,
+                           outline=shape if puff else None, underlay='auto' if walk else None,
+                           auto_space=not puff, pull_percent=pull_percent, split=0.0 if puff else SPLIT_MM,
+                           shorten=not puff)
         except ValueError:
             continue
         if len(points) >= 2:
@@ -248,7 +257,8 @@ def _element_blocks(node, paths, style, scale, index, min_len):
                 runs = spiral(shape, spacing, length, min_len, tolerance=tolerance)
             elif method == 'auto_satin':
                 runs = _satin_area(shape, max(.2, _float(node, 'zigzag_spacing_mm', .4)),
-                                   _float(node, 'pull_compensation_mm', 0), min_len) or \
+                                   _float(node, 'pull_compensation_mm', 0), min_len,
+                                   pull_percent=_float(node, 'pull_compensation_percent', 0)) or \
                     tatami(shape, _float(node, 'angle', 0), spacing, 3.0, 4, min_len)
             elif method == 'puff_satin':
                 runs = _puff_area(shape, max(.18, _float(node, 'zigzag_spacing_mm', .22)),
@@ -264,6 +274,27 @@ def _element_blocks(node, paths, style, scale, index, min_len):
                     return blocks
                 # Too narrow or too wide to puff: sewn flat, before the foam.
                 runs = tatami(shape, _float(node, 'angle', 0), spacing, 3.0, 4, min_len)
+            elif method == 'step_fill':
+                runs = step_fill(shape, _float(node, 'angle', 0), spacing,
+                                 max(1.0, _float(node, 'max_stitch_length_mm', 3.5)), min_len,
+                                 underlay=_bool(node, 'fill_underlay', True))
+            elif method == 'gradient_fill':
+                runs = gradient(shape, _float(node, 'angle', 0), spacing,
+                                max(spacing, _float(node, 'gradient_open_spacing_mm', 1.6)),
+                                max(1.0, _float(node, 'max_stitch_length_mm', 3.0)), 4, min_len)
+            elif method == 'radial_fill':
+                runs = radial(shape, spacing, max(1.0, _float(node, 'max_stitch_length_mm', 3.0)), min_len)
+                if runs is None:
+                    # The rays can't reach around this shape: plain tatami instead.
+                    runs = tatami(shape, _float(node, 'angle', 0), spacing, 3.0, 4, min_len)
+            elif method == 'applique':
+                cover = min(6.0, max(1.5, _float(node, 'applique_cover_mm', 3.0)))
+                for runs, stop in _applique(shape, cover):
+                    first = len(blocks)
+                    emit(fill, runs)
+                    if len(blocks) > first:
+                        blocks[first].stop_before = stop
+                runs = []
             elif method == 'meander_fill':
                 cell = max(.6, _float(node, 'meander_scale_percent', 100)/100*10)
                 runs = meander(shape, cell, length, min_len, _seed(node, index), tolerance=tolerance)
@@ -280,6 +311,7 @@ def _element_blocks(node, paths, style, scale, index, min_len):
             emit(fill, runs)
         for block in blocks:
             block.region = shape
+            block.open = _attr(node, 'fill_method') == 'gradient_fill'
     if stroke:
         if satin_column and len(mm) >= 2:
             pull = [float(v) for v in str(_attr(node, 'pull_compensation_mm', '0')).split() if v] or [0.0]
@@ -289,7 +321,11 @@ def _element_blocks(node, paths, style, scale, index, min_len):
                            zigzag_underlay=_bool(node, 'zigzag_underlay'),
                            walk_repeats=max(1, int(_float(node, 'center_walk_underlay_repeats', 2))),
                            indexed=_attr(node, 'satin_pairs') == 'indexed', puff=_bool(node, 'puff'),
-                           caps=str(_attr(node, 'puff_caps', 'start end')).split())
+                           caps=str(_attr(node, 'puff_caps', 'start end')).split(),
+                           underlay=_attr(node, 'satin_underlay'), auto_space=_bool(node, 'satin_auto_spacing'),
+                           pull_percent=_float(node, 'pull_compensation_percent', 0),
+                           split=0.0 if _bool(node, 'puff') else max(0.0, _float(node, 'satin_split_mm', SPLIT_MM)),
+                           shorten=_bool(node, 'satin_shortening') and not _bool(node, 'puff'))
             emit(stroke, [points], puff=_bool(node, 'puff'))
         else:
             length = max(.3, _float(node, 'running_stitch_length_mm', 2.5))
@@ -303,10 +339,61 @@ def _element_blocks(node, paths, style, scale, index, min_len):
                                      for pts, _ in sg.parse_path(area)], 'evenodd')
                 if not region.is_empty:
                     runs = join_runs(runs, region, length)
-            runs = [running(run, length, tolerance) for run in runs]
-            emit(stroke, [bean(run, repeats) for run in runs if len(run) >= 2], puff=_bool(node, 'puff'),
+            outline = _attr(node, 'outline_style')
+            if outline in OUTLINE_STYLES:
+                runs = [_outline(run, outline, node, length) for run in runs if len(run) >= 2]
+            else:
+                runs = [bean(running(run, length, tolerance), repeats) for run in runs]
+            emit(stroke, [run for run in runs if len(run) >= 2], puff=_bool(node, 'puff'),
                  placement=_bool(node, 'puff_placement'))
     return blocks
+
+
+def _applique(shape, cover):
+    """Appliqué, sewn in three parts as is usual: a placement run on the edge
+    (where to lay the fabric), then after a stop an open zigzag tack-down just
+    inside the edge, then after a stop for trimming a satin cover `cover` mm wide
+    centred on the cut edge. The inside stays unstitched: the fabric shows.
+    Returns [(runs, stop_before)]."""
+    from .borders import satin_rails
+    if shape.buffer(-cover).is_empty:
+        raise ValueError(f'An appliqué piece must be at least {2*cover:g} mm across. Use a larger area or a fill.')
+    rings = [list(r.coords) for poly in polygons(shape) for r in (poly.exterior, *poly.interiors)]
+    placement = [running(ring, 2.5, .05) for ring in rings]
+    inner = shape.buffer(-.8)
+    tack = [zigzag_outline(list(r.coords), 1.0, 1.2)
+            for poly in polygons(inner) for r in (poly.exterior, *poly.interiors)]
+    covers = []
+    for ring in rings:
+        simple = list(LineString(ring).simplify(cover*.15).coords)
+        try:
+            for a, b in satin_rails(simple, cover/2):
+                covers.append(satin([([tuple(p) for p in a], False), ([tuple(p) for p in b], False)], .4, 0,
+                                    split=SPLIT_MM))
+        except ValueError:
+            # Corners too sharp for matched rails: a dense zigzag of the same width.
+            covers.append(zigzag_outline(ring, .8, cover))
+    return [(placement, False), (tack, True), (covers, True)]
+
+
+OUTLINE_STYLES = ('backstitch', 'stemstitch', 'blanket', 'zigzag')
+
+
+def _outline(run, style, node, length):
+    """Decorative outline stitch along one line (stitch_paths)."""
+    width = min(6.0, max(.5, _float(node, 'outline_width_mm', 2.0 if style != 'stemstitch' else 1.2)))
+    if style == 'backstitch':
+        return backstitch(run, length)
+    if style == 'stemstitch':
+        # A shallow slant reads as a twisted rope; a steep one as saw teeth.
+        return stemstitch(run, max(1.0, length), min(width, .4*max(1.0, length)))
+    spacing = max(.4, _float(node, 'outline_spacing_mm', 2.0 if style == 'blanket' else .8))
+    if style == 'zigzag':
+        return zigzag_outline(run, spacing, width)
+    closed = len(run) > 3 and math.dist(run[0], run[-1]) < 1e-6
+    # Spikes point into a closed shape (or out of it with blanket_side="outside").
+    side = inward_side(run[:-1]) if closed else 1
+    return blanket(run, spacing, width, -side if _attr(node, 'blanket_side') == 'outside' else side)
 
 
 BRANCH_MAX_MM = 25.0   # longest travel run that replaces a cut
@@ -330,7 +417,8 @@ def _branch(blocks):
         return prepared[key]
     for i in range(len(blocks)-1):
         prev, nxt = blocks[i], blocks[i+1]
-        if not prev.trim_after or prev.region is None or nxt.region is None:
+        if not prev.trim_after or prev.region is None or nxt.region is None or prev.open or nxt.open \
+                or nxt.stop_before:
             continue
         if prev.colour != nxt.colour or prev.puff != nxt.puff or prev.placement != nxt.placement:
             continue
@@ -342,7 +430,8 @@ def _branch(blocks):
             # Straight: covered by the area just sewn plus areas sewn later along the line.
             line = LineString([a, b])
             strip = line.buffer(.5)
-            hits = [prev.region] + [k.region for k in blocks[i+1:] if k.region is not None and fast(k.region).intersects(line)]
+            hits = [prev.region] + [k.region for k in blocks[i+1:]
+                                    if k.region is not None and not k.open and fast(k.region).intersects(line)]
             cover = unary_union([r.intersection(strip) for r in {id(r): r for r in hits}.values()])
             if cover.buffer(.02).contains(line):
                 route = [a, b]
@@ -420,7 +509,8 @@ def assemble(blocks, origin, collapse):
         follower = next((b for b in blocks[i+1:] if len(b.points) >= 2), None)
         # The first puff block always changes thread, even to the same colour:
         # the machine stops so the foam can be laid on the fabric.
-        change = colour != block.colour or block.puff != over_foam
+        # A stop is a change to the same thread (PES reads it back as STOP).
+        change = colour != block.colour or block.puff != over_foam or (block.stop_before and previous is not None)
         cut = previous is not None and (change or previous.trim_after)
         gap = needle is not None and math.dist(needle, points[0])
         # Short hops inside one colour are sewn directly; longer ones jump.

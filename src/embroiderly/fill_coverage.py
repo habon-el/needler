@@ -10,6 +10,12 @@ import numpy as np
 
 
 from .colour_rows import unique_rows
+
+# Pieces with no fillable area but at least this long are sewn as a running line
+# (engine.contours_too_thin), like centerline details; shorter specks are missing.
+HAIR_MIN_MM = 1.0
+
+
 def missing_boundaries(rgb, alpha, scale):
     issues = []
     for colour in unique_rows(rgb[alpha]):
@@ -28,6 +34,8 @@ def missing_boundaries(rgb, alpha, scale):
                 continue
             seen.add(component)
             x, y, width, height, pixels = map(int, stats[component])
+            if max(width, height)*scale >= HAIR_MIN_MM:
+                continue
             issues.append(dict(code='missing_boundary', colour='#%02x%02x%02x' % tuple(colour),
                 bounds=[x, y, x + width, y + height], pixels=pixels,
                 width_mm=round(width * scale, 4), height_mm=round(height * scale, 4),

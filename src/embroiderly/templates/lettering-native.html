@@ -11,6 +11,20 @@
 <label for="nativeWidth">Available width on your item (mm)</label>
 <input id="nativeWidth" type="number" min="5" max="400" step=".1" value="50" aria-describedby="nativeFit nativeStatus">
 <p id="nativeFit">We check the fit without shrinking or cutting off words. Add line breaks in Your words when needed.</p>
+<label for="nativeFabric">Fabric</label>
+<select id="nativeFabric"><option value="">Twill / canvas (default)</option></select>
+<details id="nativeLayout"><summary>Layout</summary>
+<label for="nativeBaseline">Baseline</label>
+<select id="nativeBaseline"><option value="straight">Straight</option><option value="arc_over">Arc over</option><option value="arc_under">Arc under</option></select>
+<span id="nativeRadiusField" hidden><label for="nativeRadius">Arc radius (mm)</label>
+<input id="nativeRadius" type="number" min="5" max="1000" step="1" value="60"></span>
+<label for="nativeLetterSpacing">Letter spacing (mm)</label>
+<input id="nativeLetterSpacing" type="number" min="-2" max="10" step=".1" value="0">
+<label for="nativeLineSpacing">Line spacing (%)</label>
+<input id="nativeLineSpacing" type="number" min="70" max="250" step="5" value="100">
+<label for="nativeSequence">Letter order</label>
+<select id="nativeSequence"><option value="left">Left to right</option><option value="centre">Centre out (caps)</option></select>
+</details>
 <button id="nativeCheck" type="button">Build &amp; check stitches</button>
 <p id="nativeStatus" role="status" aria-live="polite">Ready to build. Choose a font, size and width, then check.</p>
 <div class="lettering-preview"><img id="nativePreview" alt="Actual needle paths read from the checked DST file, not a physical sew-out" hidden></div>

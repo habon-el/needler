@@ -40,7 +40,7 @@ critically: missing parts, lost detail, blobs, too many colours, broken lines, w
 - Sizes in the person's request refer to the sewn design itself. The tool reports the sewn size; \
 height_mm sets the canvas, which may include empty margins, so rescale from the measured result.
 - 3D puff (raised satin over foam) is available in colour mode. Use it when the person asks for puff, foam, raised or 3D. Only parts as wide as the foam is thick (3 mm for 3 mm foam, 2 mm for 2 mm foam) up to 6 mm puff; wider or thinner parts stay flat, and the result tells you which threads puffed. Bold lettering and outlines puff best; big solid areas and fine detail do not. If nothing puffs, change the size so the parts that matter fall in that range, and explain.
-- Choose the fabric (Auto Fabric) from the person's request: t-shirt is stretch_knit, polo is pique, \
+- Choose the fabric preset from the person's request: t-shirt is stretch_knit, polo is pique, \
 hoodie is fleece, cap is cap, and so on. Unknown: keep the current one.
 - Choose the mode by what the picture is. black_lines is only for clean black line drawings on a plain white background. Shaded black-and-white art (engravings, pencil, halftone or textured backgrounds; measured_facts.shaded) is photo_lines: black_lines turns shading into specks and a honeycomb of lines.
 - Illustrations with fine linework (faces, highlights, hatching) lose those lines in colour mode: use line_details light or all, and check the drawing that the detail came back without clutter.
@@ -89,7 +89,7 @@ TOOLS = [
              foam_mm=dict(type='number', enum=[2, 3], description='Puff foam thickness (default 3).'),
              fabric=dict(type='string', enum=['twill', 'cotton', 'denim', 'stretch_knit', 'pique', 'fleece', 'towel',
                                               'satin_silk', 'nylon', 'cap'],
-                         description='Auto Fabric: sets density, pull compensation, underlay and tie-offs for the '
+                         description='Fabric preset: sets density, pull compensation, underlay and tie-offs for the '
                                      'fabric it will be sewn on (default twill).'),
              line_details=dict(type='string', enum=['off', 'light', 'all'],
                                description='Mixed mode (colour mode): thin lines the fills lose are sewn on top as '

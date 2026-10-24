@@ -1,4 +1,4 @@
-/* Remove stitches, as in Hatch: click a part of the design to select that whole
+/* Remove stitches: click a part of the design to select that whole
    area, or drag to draw around any stitches, then Remove.
    Default: the area is erased from the design and the stitches are rebuilt
    around it (clean edges, tie-offs). "Exact cut" keeps every other stitch as

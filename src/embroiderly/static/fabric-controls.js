@@ -1,4 +1,4 @@
-/* Auto Fabric: one menu that sets density, pull compensation, underlay and
+/* Fabric presets: one menu that sets density, pull compensation, underlay and
    tie-offs for the fabric (generation_policy.py). The value lives in the
    preparation options like every other setting. */
 document.addEventListener('DOMContentLoaded', async () => {
@@ -15,7 +15,9 @@ document.addEventListener('DOMContentLoaded', async () => {
  anchor.after(box);
  const select=$('fabricPreset'),advice=$('fabricAdvice');
  // Short hint; the full advice is on hover.
- const describe=()=>{const f=data.fabrics.find(x=>x.id===select.value);advice.textContent=f?'Stabilizer: '+f.stabilizer.split(/[;.]/)[0].trim():'';advice.title=f?f.stabilizer:''};
+ const describe=()=>{const f=data.fabrics.find(x=>x.id===select.value);
+  advice.textContent=!f?'':f.backing?'Backing: '+f.backing+(f.topping?' · Topping: '+f.topping:''):'Stabilizer: '+f.stabilizer.split(/[;.]/)[0].trim();
+  advice.title=f?f.stabilizer:''};
  const sync=()=>{select.value=studio.snapshot().fabric_preset||data.default;describe()};
  select.addEventListener('change',()=>{describe();try{studio.apply({fabric_preset:select.value})}catch(error){sync();(window.studioStatus||console.warn)(error.message)}});
  window.addEventListener('studio:controls',sync);window.addEventListener('studio:preview',sync);sync();

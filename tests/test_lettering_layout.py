@@ -1,0 +1,77 @@
+"""Lettering layout: spacing, line spacing, arcs, centre-out order, touching joins."""
+import re
+import tempfile
+from pathlib import Path
+
+import pytest
+
+from embroiderly import embroidery_fonts as ef
+from embroiderly import lettering_native as ln
+from embroiderly import small_lettering as sl
+
+
+def glyph_labels(svg):
+    return [a or b for a, b in re.findall(
+        r'letter-group="glyph"[^>]*label="([^"]+)"|label="([^"]+)"[^>]*letter-group="glyph"', svg)]
+
+
+def coords(svg):
+    return [(float(x), float(y)) for x, y in re.findall(r'(-?[\d.]+),(-?[\d.]+)', svg)]
+
+
+@pytest.mark.parametrize('body', [dict(letter_spacing_mm=20), dict(line_spacing_percent=40),
+                                  dict(baseline='wave'), dict(sequence='random'),
+                                  dict(baseline='arc_over', arc_radius_mm=2)])
+def test_layout_options_are_checked(body):
+    with pytest.raises(ValueError):
+        sl.layout_options(body)
+
+
+def test_letter_spacing_widens_the_line():
+    plain = ef.layout('ABC', 'graduate', 200)
+    spaced = ef.layout('ABC', 'graduate', 200, letter_spacing_mm=3)
+    width = lambda svg: float(re.search(r'width="([\d.]+)"', svg).group(1))
+    assert width(spaced) > width(plain)+2*3/ef.PX_MM-1e-3
+
+
+def test_line_spacing_reaches_the_height_solver():
+    assert ef.text_metrics('A\nB', 'graduate', 1.5)['height'] > ef.text_metrics('A\nB', 'graduate')['height']
+
+
+@pytest.mark.parametrize('baseline', ['arc_over', 'arc_under'])
+def test_arc_letters_turn_and_stay_on_the_page(baseline):
+    svg = ef.layout('CHAMPIONS', 'graduate', 250, baseline=baseline, radius_mm=40)
+    points = coords(svg)
+    assert min(x for x, _ in points) >= 0 and min(y for _, y in points) >= 0
+    assert svg != ef.layout('CHAMPIONS', 'graduate', 250)
+
+
+def test_arcs_need_one_line_and_room():
+    with pytest.raises(ValueError):
+        ef.layout('A\nB', 'graduate', 200, baseline='arc_over', radius_mm=40)
+    with pytest.raises(ValueError):
+        ef.layout('CHAMPIONSHIP', 'graduate', 400, baseline='arc_over', radius_mm=5)
+
+
+def test_centre_out_sews_the_middle_letter_first():
+    assert glyph_labels(ef.layout('ABCDE', 'graduate', 200, sequence='centre')) == ['C', 'D', 'E', 'B', 'A']
+
+
+def test_touching_script_letters_are_joined_instead_of_cut():
+    assert 'id="join-' in ef.layout('Hello', 'pacifico', 300)
+    # Block letters with fabric between them keep every cut.
+    assert 'id="join-' not in ef.layout('HELLO', 'graduate', 300)
+
+
+def test_arc_lettering_passes_the_release_gate():
+    body = dict(text='CHAMPIONS', font='graduate', height_mm=10, available_width_mm=300, colour='#202020',
+                baseline='arc_over', arc_radius_mm=50, letter_spacing_mm=.5)
+    settings = ln.recipe(body)
+    assert settings['baseline'] == 'arc_over' and settings['arc_radius_mm'] == 50
+    with tempfile.TemporaryDirectory() as folder:
+        assert ln.build(Path(folder), settings)['checks_passed']
+
+
+def test_plain_recipes_keep_their_old_cache_keys():
+    body = dict(text='Hi', font='graduate', height_mm=10, available_width_mm=50, colour='#202020')
+    assert set(ln.recipe(body)) == {'text', 'font', 'height_mm', 'align', 'available_width_mm', 'colour'}

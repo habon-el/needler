@@ -20,7 +20,9 @@ def _auto(client, name, request):
 def test_puff_logo_stops_for_foam_sews_puff_last_and_passes_checks(tmp_path):
     app = create_app(tmp_path)
     badge().save(tmp_path / 'work/uploads/badge.png')
-    job = _auto(app.test_client(), 'badge.png', '60 mm wide, 3D puff')
+    # The white background is left out, so the width is the badge's own: at 36 mm its ring
+    # is about 5 mm wide, inside the 3–6 mm a 3 mm foam needs.
+    job = _auto(app.test_client(), 'badge.png', '36 mm wide, 3D puff')
     assert job['state'] == 'done', job
     puff = job['result']['puff']
     assert puff['foam_mm'] == 3 and puff['threads']

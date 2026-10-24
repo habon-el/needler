@@ -50,9 +50,9 @@ view ownership only; segmentation, stitch generation and export checks are uncha
 
 ## Feature-map-inspired toolbox (2026-10-16)
 
-Authority: the user's supplied Hatch Embroidery 4 feature-map PDF and request for
+Authority: the user's supplied feature map of a commercial digitizer and request for
 clearer buttons and AI-friendly operation. The PDF is an inventory inferred from
-binary names, not a verified specification of algorithms. No Hatch code, fonts,
+binary names, not a verified specification of algorithms. No third-party code, fonts,
 icons, machine writers, licensing or proprietary assets were imported.
 
 workflow.js keeps its original value/action owners. AI assistant plus six labelled
@@ -87,7 +87,7 @@ given control of font creation, arbitrary stitch settings, export or machine cod
 | Machine files | Save and download; existing DST/PES path | No new formats, USB-machine transfer or .EMB editing |
 
 Specialty tools from the map (rhinestones, monogram/team-name batch production,
-scanner/Corel integration, commercial-format parity) were NOT implemented or
+scanner/vector-suite integration, commercial-format parity) were NOT implemented or
 advertised as available. This pass does not certify existing experimental styles.
 
 ### Verification

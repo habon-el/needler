@@ -29,7 +29,7 @@ def size_for(root, width=None, height=None):
 
 
 def render(source, width=None, height=None, supersample=4, background=(0, 0, 0, 0)):
-    """RGBA image of the page area (like Inkscape's --export-area-page)."""
+    """RGBA image of the page area."""
     root = sg.load(source)
     x0, y0, w, h = _box(root)
     out_w, out_h = size_for(root, width, height)

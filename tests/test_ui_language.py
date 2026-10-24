@@ -11,6 +11,5 @@ assert.equal(label('Artwork'), 'Artwork');
 assert.equal(label('Regions: 4'), 'Objects: 4');
 assert.equal(label('Cut: red cross'), 'Trim: red cross');
 assert.equal(label('Drop'), 'Remove');
-assert.equal(label('Ink/Stitch trial'), 'Stitch generation');
 assert.equal(label('mask_holes_mm2'), 'mask_holes_mm2');
 """,str(script)],check=True)

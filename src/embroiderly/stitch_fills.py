@@ -81,7 +81,8 @@ def _sections(rows):
 def _row_points(k, interval, forward, max_len, staggers, minimum, spacing):
     a, b = interval
     y = (k+.5)*spacing
-    offset = (k % staggers)/staggers*max_len
+    # staggers: a count (even diagonal), or a tuple of offset fractions (step fill patterns).
+    offset = (staggers[k % len(staggers)] if isinstance(staggers, tuple) else (k % staggers)/staggers)*max_len
     grid = []
     j = math.ceil((a-offset)/max_len)
     while offset+j*max_len < b:
@@ -97,7 +98,9 @@ def _row_points(k, interval, forward, max_len, staggers, minimum, spacing):
 
 def tatami(shape, angle=0.0, spacing=0.4, max_len=3.0, staggers=4, minimum=0.45, start=None,
            travel_len=2.0, underlay=True, underlay_angle=None, underlay_spacing=None, underlay_inset=0.3,
-           underlay_max_len=3.0):
+           underlay_max_len=3.0, join=True):
+    """join=False leaves separate sections as separate runs (open fills, where a
+    travel line across the area would show)."""
     runs = []
     position = start
     if underlay:
@@ -111,10 +114,10 @@ def tatami(shape, angle=0.0, spacing=0.4, max_len=3.0, staggers=4, minimum=0.45,
     top_runs = []
     for piece in sorted(polygons(shape), key=lambda p: -p.area):
         top_runs.extend(_tatami_layer(piece, angle, spacing, max_len, staggers, minimum,
-                                      position, travel_len, Travel(piece)))
+                                      position, travel_len, Travel(piece), join))
         if top_runs:
             position = top_runs[-1][-1]
-    return join_runs(runs+top_runs, shape, travel_len)
+    return join_runs(runs+top_runs, shape, travel_len) if join else runs+top_runs
 
 
 def join_runs(runs, shape, travel_len):
@@ -135,7 +138,7 @@ def join_runs(runs, shape, travel_len):
     return out
 
 
-def _tatami_layer(piece, angle, spacing, max_len, staggers, minimum, start, travel_len, travel):
+def _tatami_layer(piece, angle, spacing, max_len, staggers, minimum, start, travel_len, travel, join=True):
     to_frame, back = _frame(angle)
     framed = affine_transform(piece, to_frame)
     rows = _rows(framed, spacing)
@@ -185,7 +188,7 @@ def _tatami_layer(piece, angle, spacing, max_len, staggers, minimum, start, trav
         run = [back(p) for p in points]
         runs.append(split_long(run, max_len))
         position = points[-1]
-    return join_runs(runs, piece, travel_len)
+    return join_runs(runs, piece, travel_len) if join else runs
 
 
 def _to_frame_points(points, m):
@@ -395,3 +398,100 @@ def fill_shape(subpaths, rule='nonzero'):
     if negative.area > positive.area:
         positive, negative = negative, positive
     return unary_union(polygons(make_valid(positive.difference(negative))))
+
+
+# Specialty fills. Patterns and proportions are our own.
+
+# Step fill: tatami whose needle offsets climb and fall, so the holes form
+# chevron steps across the area instead of one even diagonal.
+STEP_PATTERN = (0.0, .2, .4, .6, .8, .6, .4, .2)
+
+
+def step_fill(shape, angle=0.0, spacing=0.4, max_len=3.5, minimum=0.45, start=None, underlay=True):
+    return tatami(shape, angle, spacing, max_len, STEP_PATTERN, minimum, start, underlay=underlay)
+
+
+def gradient(shape, angle=0.0, spacing=0.4, open_spacing=1.6, max_len=3.0, staggers=4, minimum=0.45, start=None):
+    """Rows from dense (`spacing`) on one side to open (`open_spacing`) on the
+    other. The area is stretched across the rows so that ordinary, evenly spaced
+    tatami rows land at the growing spacing once mapped back."""
+    if shape.is_empty:
+        return []
+    to_frame, back = _frame(angle)
+    framed = affine_transform(shape, to_frame)
+    top, bottom = framed.bounds[1], framed.bounds[3]
+    if bottom-top < spacing*2:
+        return tatami(shape, angle, spacing, max_len, staggers, minimum, start, underlay=False)
+    ys = np.linspace(top, bottom, 512)
+    local = spacing+(open_spacing-spacing)*(ys-top)/(bottom-top)
+    # Stretched coordinate: one row every `spacing` there is one real row every local spacing.
+    us = top+np.concatenate(([0.0], np.cumsum((ys[1:]-ys[:-1])*spacing/((local[1:]+local[:-1])/2))))
+    def warp(p):
+        f = (p[0]*to_frame[0]+p[1]*to_frame[1], p[0]*to_frame[2]+p[1]*to_frame[3])
+        return back((f[0], float(np.interp(f[1], ys, us))))
+    def unwarp(p):
+        f = (p[0]*to_frame[0]+p[1]*to_frame[1], p[0]*to_frame[2]+p[1]*to_frame[3])
+        return back((f[0], float(np.interp(f[1], us, ys))))
+    import shapely
+    stretched = shapely.transform(shapely.segmentize(shape, .2),
+                                  lambda xy: np.array([warp(p) for p in xy]).reshape(-1, 2))
+    runs = tatami(stretched, angle, spacing, max_len, staggers, minimum,
+                  None if start is None else warp(start), underlay=False, join=False)
+    # Row-to-row links found inside the stretched area stay inside the real one to
+    # within the 0.2 mm segment length; long legs are re-split after mapping back.
+    # Sections stay separate: a travel line across the open side would show.
+    return [split_long([unwarp(p) for p in run], max_len) for run in runs]
+
+
+def radial(shape, spacing=0.4, max_len=3.0, minimum=0.45, start=None, center=None):
+    """Stitches radiating from the centre. Rays start at staggered distances so
+    the centre isn't buried under every ray: a ray only begins where its
+    neighbours are a full `spacing` apart. Returns None when the rays from the
+    centre cannot reach most of the area (very concave shapes): use tatami."""
+    if shape.is_empty:
+        return []
+    if center is None:
+        c = shape.centroid
+        if not shape.contains(c):
+            c = shape.representative_point()
+        center = (c.x, c.y)
+    cx, cy = center
+    reach = max(math.dist(center, p) for piece in polygons(shape) for p in piece.exterior.coords)
+    count = 2**max(3, int(math.ceil(math.log2(max(8.0, 2*math.pi*reach/spacing)))))
+    from shapely.prepared import prep
+    inside = prep(shape)
+    rays = []
+    for k in range(count):
+        level = count if k == 0 else k & -k   # largest power of two dividing k
+        begin = max(minimum, (count/level)*spacing/(2*math.pi))
+        theta = 2*math.pi*k/count
+        ux, uy = math.cos(theta), math.sin(theta)
+        hit = shape.intersection(LineString([(cx, cy), (cx+ux*(reach+1), cy+uy*(reach+1))]))
+        pieces = [hit] if hit.geom_type == 'LineString' else [g for g in getattr(hit, 'geoms', []) if g.geom_type == 'LineString']
+        # Only the stretch connected to the centre: a ray never jumps across a gap.
+        near = [g for g in pieces if g.distance(Point(cx, cy)) < 1e-6]
+        if not near:
+            continue
+        end = max(math.dist(center, p) for p in near[0].coords)
+        if end-begin < minimum:
+            continue
+        rays.append(((cx+ux*begin, cy+uy*begin), (cx+ux*end, cy+uy*end)))
+    if not rays:
+        return None
+    sewn = unary_union([LineString(r).buffer(spacing) for r in rays])
+    if sewn.intersection(shape).area < .85*shape.area:
+        return None
+    points = []
+    for i, (inner, outer) in enumerate(rays):
+        leg = [inner, outer] if i % 2 == 0 else [outer, inner]
+        points.extend(split_long(leg, max_len) if not points else split_long(leg, max_len))
+    # Neighbouring rays are joined at the rim or near the centre; a join that
+    # would leave the area (a notch between rays) is cut by join_runs instead.
+    runs, current = [], [points[0]]
+    for p, q in zip(points, points[1:]):
+        if not inside.contains(LineString([p, q]).interpolate(.5, normalized=True)):
+            runs.append(current); current = [q]
+        else:
+            current.append(q)
+    runs.append(current)
+    return join_runs([enforce_min(r, minimum) for r in runs if len(r) >= 2], shape, 2.0)

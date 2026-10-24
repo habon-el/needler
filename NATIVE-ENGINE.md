@@ -1,6 +1,6 @@
 # Native stitch engine and embroidery fonts
 
-Updated 2026-10-18. Needler no longer needs Ink/Stitch or Inkscape. The engine
+Updated 2026-10-18. Needler needs no outside embroidery or drawing program. The engine
 reads the same annotated SVG that the pipeline already writes and returns the
 pyembroidery JSON plan consumed by the unchanged writers, repairs and release
 gate. Generation runs in-process on Windows, macOS and Linux.
@@ -16,7 +16,7 @@ gate. Generation runs in-process on Windows, macOS and Linux.
 | `stitch_paths.py` | Running/bean stitch, min/max stitch length, chaining, inside-shape travel router. |
 | `satin_font.py` | TrueType glyph → skeleton → strokes → cross-section satin columns → sewing order. |
 | `embroidery_fonts.py` | Embroidery font catalogue, kerning, multi-line layout, in-letter travel connectors. |
-| `vector_raster.py` | SVG rendering for typed lettering and SVG uploads (replaces Inkscape). |
+| `vector_raster.py` | SVG rendering for typed lettering and SVG uploads (no outside program). |
 
 Element attributes keep the existing `inkstitch:` namespace names (fill_method,
 angle, row_spacing_mm, satin_column, zigzag_spacing_mm, lock_start, trim_after,
@@ -63,7 +63,7 @@ angle, row_spacing_mm, satin_column, zigzag_spacing_mm, lock_start, trim_after,
   (every area whose widest point is between the foam thickness and 6 mm: 3–6 mm on 3 mm foam,
   2–6 mm on 2 mm foam) and `puff` + `puff_foam_mm` on native lettering (same stroke rule; puff
   letters may go up to `puff_max_scale`, 22–26 mm, because strokes must be as wide as the foam).
-- Revised 2026-10-20 after Wilcom's puff guide, so the foam stays tight:
+- Revised 2026-10-20 after published puff digitizing guidance, so the foam stays tight:
   1. Placement: a 2.5 mm running line 0.3 mm inside each puff area, sewn on the fabric before
      the stop (`Block.placement`, `inkstitch:puff_placement` for lettering).
   2. Stop: the first puff block always changes thread, even to the same colour. PES lists the
@@ -88,3 +88,72 @@ angle, row_spacing_mm, satin_column, zigzag_spacing_mm, lock_start, trim_after,
 - Verified: a badge (ring + lettering puffed, star and background flat) and "PUFF" Lato Black
   lettering at 22 mm (3 mm foam) and 15 mm (2 mm foam) pass the release gate. The foam height in
   the 3D view is illustrative; foam brands and machines differ, so a sample sew-out is required.
+
+## Satin and lettering automation (added 2026-10-24)
+
+Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
+
+- Auto split: flat satin stitches longer than 7 mm are divided at points that move row to row
+  (`stitch_satin.split_rows`), so the holes don't line up into a groove. `inkstitch:satin_split_mm`
+  (0 = off). Puff keeps its own 6.9 mm rule.
+- Auto spacing: narrow columns sew up to 0.06 mm more open, columns over 5 mm up to 0.03 mm denser
+  (`auto_spacing`). On for auto-satin areas; `inkstitch:satin_auto_spacing` on satin columns.
+- Auto underlay by median column width (`auto_underlay`): under 1.5 mm none, to 3 mm centre walk,
+  then edge run, plus zigzag from 6 mm. On for auto-satin areas; `inkstitch:satin_underlay="auto"` on columns.
+- `inkstitch:pull_compensation_percent`: extra pull as a share of the column width.
+- Lettering by capital height (`embroidery_fonts.size_profile`): under 5 mm no underlay and spacing at
+  least 0.42 mm below 6 mm; 5–10 mm centre walk; over 10 mm edge run, plus zigzag on strokes over 3.5 mm.
+- Fabric presets reach lettering: the Fabric menu on the lettering panel adds half of the fabric's
+  extra satin pull (at most 0.15 mm) to the font's; the height solver uses the same value.
+- Closest join: each colour's areas are sewn nearest-first from where the last area ended (`engine.closest_join`).
+- Thresholds are our own, informed by published digitizing guidance. Physical sew-outs are still pending.
+
+## More stitch types (added 2026-10-24)
+
+- Outlines on running-stitch strokes, `inkstitch:outline_style` = `backstitch` (forward 2.5 mm, back 30%),
+  `stemstitch` (slanted, overlapping by half; slant at most 40% of the stitch length), `blanket`
+  (spikes every `outline_spacing_mm`, into closed shapes unless `blanket_side="outside"`) or `zigzag`;
+  width `outline_width_mm`. Offered as subject-border styles; the release mask covers their band.
+- Fills: `step_fill` (tatami with chevron needle offsets, `stitch_fills.STEP_PATTERN`), `gradient_fill`
+  (rows from `row_spacing_mm` to `gradient_open_spacing_mm`, default 1.6, no underlay; sections are
+  cut, never travelled across, and branching skips it) and `radial_fill` (rays from the centre that start
+  where neighbours are a row apart; tatami when rays reach under 85% of the area). Offered as area styles.
+- Shortening: on the inside of tight satin curves every other stitch stops 35% short
+  (`stitch_satin.shorten_inner`); on for auto satin, `inkstitch:satin_shortening` on columns.
+- Verified: each fill and border on a 60 mm badge passes the release gate (tests/test_stitch_types_engine.py).
+
+## Lettering layout (added 2026-10-24)
+
+- `embroidery_fonts.layout(..., letter_spacing_mm, line_spacing, baseline, radius_mm, sequence)`; checked by
+  `small_lettering.layout_options` (spacing -2 to 10 mm, line spacing 70-250%, radius 5-1000 mm).
+- Each letter has one affine placement used for its columns, fill outline and travel area. Arcs
+  (`arc_over`, `arc_under`) keep letters rigid, centred on the circle and turned to its tangent; one line only;
+  the size still means letter size. Text longer than 95% of the circle is refused.
+- `sequence='centre'`: middle letter to the right end, then left of the middle to the left end (caps).
+- Touching letters (script fonts) are joined by travel inside both letters' columns instead of a cut
+  (`_join_touching`): Pacifico "Hello" 4 cuts to 1, Lobster 7 to 4. Separate letters keep their cut.
+- Recipes store only non-default layout keys, so earlier saved lettering keeps its cache key.
+- UI: one collapsed "Layout" section on the lettering panel (baseline, radius for arcs, spacing, letter order).
+
+## Auto-digitizing roles (added 2026-10-24)
+
+- Digitize for me leaves out a plain border colour (`colour_knockout.proposal_patch`) unless the request
+  says to keep the background. Before, a white background was sewn as fill (badge: 18,794 to 8,193 stitches).
+- Hairlines: pixel-thin pieces at least 1 mm long (`fill_coverage.HAIR_MIN_MM`) are sewn as a run along the
+  line and back instead of blocking generation; areas thinner than 0.45 mm (`engine.HAIRLINE_MM`) are a run
+  around their edge instead of satin. Shorter specks are still reported.
+- `outlines: true` (+ `outline_colour`): one running line along every colour boundary and the outer edge,
+  traced by the line-art router and sewn last. Panel: "Add a dark outline around each colour".
+- Detail slider (1 fewer … 5 more) sets `floor_mm2` 8 / 3 / 1 / 0.5 / 0.25 mm²; the middle keeps the default.
+
+## Appliqué (added 2026-10-24)
+
+- Area style `applique` (`fill_method="applique"`, `applique_cover_mm`, default 3): `stitch_engine._applique`
+  sews a 2.5 mm placement run on the edge, then after a stop an open zigzag tack-down 0.8 mm inside it,
+  then after a stop for trimming a satin cover centred on the cut edge (dense zigzag where corners are too
+  sharp for satin rails). The inside is not stitched. Pieces narrower than twice the cover are refused.
+- Stops: `Block.stop_before` forces a change to the same thread; PES reads it back as STOP (2 per piece).
+- The release mask includes the cover band outside the edge (engine.py).
+- Export cutting: `applique-cut.svg` (pieces at actual size, mm) next to the machine files;
+  `/applique-cut/<prepared name>`; a link appears in Save and download when the design has appliqué.
+- Verified in the studio: approve subject, choose Appliqué for an area, stitches build, cutting file downloads.
