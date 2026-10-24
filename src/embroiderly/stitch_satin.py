@@ -175,7 +175,8 @@ def auto_underlay(width):
         return dict(center_walk=False, contour_underlay=False, zigzag_underlay=False)
     if width < 3.0:
         return dict(center_walk=True, contour_underlay=False, zigzag_underlay=False)
-    return dict(center_walk=False, contour_underlay=True, zigzag_underlay=width >= 6.0)
+    return dict(center_walk=False, contour_underlay=True,
+                zigzag_underlay='double' if width >= 8.0 else width >= 6.0)
 
 
 def median_width(pairs_):
@@ -375,6 +376,12 @@ def satin(subpaths, spacing=0.4, pull=0.0, center_walk=False, contour_underlay=F
         zig = []
         for i, (p, q) in enumerate(sparse):
             zig.extend([lerp(p, q, .2), lerp(q, p, .2)] if i % 2 == 0 else [lerp(q, p, .2), lerp(p, q, .2)])
+        if zigzag_underlay == 'double':
+            # Double zigzag: a second pass back, its peaks between the first pass's, so very
+            # wide columns get a criss-cross base.
+            between = pairs_at(1.5)[1::2][::-1]
+            for i, (p, q) in enumerate(between):
+                zig.extend([lerp(q, p, .2), lerp(p, q, .2)] if i % 2 == 0 else [lerp(p, q, .2), lerp(q, p, .2)])
         points.extend(zig)
     # Satin starts from whichever end the underlay finished at.
     final = compensate(matched, pull, pull_percent)

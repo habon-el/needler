@@ -57,8 +57,12 @@ def satin_rails(points,radius):
     normals=np.column_stack((-tangents[:,1],tangents[:,0]))
     previous=np.roll(normals,1,axis=0)
     denom=1+np.sum(previous*normals,axis=1)
-    if np.any(denom<.08):raise ValueError('Border corner is too sharp for satin. Use running stitch or smooth the selection.')
+    if np.any(denom<1e-3):raise ValueError('Border corner is too sharp for satin. Use running stitch or smooth the selection.')
     shifts=(previous+normals)/denom[:,None]*radius
+    # Cap corners: a mitre longer than twice the half-width (corners sharper than about
+    # 60°) is cut back to that length, so the point is flattened instead of spiking out.
+    reach=np.linalg.norm(shifts,axis=1)
+    shifts=np.where((reach>2*radius)[:,None],shifts/np.maximum(reach,1e-9)[:,None]*2*radius,shifts)
     if np.any(np.linalg.norm(shifts,axis=1)>radius*3):
         raise ValueError('Border corner is too sharp for satin. Use running stitch or smooth the selection.')
     a,b=p+shifts,p-shifts

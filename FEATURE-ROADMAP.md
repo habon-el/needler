@@ -72,18 +72,18 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 ## 5. Stitch effects and quality
 | Tool | Needler | Status | P |
 |---|---|---|---|
-| Underlay types (centre, edge, zigzag, double zigzag, tatami) | centre walk, edge run, zigzag, tatami underlay | ◐ no double zigzag | P2 |
+| Underlay types (centre, edge, zigzag, double zigzag, tatami) | centre walk, edge run, zigzag, double zigzag (auto from 8 mm), tatami underlay | ✅ 2026-10-24 | |
 | Auto underlay by column width / lettering height | `stitch_satin.auto_underlay`, `embroidery_fonts.size_profile` | ✅ 2026-10-24 | |
 | Pull compensation (fixed, %, auto) | mm + `pull_compensation_percent`; auto by fabric | ✅ 2026-10-24 | |
 | Satin auto spacing by column width | `stitch_satin.auto_spacing` (auto satin; `satin_auto_spacing` on columns) | ✅ 2026-10-24 | |
 | Satin Auto Split (random needle holes) | `stitch_satin.split_rows`, staggered, 7 mm (`satin_split_mm`) | ✅ 2026-10-24 | |
-| Automatic corners, shortening | `stitch_satin.shorten_inner` on auto satin (`satin_shortening` on columns); no mitre/cap corners yet | ◐ | P2 |
+| Automatic corners, shortening | shortening on tight curves; mitre corners, capped when sharper than about 60° (satin borders, appliqué cover) | ✅ 2026-10-24 | |
 | Textured edge, feather edge | — | ✗ | P3 |
 | 3D globe effect, hand stitch effect | — | ✗ | P3 |
 | Tie-in / tie-off, trims, "Always tie-off & trim" | locks, trims | ✅ | |
 | Auto start and end, closest join | `engine.closest_join` (areas nearest-first) + branching | ◐ entry/exit points not yet chosen per area | P2 |
 | Remove small stitches, minimum stitch | min-stitch filter | ✅ | |
-| Adjust stitch spacing (scale density) | — | ✗ | P2 |
+| Adjust stitch spacing (scale density) | Density: Lighter / Normal / Denser next to Fabric | ✅ 2026-10-24 | |
 
 ## 6. Arranging and editing
 | Tool | Needler | Status | P |

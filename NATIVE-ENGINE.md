@@ -185,3 +185,12 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   cover really sew (mitred corners included), in both the colour loop and the piece path; the piece-path
   canvas gets a 5 mm margin when a design has appliqué. The engine cache key includes the release mask,
   so a mask-only change can no longer reuse an outdated check.
+
+## Satin corners, double zigzag, density (added 2026-10-24)
+
+- Double zigzag underlay: `zigzag_underlay="double"` adds a second pass back with peaks between the first
+  pass's; auto underlay picks it for columns 8 mm and wider.
+- Cap corners: `borders.satin_rails` cuts any mitre longer than twice the half-width back to that length
+  (corners sharper than about 60°) instead of refusing the border; only near-hairpins are refused.
+- Density (`density`: lighter / normal / denser = spacing × 1.12 / 1 / 0.9) scales fill row spacing and satin
+  spacing in `generation_policy.apply`; puff keeps its own. Menu "Density" next to Fabric.

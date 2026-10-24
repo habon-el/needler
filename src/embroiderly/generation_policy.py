@@ -24,8 +24,16 @@ def preset_for(settings):
     return preset
 
 
+# Adjust stitch spacing: one design-wide choice scales row and satin spacing.
+DENSITY = {'lighter': 1.12, 'normal': 1.0, 'denser': .9}
+
+
 def apply(document, settings):
     preset = preset_for(settings)
+    density = settings.get('density', 'normal')
+    if density not in DENSITY:
+        raise ValueError('Choose lighter, normal or denser stitching.')
+    factor = DENSITY[density]
     fabric = preset['fabric']
     # Never regenerate a locked object with different source settings.
     if any(p.get('locked') for p in settings.get('piece_edits', {}).values()):
@@ -52,6 +60,12 @@ def apply(document, settings):
                 if preset.get('underlay_row_spacing_mm'):
                     node.set(NS+'fill_underlay_row_spacing_mm', str(preset['underlay_row_spacing_mm']))
                 node.set(NS+'max_stitch_length_mm', str(preset.get('max_stitch_length_mm', 3.0)))
+        if factor != 1 and NS+'puff_foam_mm' not in node.attrib and node.get(NS+'fill_method') != 'puff_satin'                 and node.get(NS+'puff') != 'true':
+            # Density: fill rows and satin stitches closer together or further apart (foam keeps its own).
+            if NS+'row_spacing_mm' in node.attrib:
+                node.set(NS+'row_spacing_mm', f"{float(node.get(NS+'row_spacing_mm'))*factor:.3f}")
+            if node.get(NS+'satin_column') == 'true' or node.get(NS+'fill_method') == 'auto_satin':
+                node.set(NS+'zigzag_spacing_mm', f"{float(node.get(NS+'zigzag_spacing_mm', .4))*factor:.3f}")
         # Components already have separate SVG paths. Cut conservatively; hidden
         # future-coverage travel is not yet certified by the release gate.
         node.set(NS+'trim_after', 'true')
@@ -62,7 +76,7 @@ def apply(document, settings):
         node.set(NS+'lock_start_scale_mm', lock)
         node.set(NS+'lock_end_scale_mm', lock)
         count += 1
-    return {'fabric_preset': fabric, 'row_spacing_mm': preset['row_spacing_mm'],
+    return {'fabric_preset': fabric, 'density': density, 'row_spacing_mm': preset['row_spacing_mm'],
             'satin_pull_mm': preset.get('satin_pull_mm'), 'satin_spacing_mm': preset.get('satin_spacing_mm'),
             'stabilizer': preset.get('stabilizer'), 'backing': preset.get('backing'), 'topping': preset.get('topping'),
             'min_stitch_length_mm': 0.45, 'collapse_len_mm': 0,

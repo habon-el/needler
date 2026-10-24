@@ -88,3 +88,23 @@ def test_shortening_pulls_back_inner_stitches_on_tight_curves():
     assert changed and all(i % 2 for i in changed)
     straight = [((float(x), 0.0), (float(x), 3.0)) for x in range(8)]
     assert shorten_inner(straight) == straight
+
+
+def test_double_zigzag_underlay_on_very_wide_columns():
+    from embroiderly.stitch_satin import auto_underlay, satin
+    assert auto_underlay(9.0)['zigzag_underlay'] == 'double' and auto_underlay(6.5)['zigzag_underlay'] is True
+    column = [([(0.0, 0.0), (30.0, 0.0)], False), ([(0.0, 9.0), (30.0, 9.0)], False)]
+    single = satin(column, .4, zigzag_underlay=True)
+    double = satin(column, .4, zigzag_underlay='double')
+    assert len(double) > len(single)
+
+
+def test_sharp_satin_corners_are_capped_not_refused():
+    import numpy as np
+    from embroiderly.borders import satin_rails
+    # A long thin triangle: its sharp tip used to be refused for satin.
+    tip = [(0.0, 0.0), (40.0, 4.0), (40.0, -4.0), (0.0, 0.0)]
+    rails = satin_rails(tip, .8)
+    reach = max(float(np.min(np.linalg.norm(np.asarray(r)-np.asarray(tip[:-1])[:, None], axis=2), axis=0).max())
+                for pair in rails for r in pair)
+    assert reach <= 2*.8+1e-6

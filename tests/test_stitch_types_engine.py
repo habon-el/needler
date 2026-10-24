@@ -12,6 +12,7 @@ from embroiderly.release_gate import checked_bytes
 
 
 def design(tmp_path, options):
+    tmp_path.mkdir(parents=True, exist_ok=True)
     source = tmp_path/'art.png'
     image = Image.new('RGBA', (400, 400), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
@@ -44,3 +45,14 @@ def test_outline_borders_generate_and_pass_the_release_gate(tmp_path, kind):
     payload, svg = design(tmp_path, {'border_style': kind, 'border_width': 2, 'border_colour': '#202020'})
     assert f'outline_style="{kind}"' in svg
     assert checked_bytes(tmp_path/'out', 'dst')
+
+
+def test_density_choice_scales_stitches_and_passes_the_release_gate(tmp_path):
+    counts = {}
+    for level in ('lighter', 'normal', 'denser'):
+        payload, _ = design(tmp_path/level, {'density': level})
+        counts[level] = payload['stitch_count']
+        assert checked_bytes(tmp_path/level/'out', 'dst')
+    assert counts['lighter'] < counts['normal'] < counts['denser']
+    with pytest.raises(ValueError):
+        design(tmp_path/'bad', {'density': 'thick'})

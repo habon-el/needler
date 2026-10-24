@@ -11,14 +11,19 @@ document.addEventListener('DOMContentLoaded', async () => {
  const box=document.createElement('div');box.className='fabric-controls';
  box.innerHTML=`<label for="fabricPreset">Fabric</label>
   <select id="fabricPreset">${data.fabrics.map(f=>`<option value="${f.id}">${f.label}</option>`).join('')}</select>
-  <p class="muted" id="fabricAdvice"></p>`;
+  <p class="muted" id="fabricAdvice"></p>
+  <label for="stitchDensity">Density</label>
+  <select id="stitchDensity"><option value="lighter">Lighter</option><option value="normal">Normal</option><option value="denser">Denser</option></select>`;
  anchor.after(box);
  const select=$('fabricPreset'),advice=$('fabricAdvice');
  // Short hint; the full advice is on hover.
  const describe=()=>{const f=data.fabrics.find(x=>x.id===select.value);
   advice.textContent=!f?'':f.backing?'Backing: '+f.backing+(f.topping?' · Topping: '+f.topping:''):'Stabilizer: '+f.stabilizer.split(/[;.]/)[0].trim();
   advice.title=f?f.stabilizer:''};
- const sync=()=>{select.value=studio.snapshot().fabric_preset||data.default;describe()};
+ const density=$('stitchDensity');
+ const sync=()=>{select.value=studio.snapshot().fabric_preset||data.default;density.value=studio.snapshot().density||'normal';describe()};
+ // Adjust stitch spacing for the whole design (generation_policy.DENSITY).
+ density.addEventListener('change',()=>{try{studio.apply({density:density.value})}catch(error){sync();(window.studioStatus||console.warn)(error.message)}});
  select.addEventListener('change',()=>{describe();try{studio.apply({fabric_preset:select.value})}catch(error){sync();(window.studioStatus||console.warn)(error.message)}});
  window.addEventListener('studio:controls',sync);window.addEventListener('studio:preview',sync);sync();
  // Clean Edit panel: size, its ±10% buttons and notes together, then the design options.

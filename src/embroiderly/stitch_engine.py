@@ -318,7 +318,7 @@ def _element_blocks(node, paths, style, scale, index, min_len):
             points = satin(mm, max(.1, _float(node, 'zigzag_spacing_mm', .4)), pull if len(pull) > 1 else pull[0],
                            center_walk=_bool(node, 'center_walk_underlay'),
                            contour_underlay=_bool(node, 'contour_underlay'),
-                           zigzag_underlay=_bool(node, 'zigzag_underlay'),
+                           zigzag_underlay='double' if _attr(node, 'zigzag_underlay') == 'double' else _bool(node, 'zigzag_underlay'),
                            walk_repeats=max(1, int(_float(node, 'center_walk_underlay_repeats', 2))),
                            indexed=_attr(node, 'satin_pairs') == 'indexed', puff=_bool(node, 'puff'),
                            caps=str(_attr(node, 'puff_caps', 'start end')).split(),
