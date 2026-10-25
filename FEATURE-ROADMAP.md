@@ -90,7 +90,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 |---|---|---|---|
 | Select, group, lock, hide, duplicate (with offset) | Piece panel: select, name, group, lock, hide, Duplicate (5 mm offset), Delete copy | ✅ 2026-10-24 | |
 | Mirror X/Y, rotate (15°/45°), skew, resize ±10% | Mirror ⇋ ⇅, rotate ↺15° ↻15° ↻45° or any angle, Skew °, size ±10% | ✅ 2026-10-24 | |
-| Align / space evenly / same size | — | ✗ | P3 |
+| Align / space evenly / same size | Pieces panel Line up, 2+ selected: align left / centre / right / top / middle / bottom; space evenly across or down (3+); same width / height (proportions kept) or same size as the first piece picked | ✅ 2026-10-25 | |
 | Mirror-copy, wreath, circle layout, array, reflect | — | ✗ | P3 |
 | Create outlines and offsets, outline design, create border | Outer-silhouette border (`borders.py`); Pieces panel Outline per part: Running, Triple or Satin, on the edge or a gap up to 6 mm outward, own thread colour, sewn after all fills | ✅ 2026-10-25 | |
 | Smooth shapes, weld | — | ✗ | P3 |

@@ -537,7 +537,7 @@ def register_preparation(app,root):
                 options=change_pieces(options,current_report['piece_layout'],piece_command,
                                       image=prepared_image.convert('RGBA') if piece_command.get('field')=='click_fill' else None)
                 body['save']=True
-                if piece_command['field'] in ('position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible','outline','sew_order'):
+                if piece_command['field'] in ('position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible','outline','sew_order','align','distribute','match_size'):
                     body['digitize']=True
             if body.get('piece_undo'):
                 body['save']=True

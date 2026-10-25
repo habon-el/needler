@@ -26,6 +26,12 @@
  <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceSatinHere" aria-pressed="false" title="Drag a line where a thin part starts: that side becomes satin, the rest keeps its fill">〰 Satin here</button><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
  </div>
  </fieldset>
+ <fieldset id="pieceLineUp"><legend>Line up</legend><div class="piece-arrange" role="group" aria-label="Line up several pieces">
+ <button type="button" data-lineup="align:left" title="Line up the left edges">⇤ Left</button><button type="button" data-lineup="align:centre" title="Line up the centres, left to right">Centre</button><button type="button" data-lineup="align:right" title="Line up the right edges">Right ⇥</button>
+ <button type="button" data-lineup="align:top" title="Line up the top edges">⤒ Top</button><button type="button" data-lineup="align:middle" title="Line up the middles, top to bottom">Middle</button><button type="button" data-lineup="align:bottom" title="Line up the bottom edges">⤓ Bottom</button>
+ <button type="button" data-lineup="distribute:across" title="Same gap between each piece, left to right. Pick 3 or more.">Space across</button><button type="button" data-lineup="distribute:down" title="Same gap between each piece, top to bottom. Pick 3 or more.">Space down</button>
+ <button type="button" data-lineup="match_size:width" title="Make each piece as wide as the first one you picked, keeping its shape">Same width</button><button type="button" data-lineup="match_size:height" title="Make each piece as tall as the first one you picked, keeping its shape">Same height</button><button type="button" data-lineup="match_size:both" title="Give each piece the width and height of the first one you picked">Same size</button>
+ </div></fieldset>
  <fieldset id="pieceOutline"><legend>Outline</legend><div class="piece-fields">
  <label>Stitch<select id="pieceOutlineStitch"><option value="">None</option><option value="running">Running</option><option value="triple">Triple</option><option value="satin">Satin</option></select></label>
  <label title="0 sews on the edge; more moves the outline outward">Gap mm<input id="pieceOutlineGap" type="number" min="0" max="6" step=".5" value="0"></label>
@@ -86,6 +92,7 @@
   $('pieceAudit').dataset.level=items.some(p=>p.audit.level==='red')?'red':items.some(p=>p.audit.level==='yellow')?'yellow':'green';
   properties.querySelectorAll('[data-arrange],#pieceDuplicate,#pieceDelete,#pieceSkew,#pieceKnife,#pieceSatinHere').forEach(control=>{control.disabled=disabled;});
   $('pieceKnife').disabled=$('pieceSatinHere').disabled=disabled||items.length!==1||items.some(p=>p.line);
+  properties.querySelectorAll('[data-lineup]').forEach(b=>{b.disabled=disabled||items.length<(b.dataset.lineup.startsWith('distribute')?3:2)});
   const outline=items.length&&items.every(p=>JSON.stringify(p.outline)===JSON.stringify(items[0].outline))?items[0].outline:null;
   if(!properties.contains(document.activeElement)||!document.activeElement.id.startsWith('pieceOutline')){
    $('pieceOutlineStitch').value=outline?.stitch||'';if(outline){$('pieceOutlineGap').value=outline.offset_mm;$('pieceOutlineWidth').value=outline.width_mm;$('pieceOutlineColour').value=outline.colour}}
@@ -142,6 +149,8 @@
  for(const [id,field] of [['pieceName','name'],['pieceGroup','group']])$(id).addEventListener('keydown',e=>{if(e.isComposing)return;if(e.key==='Escape'){e.preventDefault();sync()}if(e.key==='Enter'){e.preventDefault();commit(field,e.target.value.trim())}});
  properties.querySelectorAll('[data-arrange]').forEach(button=>button.onclick=()=>{
   const [field,value]=button.dataset.arrange.split(':');commit(field,field==='mirror'?value:Number(value));});
+ // Line up: the selection is kept in click order, so the first piece picked sets the size.
+ properties.querySelectorAll('[data-lineup]').forEach(button=>button.onclick=()=>commit(...button.dataset.lineup.split(':')));
  $('pieceDuplicate').onclick=()=>commit('duplicate',[5,5]);
  // Sewing order by hand: send every part in its new place; the first selected part decides the spot.
  properties.querySelectorAll('[data-sew]').forEach(button=>button.onclick=()=>{

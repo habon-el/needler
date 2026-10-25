@@ -423,3 +423,17 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - `satin_font._dot`: a cut grazing a corner meets the shape at a single point; that no longer
   crashes satin areas.
 - Known gap: the cut-out keeps a ring of background about 1 mm wide, sewn as a near-white thread.
+
+## Align, space evenly, same size (added 2026-10-25)
+
+- Piece commands `align` (`left`, `centre`, `right`, `top`, `middle`, `bottom`), `distribute`
+  (`across`, `down`) and `match_size` (`width`, `height`, `both`), in `piece_arrange.py`. Each
+  selected piece gets its own move or resize matrix on top of its saved one, as a position or
+  width edit does, measured from its outline bounding box; stitches rebuild from the new outline.
+- Align uses the edge or centre of the whole selection. Space evenly keeps the two outer pieces
+  (by centre) where they are and moves the ones between so every gap is the same; it needs three.
+- Same width / Same height scale each piece around its own centre to the first piece picked
+  (the panel keeps the selection in click order), keeping its proportions; Same size gives every
+  piece exactly that width and height. A straight line is refused when it has no width or height to match.
+- Locked pieces refuse all three, like other edits. Pieces panel: a "Line up" row, enabled with
+  two or more pieces selected (three for Space across / Space down).

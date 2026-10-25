@@ -293,6 +293,10 @@ def change(options, report, command, image=None):
             styles[p['id']] = value
         assignments(updated)
         return updated
+    if field in ('align', 'distribute', 'match_size'):
+        # Line up several pieces; the order they were picked decides which one sets the size.
+        from .piece_arrange import arrange
+        return arrange(updated, sorted(selected, key=lambda p: ids.index(p['id'])), field, value)
     if field not in ('position', 'x_mm', 'y_mm', 'width_mm', 'height_mm', 'rotation', 'rotate_by', 'mirror', 'skew'):
         raise ValueError('Unsupported piece property.')
     if field == 'mirror' and value not in ('x', 'y'):
