@@ -73,3 +73,8 @@
 .hoop-controls input:not([type=checkbox]) { width:100%; min-height:28px; box-sizing:border-box; }
 .hoop-controls #hoopFit[data-level=red] { color:var(--ui-danger, #b42318); }
 .hoop-controls details { margin-top:6px; font-size:12px; }
+/* Named colourways (colourway-controls.js), under the thread swatches. */
+.colourway-controls { margin-top:10px; }
+.colourway-controls select, .colourway-controls input { width:100%; min-height:28px; box-sizing:border-box; }
+.colourway-controls .colourway-row { display:flex; gap:6px; margin-top:6px; }
+.colourway-controls .colourway-row button { flex:1; min-width:0; }

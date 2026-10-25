@@ -330,3 +330,21 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - The worksheet names the chosen hoop and, when the design is larger, says so and suggests the
   smallest common hoop that fits.
 
+
+## Named colourways (added 2026-10-25)
+
+- `colourways.py`: per design in `work/decisions/<name>.colourways.json` (copied with the design
+  like its other sidecars), a list of `{id: cw-<hex>, name, threads: {merges, border_colour?}}`;
+  names up to 40 characters, unique ignoring case, at most 20. `threads` holds only thread
+  choices: `merges` (artwork colour -> thread colour, the same option the swatches set) and the
+  border thread. Routes: `GET/POST /api/colourways/<name>`, `PATCH` (rename) and
+  `DELETE /api/colourways/<name>/<id>`.
+- The list is not a preparation option, so naming, renaming or deleting changes no stitches and
+  no plan fingerprint. The colourway in use is not stored: it is the one whose threads equal the
+  design's current `merges` (and border thread while a border is sewn).
+- `colourway-controls.js` (under the thread swatches): the menu, a name field, Save as new,
+  Rename, Delete. Picking a colourway puts its threads into the options like a swatch change;
+  stitches are then generated again. Same parts in the same order is a colour-only change, so
+  the verified routing is reused (`thread_recolour.reuse`), and a colourway generated before is
+  found again by `matching_plan`. Machine files are those of the colourway in use.
+- Not kept per colourway: part outline colours (`area_outlines`) and the fabric colour.

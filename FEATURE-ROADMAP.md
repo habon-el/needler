@@ -18,7 +18,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Hoop list, show hoop, rotate hoop, saved hoops | Edit step "Hoop": sewing fields by machine brand plus common sizes, Turn 90°, a fit note (spare room or how much too big), Show on canvas, My own hoop (save / delete); the worksheet names the chosen hoop | ✅ 2026-10-25 | |
 | Multi-hooping (add hoops, calculate, preview hoopings) | — | ✗ | P3 |
 | Product visualizer, product/fabric colour | Fabric colour, PNG mockup | ◐ | P3 |
-| Colourways (create, rename, switch) | Thread recolour variants (`thread_variants.py`) | ◐ no named colourways | P2 |
+| Colourways (create, rename, switch) | Colours panel "Colourway": Save as new, Rename, Delete, and a menu to switch; each colourway keeps the thread colours (and border thread) per design, and the stitches and machine files follow the one in use | ✅ 2026-10-25 | |
 | Thread charts (166), match to chart, colour wheel | `thread_matching.py` (pyembroidery charts, CIEDE2000) | ◐ fewer charts | P3 |
 | Grid, rulers, guides, snap, measure | Ruler, measure | ◐ no guides or snap | P3 |
 
