@@ -631,3 +631,42 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   the hoop centre lines or the grid line nearest; a moved piece snaps by its left, centre or right
   and top, centre or bottom. `window.snapPoint` and `window.snapMove` are the hooks piece-panel.js
   uses. The grid is drawn faintly when its lines are at least 6 screen pixels apart.
+
+## Text baselines: full circle, fixed length, custom line (added 2026-10-26)
+
+- `embroidery_fonts.BASELINES` adds `circle` and `wave`; new lettering settings `circle_mm`
+  (10–500, default 60), `wave_percent` (2–25, default 6) and `fit_length_mm` (5–1000), checked by
+  `small_lettering.layout_options` and stored in the recipe only when used, so earlier saved
+  lettering keeps its cache key. Letters stay rigid, placed and turned by one matrix each, as on arcs.
+- Full circle (`_circle_matrices`): `circle_mm` is the size across inside the letters. The first
+  line sits over the top, reading clockwise, letters standing outward; a second line (if any) runs
+  along the bottom, reading left to right, letters standing inward, its baseline a capital further
+  out so both lines share one ring. Three lines, words longer than 95% of their circle, and top and
+  bottom words closer than a capital where they meet are refused. The height entered is the
+  letters' height, as on one line (`small_lettering._measured`), not the two lines stacked.
+- Wave (`_wave_matrices`), the custom line: one S-curve (up, down, back to the line) whose rise is
+  `wave_percent` of the words' length and whose length along the curve is the words' length, so it
+  looks the same for any words, as the Curve slider does for arcs. Chosen over a hand-drawn line
+  because it reuses the arc placement (point plus tangent per letter) and needs no drawing tool on
+  the Text page; a line drawn with control points is not there yet.
+- Fixed length: one letter spacing between every two characters, worked out so the stitched line,
+  satin edge included, is `fit_length_mm` long along its baseline (along the curve for arcs,
+  circles and waves, so the width across differs). One line only; `letter_spacing_mm` is ignored.
+  More than a capital's height between letters is refused with the longest length that reads as
+  words; squeezing letters that are apart to within 0.3 mm, or pushing joined script letters into
+  each other (overlap half as much again), is refused with the shortest workable length
+  (`LengthError.nearest`, found by halving), offered by the advice check as a one-click fix.
+- Bends: on a circle or wave, the same neighbour test (`_neighbour_gaps`, `_crowded`) compares
+  every pair of letters with the straight line; letters that would touch on the inside of a tight
+  bend are refused ("Make the circle larger" / "Choose a gentler wave"); advice offers a 40%
+  larger circle or a gentler wave.
+- Max width and the advice width use the laid-out letters (`laid_out_width`), so they follow the
+  real circle and wave; the build's own width check is unchanged.
+- Text page: Circle and Wave shape buttons; Circle size (mm), Wave slider (%) and Fixed length (mm,
+  empty is off) under Shape; the instant preview draws the circle, the wave and the spacing. The
+  text helper can set `circle`, `wave`, `circle_mm`, `wave_percent` and `fixed_length_mm`.
+- Measured (Graduate, 8 mm): CHAMPIONS fixed at 80 mm stitches 80.0 mm wide and passes all file
+  checks; TEAM SPIRIT / SINCE 1999 round a 70 mm circle is 73.2 x 85.8 mm and passes; CHAMPIONS on
+  a 6% wave at 90 mm along the curve passes. Limits found: 10 mm Graduate CHAMPIONS takes up to a
+  6% wave and a 30 mm circle; short words take only gentle waves (Waves at 8 mm: 3%), and joined
+  script fonts less (Pacifico Riverside Bakery: 7%).

@@ -21,7 +21,7 @@ def coords(svg):
 
 
 @pytest.mark.parametrize('body', [dict(letter_spacing_mm=20), dict(line_spacing_percent=40),
-                                  dict(baseline='wave'), dict(sequence='random'),
+                                  dict(baseline='zigzag'), dict(sequence='random'),
                                   dict(baseline='arc_over', arc_radius_mm=2)])
 def test_layout_options_are_checked(body):
     with pytest.raises(ValueError):
@@ -208,3 +208,114 @@ def test_ornament_values_are_checked():
     problems = sl.advice(dict(text='JAM', font='graduate', height_mm=30, ornament='crown', puff=True,
                               available_width_mm=300))['problems']
     assert any(p.get('fix', {}).get('set') == {'ornament': 'none'} for p in problems)
+
+
+def glyph_centres(svg):
+    """Centre of each letter's points, by label, in sewing order."""
+    centres = []
+    for label, body in re.findall(r'letter-group="glyph"[^>]*label="([^"]+)"[^>]*>(.*?)</g>', svg, re.S):
+        points = coords(' '.join(re.findall(r' d="([^"]+)"', body)))
+        centres.append((label, sum(x for x, _ in points)/len(points), sum(y for _, y in points)/len(points)))
+    return centres
+
+
+@pytest.mark.parametrize('body', [dict(baseline='circle', circle_mm=5), dict(baseline='circle', circle_mm='big'),
+                                  dict(baseline='wave', wave_percent=40), dict(baseline='wave', wave_percent=1),
+                                  dict(fit_length_mm=2), dict(fit_length_mm='long'), dict(fit_length_mm=5000)])
+def test_new_baseline_values_are_checked(body):
+    with pytest.raises(ValueError):
+        sl.layout_options(body)
+
+
+def test_full_circle_puts_the_top_line_over_the_top_and_the_bottom_line_along_the_bottom():
+    svg = ef.layout('TEAM SPIRIT\nSINCE 99', 'graduate', 250, baseline='circle', circle_mm=60)
+    centres = glyph_centres(svg)
+    top, bottom = centres[:10], centres[10:]
+    # Top words read clockwise over the top; bottom words left to right along the bottom.
+    assert max(y for *_, y in top) < min(y for *_, y in bottom)
+    assert [x for _, x, _ in top] == sorted(x for _, x, _ in top)
+    assert [x for _, x, _ in bottom] == sorted(x for _, x, _ in bottom)
+    width, height = (float(v)*ef.PX_MM for v in re.search(r'width="([\d.]+)" height="([\d.]+)"', svg).groups())
+    cap = ef.FONTS['graduate']['size']*2.5
+    # The ring: the circle plus a capital each side (and half an em of margin).
+    assert 60+2*cap-1 < height < 60+2*cap+cap*2
+    # One line round a full circle is allowed; three lines, a circle too small or lines that meet are not.
+    ef.layout('CHAMPIONS', 'graduate', 250, baseline='circle', circle_mm=40)
+    for text, size in (('A\nB\nC', 60), ('CHAMPIONS', 10), ('CHAMPIONSHIP FINAL\nWINNERS OF THE YEAR', 40)):
+        with pytest.raises(ValueError):
+            ef.layout(text, 'graduate', 250, baseline='circle', circle_mm=size)
+
+
+def test_full_circle_with_two_lines_passes_the_release_gate():
+    body = dict(text='TEAM SPIRIT\nSINCE 1999', font='graduate', height_mm=8, available_width_mm=300,
+                colour='#202020', baseline='circle', circle_mm=70)
+    settings = ln.recipe(body)
+    assert settings['baseline'] == 'circle' and settings['circle_mm'] == 70
+    # The height is the letters' height, as on one line (the two lines share one ring).
+    assert sl.validate(body)[2] == pytest.approx(sl.validate(dict(body, text='TEAM SPIRIT SINCE 1999', baseline='straight'))[2])
+    with tempfile.TemporaryDirectory() as folder:
+        result = ln.build(Path(folder), settings)
+    assert result['checks_passed'], result.get('issues')
+    assert sl.laid_out_width(body) == pytest.approx(result['reports']['dst']['width_mm'], abs=.6)
+    assert result['reports']['dst']['height_mm'] == pytest.approx(70+2*8, abs=2)
+
+
+def test_fixed_length_measures_the_requested_length_and_passes_the_release_gate():
+    body = dict(text='CHAMPIONS', font='graduate', height_mm=8, available_width_mm=300, colour='#202020',
+                fit_length_mm=80, letter_spacing_mm=3)
+    settings = ln.recipe(body)
+    # The spacing follows from the length; a spacing typed earlier is not used.
+    assert settings['fit_length_mm'] == 80 and 'letter_spacing_mm' not in settings
+    with tempfile.TemporaryDirectory() as folder:
+        result = ln.build(Path(folder), settings)
+    assert result['checks_passed'], result.get('issues')
+    assert result['reports']['dst']['width_mm'] == pytest.approx(80, abs=.3)
+    plain = sl.laid_out_width(dict(body, fit_length_mm=None, letter_spacing_mm=0))
+    for length in (plain-4, plain+15):   # squeezed and spread
+        assert sl.laid_out_width(dict(body, fit_length_mm=length)) == pytest.approx(length, abs=.4)
+
+
+def test_fixed_length_refuses_overlapping_or_scattered_letters():
+    with pytest.raises(ef.LengthError) as squeezed:
+        ef.layout('CHAMPIONS', 'graduate', 250, fit_length_mm=30)
+    assert 'overlap' in str(squeezed.value) and 30 < squeezed.value.nearest < 80
+    # The length it offers is one the words can have.
+    ef.layout('CHAMPIONS', 'graduate', 250, fit_length_mm=squeezed.value.nearest+.1)
+    with pytest.raises(ef.LengthError) as spread:
+        ef.layout('CHAMPIONS', 'graduate', 250, fit_length_mm=400)
+    assert 'letter' in str(spread.value) and spread.value.nearest < 400
+    ef.layout('CHAMPIONS', 'graduate', 250, fit_length_mm=spread.value.nearest-.1)
+    # Script letters that already touch cannot be pushed into each other.
+    with pytest.raises(ef.LengthError):
+        ef.layout('Hello', 'pacifico', 300, fit_length_mm=10)
+    for text, extra in (('A\nB', {}), ('A', {}), ('JAM', dict(classic=True))):
+        with pytest.raises(ValueError):
+            ef.layout(text, 'graduate', 250, fit_length_mm=40, **extra)
+
+
+def test_fixed_length_along_a_curve_and_a_wave_pass_the_release_gate():
+    """Along a smile the length is measured along the curve, so the line is narrower across."""
+    smile = ef.layout('CHAMPIONS', 'graduate', 250, baseline='arc_under', arc_degrees=120, fit_length_mm=90)
+    wide = lambda svg: (lambda xs: max(xs)-min(xs))([x for x, _ in coords(svg)])*ef.PX_MM
+    assert wide(smile) < 90-5
+    body = dict(text='CHAMPIONS', font='graduate', height_mm=8, available_width_mm=300, colour='#202020',
+                baseline='wave', wave_percent=6, fit_length_mm=90)
+    settings = ln.recipe(body)
+    assert settings['wave_percent'] == 6 and settings['fit_length_mm'] == 90
+    with tempfile.TemporaryDirectory() as folder:
+        result = ln.build(Path(folder), settings)
+    assert result['checks_passed'], result.get('issues')
+    assert sl.laid_out_width(body) == pytest.approx(result['reports']['dst']['width_mm'], abs=.6)
+    assert result['reports']['dst']['width_mm'] < 90
+
+
+def test_wave_rises_and_falls_and_refuses_bends_that_make_letters_touch():
+    centres = glyph_centres(ef.layout('CHAMPIONS', 'graduate', 250, baseline='wave', wave_percent=6))
+    ys = [y for *_, y in centres]
+    # Up first (smaller y), then down below the line, then back.
+    assert ys.index(min(ys)) < ys.index(max(ys))
+    assert max(ys)-min(ys) > 4/ef.PX_MM
+    with pytest.raises(ValueError, match='gentler wave'):
+        ef.layout('Waves', 'graduate', 250, baseline='wave', wave_percent=25)
+    with pytest.raises(ValueError):
+        ef.layout('A\nB', 'graduate', 250, baseline='wave')

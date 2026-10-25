@@ -61,3 +61,19 @@ def test_thread_names_for_the_text_colour(tmp_path):
     advice = client.post('/lettering/native/advice', json=dict(text='God Great', font='pacifico', height_mm=20,
                                                                available_width_mm=200, puff=True, puff_foam_mm=3)).get_json()
     assert advice['problems'][0]['fix']['set'] == {'font': 'russo_one'}
+
+
+def test_fixed_length_and_shape_problems_come_with_fixes_that_work():
+    body = dict(text='CHAMPIONS', font='graduate', height_mm=8, available_width_mm=300, fit_length_mm=20)
+    result = sl.advice(body)
+    assert 'overlap' in result['problems'][0]['message']
+    body.update(fixes(result)[0])
+    assert 40 < body['fit_length_mm'] < 80 and sl.advice(body)['problems'] == []
+    assert {'fit_length_mm': ''} in fixes(sl.advice(dict(body, text='CHAMP\nIONS')))
+    # A full circle takes a second line along the bottom; a wave that bends too far gets a gentler one.
+    circle = dict(body, text='TEAM\nSINCE 99', baseline='circle', circle_mm=60, fit_length_mm='')
+    assert sl.advice(circle)['problems'] == []
+    assert sl.advice(dict(circle, text='A\nB\nC'))['problems']
+    wave = dict(circle, text='CHAMPIONS', baseline='wave', wave_percent=20)
+    gentler = fixes(sl.advice(wave))
+    assert gentler and gentler[0]['wave_percent'] < 20

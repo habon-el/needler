@@ -3,7 +3,7 @@
  'use strict';
  const $=id=>document.getElementById(id), dialog=$('letteringDialog');
  const fields=['letteringWords','letteringAlign','letteringColour','nativeFont','nativeHeight','nativeWidth','nativeFabric',
-  'nativeBaseline','nativeCurve','nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeFrame','nativeFrameWidth','nativeClassic','nativeOrnament'];
+  'nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeFrame','nativeFrameWidth','nativeClassic','nativeOrnament'];
  // Layout controls and the recipe keys they set; a control left at its default sends nothing.
  const layoutFields=[['nativeBaseline','baseline','straight'],['nativeLetterSpacing','letter_spacing_mm','0'],
   ['nativeLineSpacing','line_spacing_percent','100'],['nativeSequence','sequence','left'],['nativeFrame','frame','none'],
@@ -14,11 +14,19 @@
   // keeps it until the Curve slider is moved.
   if($('nativeClassic').checked)out.classic=true;
   if(!out.frame)delete out.frame_mm;
-  if(out.baseline){if(savedRadius)out.arc_radius_mm=savedRadius;else out.arc_degrees=Number($('nativeCurve').value);}return out;}
+  if(out.baseline==='arc_over'||out.baseline==='arc_under'){if(savedRadius)out.arc_radius_mm=savedRadius;else out.arc_degrees=Number($('nativeCurve').value);}
+  // Full circle: its size; wave: how high it rises; fixed length: the letter spacing follows from it.
+  if(out.baseline==='circle')out.circle_mm=Number($('nativeCircle').value);
+  if(out.baseline==='wave')out.wave_percent=Number($('nativeWave').value);
+  if($('nativeFitLength').value.trim()){out.fit_length_mm=Number($('nativeFitLength').value);delete out.letter_spacing_mm;}
+  return out;}
  let savedRadius=null;
- const showRadius=()=>{$('nativeCurveField').hidden=$('nativeBaseline').value==='straight';$('nativeCurveValue').textContent=$('nativeCurve').value+'°';};
+ const showRadius=()=>{const b=$('nativeBaseline').value;$('nativeCurveField').hidden=b!=='arc_over'&&b!=='arc_under';
+  $('nativeCircleField').hidden=b!=='circle';$('nativeWaveField').hidden=b!=='wave';
+  $('nativeCurveValue').textContent=$('nativeCurve').value+'°';$('nativeWaveValue').textContent=$('nativeWave').value+'%';};
  $('nativeBaseline').addEventListener('input',showRadius);$('nativeBaseline').addEventListener('change',showRadius);
  $('nativeCurve').addEventListener('input',()=>{savedRadius=null;showRadius();});
+ $('nativeWave').addEventListener('input',showRadius);
  const showFrame=()=>{$('nativeFrameWidthField').hidden=$('nativeFrame').value==='none';};
  $('nativeFrame').addEventListener('input',showFrame);$('nativeFrame').addEventListener('change',showFrame);
  // Fabric preset: the satin edge follows the fabric, as in the main studio.
@@ -35,7 +43,9 @@
   $('nativeClassic').checked=recipe.classic===true;
   savedRadius=recipe.arc_degrees?null:recipe.arc_radius_mm||null;
   $('nativeCurve').value=recipe.arc_degrees||90;
-  showRadius();showFrame();$('nativeLayout').open=layoutFields.some(([,key])=>key in recipe);
+  $('nativeCircle').value=recipe.circle_mm||60;$('nativeWave').value=recipe.wave_percent||6;
+  $('nativeFitLength').value=recipe.fit_length_mm??'';
+  showRadius();showFrame();$('nativeLayout').open=layoutFields.some(([,key])=>key in recipe)||'fit_length_mm' in recipe;
   emit('layout',recipe);
  }
  window.nativeLettering={values:()=>values(),load:data=>render(data),applyLayout};

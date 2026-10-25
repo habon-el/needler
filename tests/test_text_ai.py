@@ -50,3 +50,18 @@ def test_requests_are_checked(tmp_path):
     (tmp_path/'claude-spend.json').write_text('{"usd": 99}')
     with pytest.raises(ValueError, match='limit'):
         text_ai.ask('curve it', START, tmp_path, client=Script())
+
+
+def test_claude_can_choose_a_full_circle_and_a_fixed_length(tmp_path):
+    names = {t['name']: t for t in text_ai.tools(['graduate'], ['twill'])}
+    shape = names['check_text']['input_schema']['properties']['settings']['properties']
+    assert {'circle', 'wave'} <= set(shape['shape']['enum']) and 'fixed_length_mm' in shape
+    script = Script([('finish', dict(settings=dict(text='TEAM\nSINCE 99', font='graduate', height_mm=8,
+                                                   shape='circle', max_width_mm=120), note='Round a circle.'))])
+    values, _, left, _ = text_ai.ask('put it round a circle', START, tmp_path, client=script)
+    assert values['baseline'] == 'circle' and values['circle_mm'] == 60 and 'arc_degrees' not in values
+    assert left == []
+    script = Script([('finish', dict(settings=dict(font='graduate', text='CHAMPIONS', height_mm=8, shape='wave',
+                                                   fixed_length_mm=70, max_width_mm=120), note='Wave, 70 mm.'))])
+    values, _, left, _ = text_ai.ask('a wave, exactly 70 mm long', START, tmp_path, client=script)
+    assert values['wave_percent'] == 6 and values['fit_length_mm'] == 70 and left == []

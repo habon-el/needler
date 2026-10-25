@@ -25,18 +25,19 @@ document.addEventListener('DOMContentLoaded', () => {
   edit.append(node('h1','Your text'));
   const wordsLabel=document.querySelector('label[for=letteringWords]');edit.append(wordsLabel,$('letteringWords'));
   edit.append(document.querySelector('label[for=nativeFont]'),$('nativeFont'));
-  // Shape of the line: straight, arch (curves up) or smile (curves down), and how much it curves.
+  // Shape of the line: straight, arch (curves up), smile (curves down), full circle or wave, how much
+  // it curves, and an optional fixed length along the line.
   const shape=node('fieldset','','workflowTextShape');shape.append(node('legend','Shape'));
   const shapes=node('div','','workflowShapeButtons');shapes.setAttribute('role','group');
   const pick=value=>{const b=$('nativeBaseline');if(b.value===value)return;b.value=value;
    b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new Event('change',{bubbles:true}));};
-  for(const [value,label,title] of [['straight','▬ Straight','Words on a straight line'],['arc_over','⌒ Arch','Words curve up, like the top of a badge'],['arc_under','⌣ Smile','Words curve down, like the bottom of a badge']]){
+  for(const [value,label,title] of [['straight','▬ Straight','Words on a straight line'],['arc_over','⌒ Arch','Words curve up, like the top of a badge'],['arc_under','⌣ Smile','Words curve down, like the bottom of a badge'],['circle','◯ Circle','Words round a whole circle: the first line over the top, a second line along the bottom'],['wave','∿ Wave','Words follow an S-shaped wave']]){
    const b=button(label,'',()=>pick(value));b.dataset.baseline=value;b.title=title;shapes.append(b);
   }
   const pressed=()=>shapes.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.baseline===$('nativeBaseline').value)));
   $('nativeBaseline').addEventListener('input',pressed);$('nativeBaseline').addEventListener('change',pressed);
   document.addEventListener('lettering:layout',pressed);pressed();
-  shape.append(shapes,$('nativeCurveField'));edit.append(shape);
+  shape.append(shapes,$('nativeCurveField'),$('nativeCircleField'),$('nativeWaveField'),$('nativeFitLengthField'));edit.append(shape);
   // Monogram: a satin frame around the words, an ornament and the classic three-initial layout.
   const monogram=node('fieldset','','workflowTextFrame');monogram.append(node('legend','Monogram & frame'));
   monogram.append(document.querySelector('label[for=nativeFrame]'),$('nativeFrame'),$('nativeFrameWidthField'),

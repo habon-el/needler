@@ -25,11 +25,17 @@ def size_limits(font, puff=False):
             math.floor(font['size'] * font['puff_max_scale' if puff else 'max_scale'] * 10) / 10)
 
 
+def _measured(text, font):
+    """The words as their height is measured. Round a full circle the top and bottom
+    lines share one ring, so the height entered is the letters' height, as on one line."""
+    return text.replace('\n',' ') if font.get('layout',{}).get('baseline')=='circle' else text
+
+
 def _bounds(text, font, puff, foam):
     """Measurements of the words, the satin edge, and the capital heights the
     font allows for them (for puff: every stroke wide enough for the foam)."""
     from .stitch_engine import PUFF_MAX_MM, puff_min_mm
-    m=embroidery_fonts.text_metrics(text,font['key'],font.get('layout',{}).get('line_spacing',1.0))
+    m=embroidery_fonts.text_metrics(_measured(text,font),font['key'],font.get('layout',{}).get('line_spacing',1.0))
     if m is None:raise ValueError('Enter some letters to stitch.')
     # The satin's outer edge sits this far outside the letter (embroidery_fonts.layout).
     pull=((.35 if foam<2.5 else .45)-.05) if puff else font['pull_mm']
@@ -57,7 +63,7 @@ def satin_top(m, font):
 def uses_fill(text, font, scale, puff=False):
     """Whether these words at this scale (%) are sewn as tatami fill instead of satin."""
     if puff or scale<=font['max_scale']*100+1e-6:return False
-    m=embroidery_fonts.text_metrics(text,font['key'],font.get('layout',{}).get('line_spacing',1.0))
+    m=embroidery_fonts.text_metrics(_measured(text,font),font['key'],font.get('layout',{}).get('line_spacing',1.0))
     return font['size']*scale/100>satin_top(m,font)+1e-6
 
 
@@ -124,12 +130,22 @@ def layout_options(body):
     # Ornament: a crown, laurel, swirls or divider drawn round the words (monogram_ornaments).
     options['ornament']=body.get('ornament','none')
     if options['ornament'] not in ORNAMENTS:raise ValueError('Choose a listed ornament.')
-    if options['baseline']!='straight':
+    if options['baseline']=='circle':
+        # Full circle: its size across, at the foot of the top words.
+        options['circle_mm']=number('circle_mm',60,10,500,'Enter a circle size from 10 to 500 mm.')
+    elif options['baseline']=='wave':
+        # Wave: how high it rises, as a share of the words' length.
+        options['wave_percent']=number('wave_percent',6,2,25,'Choose a wave from 2 to 25%.')
+    elif options['baseline']!='straight':
         # Curve: how far round the circle the words reach; the radius then follows the words' length.
         if body.get('arc_degrees') is not None:
             options['arc_degrees']=number('arc_degrees',90,10,300,'Choose a curve from 10 to 300 degrees.')
         else:
             options['radius_mm']=number('arc_radius_mm',60,5,1000,'Enter an arc radius from 5 to 1000 mm.')
+    if body.get('fit_length_mm') not in (None,''):
+        # Fixed length: the letter spacing is worked out from it (embroidery_fonts.layout).
+        options['fit_length_mm']=number('fit_length_mm',0,5,1000,'Enter a fixed length from 5 to 1000 mm.')
+        options['letter_spacing_mm']=0.0
     return options
 
 
@@ -187,9 +203,14 @@ def advice(body):
     if missing:
         problems.append(dict(message=f'{font["name"]} has no '+' '.join(missing)+'. Remove those letters or choose another font.'))
         return dict(problems=problems,height_range=None,puff_fonts=[])
-    if len(lines)>1 and layout['baseline']!='straight':
+    if len(lines)>2 and layout['baseline']=='circle':
+        problems.append(dict(message='A full circle takes one line over the top and one along the bottom. Remove a line break.'))
+    elif len(lines)>1 and layout['baseline'] not in ('straight','circle'):
         problems.append(dict(message='A curved line takes one line of words. Remove the line break or use a straight line.',
                              fix=fix('Use a straight line',baseline='straight')))
+    if len(lines)>1 and 'fit_length_mm' in layout:
+        problems.append(dict(message='Fixed length takes one line of words. Remove the line break or turn off fixed length.',
+                             fix=fix('Turn off fixed length',fit_length_mm='')))
     def workable(key):
         other=catalogue[key]
         if set(text)-set(other['glyphs'])-{' ','\n'}:return False
@@ -215,12 +236,21 @@ def advice(body):
         try:widest=laid_out_width(dict(body,height_mm=height))+.5   # the stitched edge lands within ~0.5 mm
         except ValueError as error:
             widest=0;problem=dict(message=str(error))
-            if 'classic monogram' in str(error) and layout['baseline']!='straight':problem['fix']=fix('Use a straight line',baseline='straight')
+            if isinstance(error,embroidery_fonts.LengthError):problem['fix']=fix(f'Set length to {error.nearest:g} mm',fit_length_mm=error.nearest)
+            elif 'around this circle' in str(error) or 'circle this small' in str(error):
+                bigger=min(500,math.ceil(layout['circle_mm']*1.4))
+                if bigger>layout['circle_mm']:problem['fix']=fix(f'Circle {bigger} mm',circle_mm=bigger)
+            elif 'wave this strong' in str(error):
+                gentler=max(2,math.floor(layout['wave_percent']*.6))
+                problem['fix']=fix('Gentler wave',wave_percent=gentler) if gentler<layout['wave_percent'] else fix('Use a straight line',baseline='straight')
+            elif 'classic monogram' in str(error) and layout['baseline']!='straight':problem['fix']=fix('Use a straight line',baseline='straight')
             elif 'classic monogram' in str(error):problem['fix']=fix('Turn off classic monogram',classic=False)
             elif 'ornament' in str(error).lower():problem['fix']=fix('No ornament',ornament='none')
             elif 'frame' in str(error).lower() and puff:problem['fix']=fix('No frame',frame='none')
             elif 'frame' in str(error).lower():problem['fix']=fix('Thinner frame',frame_mm=1.8)
-            problems.append(problem)
+            # Line breaks a shape cannot take are listed above already.
+            if not (' takes ' in str(error) and any(' takes ' in p['message'] for p in problems)):
+                problems.append(problem)
         if widest>available:
             need=min(400,math.ceil(widest+2));smaller=math.floor(height*available/widest*10)/10
             problem=dict(message=f'About {widest:.0f} mm wide: more than your max width of {available:g} mm.',
@@ -260,7 +290,7 @@ def generate(body, *, native=False, fill=False):
     if uses_fill(text,font,scale,puff):fill=True
     elif fill and split_satin(text,font,scale,puff):
         # Fill has no satin edge outside the letter (as scale_for's fill branch).
-        m=embroidery_fonts.text_metrics(text,font['key'],font['layout']['line_spacing'])
+        m=embroidery_fonts.text_metrics(_measured(text,font),font['key'],font['layout']['line_spacing'])
         scale=float(body.get('height_mm',5))/m['height']/font['size']*100
     else:fill=False
     vector=embroidery_fonts.layout(text,font['key'],scale,align,puff=puff,foam_mm=puff_foam(body),

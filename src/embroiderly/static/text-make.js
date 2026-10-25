@@ -36,8 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
  document.addEventListener('lettering:failed',e=>say(e.detail,true));
  // Changing the words or settings only marks the stitches as out of date.
  const later=()=>{hint.classList.remove('text-make-error');hint.textContent=made?'Words or settings changed · press Make stitches to update.':'Press Make stitches when your words are ready.'};
- for(const id of ['letteringWords','nativeFont','nativeHeight','nativeWidth','letteringAlign','letteringColour','puffOn','puffFoam','nativeBaseline','nativeCurve','nativeFabric','nativeLetterSpacing','nativeLineSpacing','nativeSequence'])
-  $(id)?.addEventListener(id==='letteringWords'||id==='nativeHeight'||id==='nativeWidth'||id==='nativeCurve'?'input':'change',later);
+ for(const id of ['letteringWords','nativeFont','nativeHeight','nativeWidth','letteringAlign','letteringColour','puffOn','puffFoam','nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeFabric','nativeLetterSpacing','nativeLineSpacing','nativeSequence'])
+  $(id)?.addEventListener(['letteringWords','nativeHeight','nativeWidth','nativeCurve','nativeCircle','nativeWave','nativeFitLength'].includes(id)?'input':'change',later);
  // The size note is only useful once there is a measured size.
  const size=$('workflowMeasuredSize');
  if(size){
@@ -81,36 +81,64 @@ document.addEventListener('DOMContentLoaded', () => {
   // The height entered is the height of the stitched words (all lines), as on
   // the server (small_lettering.scale_for): measure the block at 100 px.
   g.font=`100px "${family}"`;
-  const lines=text.split('\n'),probe=g.measureText('Hg');
+  const baseline=$('nativeBaseline')?.value||'straight',lines=text.split('\n'),probe=g.measureText('Hg');
   const step=((probe.fontBoundingBoxAscent||80)+(probe.fontBoundingBoxDescent||20))*1.05;
-  const m=lines.map(l=>g.measureText(l||' '));
+  // Round a full circle the two lines share one ring: the height is the letters' height, as on one line.
+  const m=(baseline==='circle'?[lines.join(' ')]:lines).map(l=>g.measureText(l||' '));
   const top=Math.min(...m.map((x,i)=>i*step-(x.actualBoundingBoxAscent||0)));
   const bottom=Math.max(...m.map((x,i)=>i*step+(x.actualBoundingBoxDescent||0)));
-  const mmPerPx=size/Math.max(1,bottom-top),widths=m.map(x=>x.width*mmPerPx);
+  const mmPerPx=size/Math.max(1,bottom-top);
+  // Fixed length: one extra spacing between every two characters (embroidery_fonts.layout).
+  const fit=Number($('nativeFitLength')?.value)||0,chars=lines[0].length;
+  const extraMm=fit&&lines.length===1&&chars>1?(fit-g.measureText(lines[0]).width*mmPerPx)/(chars-1):0;
+  const widths=lines.map(l=>g.measureText(l||' ').width*mmPerPx+extraMm*Math.max(0,l.length-1));
   const widthMm=Math.max(...widths),heightMm=size;
-  const scale=Math.min(o.width*.84/Math.max(widthMm,1),o.height*.62/Math.max(heightMm,1));
+  const curved=lines.length===1?baseline!=='straight':baseline==='circle'&&lines.length===2;
+  const circleMm=Number($('nativeCircle')?.value)||60,riseMm=widths[0]*(Number($('nativeWave')?.value)||6)/100;
+  const scale=curved&&baseline==='circle'?Math.min(o.width,o.height)*.84/(circleMm+2*heightMm)
+   :Math.min(o.width*.84/Math.max(widthMm,1),o.height*.62/Math.max(heightMm+(curved&&baseline==='wave'?2*riseMm:0),1));
   g.clearRect(0,0,o.width,o.height);
   g.fillStyle='#ebe8e1';  // fixed opaque fabric tone: the theme's canvas colour is translucent
   g.fillRect(0,0,o.width,o.height);  // solid: old stitches must not show through
   const px=mmPerPx*scale;g.font=`${100*px}px "${family}"`;g.fillStyle=$('letteringColour')?.value||'#202020';
   const align=$('letteringAlign')?.value||'center',y0=(o.height-heightMm*scale)/2-top*px;
-  const baseline=$('nativeBaseline')?.value||'straight',arc=baseline!=='straight'&&lines.length===1;
+  // Letter by letter (curves, fixed length): fn(letter, x along the line, advance), canvas px.
+  const walk=(line,fn)=>{let x=0;for(const ch of line){const adv=g.measureText(ch).width;fn(ch,x,adv);x+=adv+extraMm*scale;}};
+  const put=(ch,adv,x,y,turn)=>{g.save();g.translate(x,y);g.rotate(turn);g.fillText(ch,-adv/2,0);g.restore();};
   let shownMm=widthMm;
-  if(arc){
+  if(curved&&baseline==='circle'){
+   // Same placement as the stitches (embroidery_fonts._circle_matrices): the top line over the top,
+   // clockwise, letters standing outward; the bottom line a capital further out, letters inward.
+   const R=circleMm/2*scale,cap=heightMm*scale,cx=o.width/2,cy=o.height/2,sweeps=[];
+   lines.forEach((line,row)=>{
+    const r=row?R+cap:R,w=widths[row]*scale;sweeps.push(w/r);
+    walk(line,(ch,x,adv)=>{const a=(x+adv/2-w/2)/r;put(ch,adv,cx+r*Math.sin(a),row?cy+r*Math.cos(a):cy-r*Math.cos(a),row?-a:a)});
+   });
+   shownMm=(circleMm+2*heightMm)*(Math.max(...sweeps)<Math.PI?Math.sin(Math.max(...sweeps)/2):1);
+  }else if(curved&&baseline==='wave'){
+   // One S-shaped wave as long along the curve as the words (embroidery_fonts._wave_matrices).
+   const w=widths[0]*scale,rise=riseMm*scale,U=Array.from({length:401},(_,i)=>i/400);
+   const along=span=>{const out=[0];for(let i=1;i<U.length;i++)out.push(out[i-1]+Math.hypot(span*(U[i]-U[i-1]),
+    rise*(Math.sin(2*Math.PI*U[i])-Math.sin(2*Math.PI*U[i-1]))));return out};
+   let span=Math.max(w,1);for(let k=0;k<12;k++)span*=Math.max(w,1)/along(span).at(-1);
+   const length=along(span),at=s=>{const i=length.findIndex(v=>v>=s);if(i<1)return i<0?1:0;
+    return U[i-1]+(U[i]-U[i-1])*(s-length[i-1])/((length[i]-length[i-1])||1)};
+   const x0=(o.width-span)/2,by=o.height/2+heightMm*scale*.35;
+   walk(lines[0],(ch,x,adv)=>{const t=at(x+adv/2);
+    put(ch,adv,x0+span*t,by-rise*Math.sin(2*Math.PI*t),Math.atan2(-rise*2*Math.PI*Math.cos(2*Math.PI*t),span))});
+   shownMm=span/scale;
+  }else if(curved){
    // Same placement as the stitches (embroidery_fonts._arc_matrices): each letter's centre on the
    // circle, turned to follow it; the circle's size follows the words' length (Curve in degrees).
    const line=lines[0],w=widths[0]*scale,sweep=Math.max(10,Number($('nativeCurve')?.value)||90)*Math.PI/180,R=w/sweep;
    const sag=R*(1-Math.cos(sweep/2)),up=baseline==='arc_over'?1:-1;
    // Width across the curve (arch letters stand outward, smile letters inward), as the stitch check measures it.
    shownMm=2*(R/scale+(up>0?.8*heightMm:0))*(sweep<Math.PI?Math.sin(sweep/2):1);
-   const by=o.height/2+heightMm*scale*.35-up*sag/2;let x=-w/2;
-   for(const ch of line){
-    const adv=g.measureText(ch).width,a=(x+adv/2)/R;
-    g.save();g.translate(o.width/2+R*Math.sin(a),by+up*R*(1-Math.cos(a)));g.rotate(up*a);g.fillText(ch,-adv/2,0);g.restore();x+=adv;
-   }
+   const by=o.height/2+heightMm*scale*.35-up*sag/2;
+   walk(line,(ch,x,adv)=>{const a=(x+adv/2-w/2)/R;put(ch,adv,o.width/2+R*Math.sin(a),by+up*R*(1-Math.cos(a)),up*a)});
   }else lines.forEach((line,i)=>{
    const w=widths[i]*scale,left=(o.width-widthMm*scale)/2,x=align==='left'?left:align==='right'?left+widthMm*scale-w:(o.width-w)/2;
-   g.fillText(line,x,y0+i*step*px);
+   if(extraMm)walk(line,(ch,dx,adv)=>g.fillText(ch,x+dx,y0+i*step*px));else g.fillText(line,x,y0+i*step*px);
   });
   g.font='12px system-ui, sans-serif';g.fillStyle='#555';
   g.fillText(peeked?`Preview of this font · about ${Math.round(shownMm)} mm wide · click it to choose`
@@ -119,15 +147,15 @@ document.addEventListener('DOMContentLoaded', () => {
  const later=()=>{stale=true;cancelAnimationFrame(frame);frame=requestAnimationFrame(draw)};
  // The font picker (font-picker.js) previews a font on hover without choosing it.
  window.NeedlerTextPreview={peek:key=>{peeked=key;cancelAnimationFrame(frame);frame=requestAnimationFrame(draw)}};
- for(const id of ['letteringWords','nativeFont','nativeHeight','letteringAlign','letteringColour','nativeBaseline','nativeCurve'])
-  $(id)?.addEventListener(id==='letteringWords'||id==='nativeHeight'||id==='nativeCurve'?'input':'change',later);
+ for(const id of ['letteringWords','nativeFont','nativeHeight','letteringAlign','letteringColour','nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength'])
+  $(id)?.addEventListener(['letteringWords','nativeHeight','nativeCurve','nativeCircle','nativeWave','nativeFitLength'].includes(id)?'input':'change',later);
  document.addEventListener('lettering:result',()=>{stale=false;if(overlay)overlay.hidden=true});
  window.addEventListener('resize',()=>{if(stale)later()});
  if(stale)setTimeout(later,600);
 });
 
 /* Every problem at once, under Make stitches, each with a one-click fix (the server's
-   /lettering/native/advice: puff font, height range, curve on one line, width). Fixes set
+   /lettering/native/advice: puff font, height range, curve on one line, fixed length, width). Fixes set
    the same fields the customer would, so the usual checks and undo still apply. */
 document.addEventListener('DOMContentLoaded', () => {
  'use strict';
@@ -139,7 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
  const targets={text:'letteringWords',font:'nativeFont',height_mm:'nativeHeight',available_width_mm:'nativeWidth',align:'letteringAlign',
   colour:'letteringColour',baseline:'nativeBaseline',arc_degrees:'nativeCurve',letter_spacing_mm:'nativeLetterSpacing',
   line_spacing_percent:'nativeLineSpacing',sequence:'nativeSequence',fabric_preset:'nativeFabric',puff_foam_mm:'puffFoam',
-  frame:'nativeFrame',frame_mm:'nativeFrameWidth',ornament:'nativeOrnament'};
+  frame:'nativeFrame',frame_mm:'nativeFrameWidth',ornament:'nativeOrnament',circle_mm:'nativeCircle',wave_percent:'nativeWave',
+  fit_length_mm:'nativeFitLength'};
  function apply(values){
   if('puff' in values&&window.NativePuff&&window.NativePuff.get()!==!!values.puff){
    window.NativePuff.set(!!values.puff,values.puff_foam_mm);$('puffOn').dispatchEvent(new Event('change',{bubbles:true}));
@@ -173,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  const later=()=>{clearTimeout(timer);timer=setTimeout(check,350)};
  // Delegated: the puff controls are added by another script, possibly after this one.
- const watched=new Set(['letteringWords','nativeFont','nativeHeight','nativeWidth','nativeBaseline','nativeCurve','nativeLetterSpacing','nativeLineSpacing','puffOn','puffFoam','nativeFabric','nativeFrame','nativeFrameWidth','nativeClassic','nativeOrnament']);
+ const watched=new Set(['letteringWords','nativeFont','nativeHeight','nativeWidth','nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeLetterSpacing','nativeLineSpacing','puffOn','puffFoam','nativeFabric','nativeFrame','nativeFrameWidth','nativeClassic','nativeOrnament']);
  for(const type of ['input','change'])document.addEventListener(type,e=>{if(watched.has(e.target?.id))later()});
  document.addEventListener('lettering:layout',later);document.addEventListener('lettering:result',later);
  setTimeout(check,800);

@@ -274,7 +274,7 @@ def size_profile(cap_mm, width_mm, zigzag_mm):
     }
 
 
-BASELINES = ('straight', 'arc_over', 'arc_under')
+BASELINES = ('straight', 'arc_over', 'arc_under', 'circle', 'wave')
 FRAMES = ('none', 'circle', 'oval', 'square', 'diamond', 'hexagon', 'shield', 'heart')
 MONOGRAM_MIDDLE = 1.35   # classic monogram: the middle initial is this much bigger
 
@@ -349,9 +349,94 @@ def _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, r
     return out
 
 
+def _circle_matrices(placed, widths, em_px, cap_px, radius_px):
+    """Words round a whole circle (centre 0, 0): the first line over the top, reading
+    clockwise with the letters standing outward; a second line along the bottom, reading
+    left to right with the letters standing inward, its baseline a capital further out so
+    both lines share one ring. Letters stay rigid, as on an arc."""
+    out, sweeps = {}, []
+    for (row, glyphs), width in zip(placed, widths):
+        r = radius_px if row == 0 else radius_px+cap_px
+        if width > .95*2*math.pi*r:
+            raise ValueError('These words do not fit around this circle. Make the circle larger or use fewer letters.')
+        sweeps.append(width/r)
+        for index, (char, x, columns, advance) in enumerate(glyphs):
+            anchor = x+advance*em_px/2
+            theta = (anchor-width/2)/r
+            if row == 0:
+                ax, ay, turn = r*math.sin(theta), -r*math.cos(theta), theta
+            else:
+                ax, ay, turn = r*math.sin(theta), r*math.cos(theta), -theta
+            c, s_ = math.cos(turn), math.sin(turn)
+            dx = x-anchor
+            out[row, index] = [c*em_px, -s_*em_px, s_*em_px, c*em_px, ax+c*dx, ay+s_*dx]
+    # Top words centred on the top, bottom words on the bottom: a capital's gap where they would meet.
+    if len(sweeps) == 2 and (sweeps[0]+sweeps[1])/2+cap_px/radius_px > math.pi:
+        raise ValueError('The top and bottom words meet around this circle. Make the circle larger or the words shorter.')
+    return out
+
+
+def _wave_matrices(placed, widths, em_px, percent):
+    """Words along one S-shaped wave (up, down and back to the line), letters rigid and
+    turned to follow it. The wave rises `percent` of the words' length and is as long along
+    the curve as the words, so it looks the same for any words."""
+    import numpy as np
+    (row, glyphs), width = placed[0], widths[0]
+    rise, u = width*percent/100, np.linspace(0, 1, 801)
+    curve = lambda span: np.concatenate([[0], np.cumsum(np.hypot(np.diff(span*u), np.diff(-rise*np.sin(2*np.pi*u))))])
+    span = max(width, 1e-6)
+    for _ in range(12):
+        # Narrow the wave until its length along the curve is the words' length.
+        span *= max(width, 1e-6)/curve(span)[-1]
+    along = curve(span)
+    out = {}
+    for index, (char, x, columns, advance) in enumerate(glyphs):
+        anchor = x+advance*em_px/2
+        t = float(np.interp(anchor, along, u))
+        ax, ay = span*t, -rise*math.sin(2*math.pi*t)
+        turn = math.atan2(-rise*2*math.pi*math.cos(2*math.pi*t), span)
+        c, s_ = math.cos(turn), math.sin(turn)
+        dx = x-anchor
+        out[row, index] = [c*em_px, -s_*em_px, s_*em_px, c*em_px, ax+c*dx, ay+s_*dx]
+    return out
+
+
+def _neighbour_gaps(placed, matrices, key):
+    """Distance (px) and overlap (px²) of each pair of neighbouring letters in a line."""
+    from shapely.affinity import affine_transform
+    gaps = []
+    for row, glyphs in placed:
+        shapes = [affine_transform(glyph_columns(font_path(key), char)[2], matrices[row, index])
+                  for index, (char, *_) in enumerate(glyphs) if char != ' ']
+        for a, b in zip(shapes, shapes[1:]):
+            gaps.append((a.distance(b), a.intersection(b).area))
+    return gaps
+
+
+def _crowded(before, after):
+    """Whether squeezing or bending brings letters that were apart within 0.3 mm of each
+    other (or closer than they were, if less), or makes letters that touched overlap by half
+    as much again."""
+    for (d0, area0), (d1, area1) in zip(before, after):
+        if d0 > .05/PX_MM:
+            if d1 < min(.3/PX_MM, d0)-.05/PX_MM:
+                return True
+        elif area1 > 1.5*area0+.1/PX_MM**2:
+            return True
+    return False
+
+
+class LengthError(ValueError):
+    """A fixed length the words cannot have; `nearest` is the closest length they can (mm)."""
+    def __init__(self, message, nearest):
+        super().__init__(message)
+        self.nearest = nearest
+
+
 def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0, fill=False,
            pull_mm=None, letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', radius_mm=None,
-           sequence='left', arc_degrees=None, frame='none', frame_mm=2.5, classic=False, ornament='none'):
+           sequence='left', arc_degrees=None, frame='none', frame_mm=2.5, classic=False, ornament='none',
+           circle_mm=None, wave_percent=6.0, fit_length_mm=None):
     """SVG of satin-column lettering; user units are CSS px (96 per inch).
     puff: letters over foam (see stitch_satin._puff_satin). Each letter has a
     placement line sewn before the stop for the foam, then a perforation line
@@ -362,7 +447,11 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
     circle the words reach, so the curve looks the same for any length); sequence='centre' sews from the middle letter out
     (centre-out, for caps). Letters that touch are joined by travel
     inside both instead of a cut. ornament: a crown, laurel, swirls or divider
-    (monogram_ornaments) around the words and frame, sewn last."""
+    (monogram_ornaments) around the words and frame, sewn last. baseline='circle': the
+    words round a whole circle circle_mm across (a second line along the bottom);
+    'wave': one S-shaped wave rising wave_percent of the words' length. fit_length_mm:
+    one letter spacing chosen so the stitched line is exactly this long along its
+    baseline (letter_spacing_mm is then not used)."""
     if baseline not in BASELINES or sequence not in SEQUENCES:
         raise ValueError('Choose a listed baseline and letter order.')
     if frame not in FRAMES:
@@ -386,26 +475,70 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
     em = font['head'].unitsPerEm
     line_px = (hhea.ascent-hhea.descent+hhea.lineGap)/em*em_px*1.05*line_spacing
     lines = text.split('\n')
-    placed, widths = [], []
-    for row, line in enumerate(lines):
-        x = 0.0
-        glyphs = []
-        for i, char in enumerate(line):
-            columns, advance, _ = glyph_columns(font_path(key), char) if char != ' ' else ((), None, None)
-            if char == ' ':
-                advance = font['hmtx'][font.getBestCmap()[32]][0]/em if 32 in font.getBestCmap() else .3
-            glyphs.append((char, x, columns, advance))
-            x += (advance+data['tracking'])*em_px
-            if i+1 < len(line):
-                x += kerning(key, char, line[i+1])*em_px+letter_spacing_mm/PX_MM
-        widths.append(max(0.0, x-data['tracking']*em_px))
-        placed.append((row, glyphs))
-    widest = max(widths) if widths else 0.0
+
+    def set_lines(spacing_mm):
+        placed, widths = [], []
+        for row, line in enumerate(lines):
+            x = 0.0
+            glyphs = []
+            for i, char in enumerate(line):
+                columns, advance, _ = glyph_columns(font_path(key), char) if char != ' ' else ((), None, None)
+                if char == ' ':
+                    advance = font['hmtx'][font.getBestCmap()[32]][0]/em if 32 in font.getBestCmap() else .3
+                glyphs.append((char, x, columns, advance))
+                x += (advance+data['tracking'])*em_px
+                if i+1 < len(line):
+                    x += kerning(key, char, line[i+1])*em_px+spacing_mm/PX_MM
+            widths.append(max(0.0, x-data['tracking']*em_px))
+            placed.append((row, glyphs))
+        return placed, widths
+
     baseline_of = lambda row: row*line_px+line_px*.8
-    # Each letter's placement from font units (shapely affine order: a, b, d, e, xoff, yoff).
-    matrices = {(row, index): [em_px, 0, 0, em_px, (widest-width)*{'left': 0, 'center': .5, 'right': 1}[align]+x,
+
+    def straight(placed, widths):
+        # Each letter's placement from font units (shapely affine order: a, b, d, e, xoff, yoff).
+        widest = max(widths) if widths else 0.0
+        return {(row, index): [em_px, 0, 0, em_px, (widest-width)*{'left': 0, 'center': .5, 'right': 1}[align]+x,
                                baseline_of(row)]
                 for (row, glyphs), width in zip(placed, widths) for index, (_, x, *_) in enumerate(glyphs)}
+
+    placed, widths = set_lines(letter_spacing_mm)
+    if fit_length_mm is not None:
+        # Fixed length: one spacing between every two characters, so the stitched line
+        # (satin edge included) is exactly this long along its baseline.
+        if len(lines) > 1:
+            raise ValueError('Fixed length takes one line. Remove the line breaks or turn off fixed length.')
+        if classic:
+            raise ValueError('A classic monogram cannot have a fixed length. Turn off fixed length.')
+        placed, widths = set_lines(0.0)
+        letters = [(i, char, x) for i, (char, x, *_) in enumerate(placed[0][1]) if char != ' ']
+        if len(letters) < 2:
+            raise ValueError('Fixed length needs at least two letters.')
+        bounds = lambda char: glyph_columns(font_path(key), char)[2].bounds
+        (first, c0, x0), (last, c1, x1) = letters[0], letters[-1]
+        edge = 0.0 if fill else float(puff_pull)-.05 if puff else pull_mm
+        natural = (x1+bounds(c1)[2]*em_px-x0-bounds(c0)[0]*em_px)*PX_MM+2*edge
+        gaps = last-first
+        spacing = (float(fit_length_mm)-natural)/gaps
+        if spacing > size_mm:
+            longest = math.floor((natural+gaps*size_mm)*10)/10
+            raise LengthError(f'Spreading these words to {float(fit_length_mm):g} mm leaves more than a letter\'s '
+                              f'height between letters. The longest that still reads as words is about {longest:g} mm.',
+                              longest)
+        if spacing < 0:
+            plain = _neighbour_gaps(placed, straight(placed, widths), key)
+            fits = lambda s: not _crowded(plain, _neighbour_gaps(placed, straight(*set_lines(s)), key))
+            if not fits(spacing):
+                low, high = spacing, 0.0
+                for _ in range(16):
+                    middle = (low+high)/2
+                    low, high = (low, middle) if fits(middle) else (middle, high)
+                shortest = math.ceil((natural+gaps*high)*10)/10
+                raise LengthError(f'Squeezing these words to {float(fit_length_mm):g} mm would make the letters '
+                                  f'overlap. The shortest they can be is about {shortest:g} mm.', shortest)
+        placed, widths = set_lines(spacing)
+    widest = max(widths) if widths else 0.0
+    matrices = straight(placed, widths)
     size = (widest+em_px, len(lines)*line_px+em_px)
     if classic:
         # Classic monogram: two or three initials, the middle one bigger, all centred on one line.
@@ -421,9 +554,19 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
             matrices[0, index] = [scale_px, 0, 0, scale_px, x-l*scale_px, -(t+b)/2*scale_px]
             x += (r-l)*scale_px+.12*em_px
     frame_columns, ornament_pieces = [], []
-    if baseline != 'straight':
-        if len(lines) > 1:
-            raise ValueError('Arc lettering takes one line. Remove the line breaks or use a straight baseline.')
+    if baseline == 'circle':
+        if len(lines) > 2:
+            raise ValueError('A full circle takes one line over the top and at most one along the bottom.')
+        if not circle_mm or not 10 <= float(circle_mm) <= 500:
+            raise ValueError('Enter a circle size from 10 to 500 mm.')
+        matrices = _circle_matrices(placed, widths, em_px, size_mm/PX_MM, float(circle_mm)/2/PX_MM)
+    elif baseline != 'straight' and len(lines) > 1:
+        raise ValueError('Curved lettering takes one line. Remove the line breaks or use a straight baseline.')
+    elif baseline == 'wave':
+        if not 2 <= float(wave_percent) <= 25:
+            raise ValueError('Choose a wave from 2 to 25%.')
+        matrices = _wave_matrices(placed, widths, em_px, float(wave_percent))
+    elif baseline != 'straight':
         if arc_degrees is not None:
             if not 10 <= float(arc_degrees) <= 300:
                 raise ValueError('Choose a curve from 10 to 300 degrees.')
@@ -433,6 +576,12 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
         else:
             radius_px = float(radius_mm)/PX_MM
         matrices = _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, radius_px)
+    if baseline in ('circle', 'wave') and _crowded(_neighbour_gaps(placed, straight(placed, widths), key),
+                                                   _neighbour_gaps(placed, matrices, key)):
+        # Rigid letters on the inside of a tight bend come together at their tops (or feet).
+        raise ValueError('The letters would touch around a circle this small. Make the circle larger.'
+                         if baseline == 'circle' else
+                         'The letters would touch on a wave this strong. Choose a gentler wave.')
     if baseline != 'straight' or classic or frame != 'none' or ornament != 'none':
         # Keep the bent words (and the frame and ornament) on the page: measure them and move them in by half an em.
         from shapely.affinity import affine_transform

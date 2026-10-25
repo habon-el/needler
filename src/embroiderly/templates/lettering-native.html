@@ -15,10 +15,16 @@
 <select id="nativeFabric"><option value="">Twill / canvas (default)</option></select>
 <details id="nativeLayout"><summary>Layout</summary>
 <label for="nativeBaseline">Baseline</label>
-<select id="nativeBaseline"><option value="straight">Straight</option><option value="arc_over">Arch (curves up)</option><option value="arc_under">Smile (curves down)</option></select>
+<select id="nativeBaseline"><option value="straight">Straight</option><option value="arc_over">Arch (curves up)</option><option value="arc_under">Smile (curves down)</option><option value="circle">Full circle</option><option value="wave">Wave</option></select>
 <span id="nativeCurveField" hidden><label for="nativeCurve">Curve <output id="nativeCurveValue" for="nativeCurve">90°</output></label>
 <input id="nativeCurve" type="range" min="20" max="240" step="5" value="90" title="How far round a circle the words reach. The size of the circle follows the length of your words."></span>
 <input id="nativeRadius" type="hidden" value="60">
+<span id="nativeCircleField" hidden><label for="nativeCircle">Circle size (mm)</label>
+<input id="nativeCircle" type="number" min="10" max="500" step="1" value="60" title="Across the circle, inside the letters. The first line goes over the top, a second line along the bottom."></span>
+<span id="nativeWaveField" hidden><label for="nativeWave">Wave <output id="nativeWaveValue" for="nativeWave">6%</output></label>
+<input id="nativeWave" type="range" min="2" max="25" step="1" value="6" title="How high the wave rises, as a share of the words' length."></span>
+<span id="nativeFitLengthField"><label for="nativeFitLength">Fixed length (mm)</label>
+<input id="nativeFitLength" type="number" min="5" max="1000" step=".1" placeholder="Off" title="Spread or squeeze the letters so the words are exactly this long along the line. Leave empty for normal spacing."></span>
 <label for="nativeFrame">Frame</label>
 <select id="nativeFrame"><option value="none">No frame</option><option value="circle">Circle</option><option value="oval">Oval</option><option value="square">Square</option><option value="diamond">Diamond</option><option value="hexagon">Hexagon</option><option value="shield">Shield</option><option value="heart">Heart</option></select>
 <span id="nativeFrameWidthField" hidden><label for="nativeFrameWidth">Frame width (mm)</label>

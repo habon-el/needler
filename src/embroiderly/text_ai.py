@@ -24,7 +24,12 @@ again. As soon as a check is clean, call finish with those settings; one to thre
 - Curved text: shape arc_over is an arch (the middle is higher, like the top of a badge); arc_under is a \
 smile (the middle is lower, like the bottom of a badge). "Curve down" or "curve at the bottom" means \
 arc_under. curve_degrees is how far round a circle the words reach: 60 is gentle, 120 is strong, 180 is a half circle.
-- Curved text must be one line.
+- Shape circle puts the words round a whole circle circle_mm across: the first line over the top, an optional \
+second line along the bottom (a badge or patch ring). Shape wave is one S-shaped wave; wave_percent is how high \
+it rises (3 gentle, 6 usual, 10 strong); short words need a gentle wave.
+- Arch, smile and wave text must be one line; a circle takes at most two.
+- fixed_length_mm spreads or squeezes the letters so one line is exactly that long (e.g. "make it exactly \
+90 mm long"); leave it out otherwise. The check says the shortest or longest it can be.
 - Monograms: initials as the words (e.g. "JAM"), classic true for the bigger middle initial, and a frame \
 (circle, oval, square, diamond, hexagon, shield, heart) if asked. The frame makes the design bigger than the letters. \
 An ornament (crown above, laurel round the sides and bottom, swirls left and right, divider line below) if asked.
@@ -40,7 +45,7 @@ FIELDS = dict(  # tool name -> the screen's value name
     colour='colour', shape='baseline', curve_degrees='arc_degrees', letter_spacing_mm='letter_spacing_mm',
     line_spacing_percent='line_spacing_percent', sequence='sequence', puff='puff', foam_mm='puff_foam_mm',
     fabric='fabric_preset', frame='frame', frame_mm='frame_mm', classic='classic',
-    ornament='ornament')
+    ornament='ornament', circle_mm='circle_mm', wave_percent='wave_percent', fixed_length_mm='fit_length_mm')
 
 
 def tools(fonts, fabrics):
@@ -51,8 +56,12 @@ def tools(fonts, fabrics):
         max_width_mm=dict(type='number', minimum=5, maximum=400, description='The widest the words may be on the item.'),
         align=dict(type='string', enum=['left', 'center', 'right']),
         colour=dict(type='string', pattern='^#[0-9a-fA-F]{6}$', description='Thread colour.'),
-        shape=dict(type='string', enum=['straight', 'arc_over', 'arc_under']),
+        shape=dict(type='string', enum=['straight', 'arc_over', 'arc_under', 'circle', 'wave']),
         curve_degrees=dict(type='number', minimum=20, maximum=240),
+        circle_mm=dict(type='number', minimum=10, maximum=500, description='Circle shape: the size across, inside the letters.'),
+        wave_percent=dict(type='number', minimum=2, maximum=25, description='Wave shape: how high it rises.'),
+        fixed_length_mm=dict(type='number', minimum=5, maximum=1000,
+                             description='One line spread or squeezed to exactly this length.'),
         letter_spacing_mm=dict(type='number', minimum=-2, maximum=10),
         line_spacing_percent=dict(type='number', minimum=70, maximum=250),
         sequence=dict(type='string', enum=['left', 'centre'], description='centre: sew from the middle letter out (caps).'),
@@ -83,10 +92,16 @@ def merged(values, settings):
     for name, value in (settings or {}).items():
         if name in FIELDS:
             out[FIELDS[name]] = value
-    if out.get('baseline', 'straight') == 'straight':
-        out.pop('arc_degrees', None)
-    else:
+    shape = out.get('baseline', 'straight')
+    if shape in ('arc_over', 'arc_under'):
         out.setdefault('arc_degrees', 90)
+    else:
+        out.pop('arc_degrees', None)
+    for name, default, used in (('circle_mm', 60, 'circle'), ('wave_percent', 6, 'wave')):
+        if shape == used:
+            out.setdefault(name, default)
+        else:
+            out.pop(name, None)
     out.pop('arc_radius_mm', None)
     if out.get('puff'):
         out.setdefault('puff_foam_mm', 3)
