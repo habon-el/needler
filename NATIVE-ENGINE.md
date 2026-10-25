@@ -579,3 +579,30 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Measured (Graduate, 14 mm words, classic JAM): every ornament passes all file checks with and
   without a circle frame, as do 5 mm and 40 mm words; stitches 0.40–3.8 mm (6.9 mm at 40 mm);
   one cut per ornament piece (two for laurel and swirls), none inside a piece.
+
+## More motif patterns, backstitch and stemstitch stipple (added 2026-10-26)
+
+- A choice under a style is stored with the style: `region_styles` values `motif:heart`, `motif:star`,
+  `motif:scale`, `motif:circle`, `stipple:backstitch` and `stipple:stemstitch`
+  (`region_stitches.VARIANTS`, first entry = default). The default is stored as the plain style
+  (`motif`, `stipple`), and `motif:diamond` / `stipple:run` are refused, so saved designs keep their
+  exact stitches. Copies, welds and cut parts carry the choice with the style.
+  `split_style` splits it for `apply_style`.
+- Motif (`motif_shapes`, our own simple shapes about 3.2 mm across on the 4 mm grid): diamonds as
+  before (2 mm stitches); hearts (a 24-point heart curve), five-point stars, circles (16 points) and
+  scales (half circles of 2 mm radius joined end to end along each row, every other row shifted half
+  a repeat). Shapes are clipped to the area like the diamonds (holes kept empty, fragments under
+  0.4 mm dropped, 400-cell and 1200-fragment limits). The new patterns are sewn with 1.2 mm stitches
+  that keep their points (`running_stitch_tolerance_mm` 0.05); separate repeats are joined by
+  inside travel (`travel_area`).
+- Stipple (`stitch_fills.meander(stitch=...)`, attribute `stipple_stitch`): the same random
+  meandering loop, sewn by `stitch_paths.backstitch` (1.2 mm forward, back over 45 %, so each back
+  stitch is about 0.54 mm, above the 0.45 mm minimum) or `stitch_paths.stemstitch` (1.6 mm stitches
+  across a 0.5 mm band, well inside the 1 mm between neighbouring lanes; a point that would land
+  within 0.1 mm of the edge is pulled onto the area 0.1 mm inside it). Joins between loops stay
+  plain inside travel.
+- Style picker: under the chosen style a small select appears, "Pattern" for Motif and "Stitch"
+  for Stipple (the region report carries `variants`); Stipple is now just "Stipple".
+- Tests: patterns repeat inside the area with identical repeats and the hole empty, the saved
+  diamond output is unchanged, backstitch and stemstitch turn back on themselves and stay inside,
+  and every new choice through the release gate.

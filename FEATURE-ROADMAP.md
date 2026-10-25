@@ -47,10 +47,10 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Gradient fill (spacing ramps across the area) | `stitch_fills.gradient`, area style Gradient | ✅ 2026-10-24 | |
 | Wave / Ripple fill | area style Wave: tatami rows that rise and fall along a smooth wave (10 mm long, 1.2 mm high, lined up across areas), underlay, around holes; Ripple: circular | ✅ 2026-10-26 | |
 | Offset fill | area style Offset fill (was Contour): each row an inset of the outline by one more row spacing, rings around holes, joined into one run by inside steps, with underlay | ✅ 2026-10-26 | |
-| Pattern fill / Motif fill | motif (diamond) | ◐ one pattern | P3 |
+| Pattern fill / Motif fill | area style Motif with a Pattern choice: diamonds (default), hearts, stars, scales (rows of half circles) or circles, repeated every 4 mm and clipped to the area, around holes | ✅ 2026-10-26 | |
 | Blackwork, candlewicking, lacework fills | — | ✗ | P3 |
 | Cross-stitch fill | cross | ✅ | |
-| Stipple run / backstitch / stemstitch fill | stipple run | ◐ run only | P3 |
+| Stipple run / backstitch / stemstitch fill | area style Stipple with a Stitch choice: single run (default), backstitch (each stitch partly sewn back over) or stemstitch (short slanted stitches, rope look) along the same meandering line | ✅ 2026-10-26 | |
 | Maze, star fill, elastic embossed, sculptured fancy | embossed (diamond overlay) | ◐ | P3 |
 | Florentine effect, colour blending | area style Shaded: a darker shade fades across the fill | ◐ no florentine | P3 |
 | 3D puff | puff | ✅ | |

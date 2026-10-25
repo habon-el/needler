@@ -11,8 +11,8 @@ import json
 import math
 from pathlib import Path
 from . import svg_geometry as sg
-from .stitch_fills import (WAVE_AMPLITUDE_MM, WAVE_LENGTH_MM, contour, fill_shape, gradient, join_runs, meander,
-                           radial, spiral, step_fill, tatami, wave)
+from .stitch_fills import (STIPPLE_STITCHES, WAVE_AMPLITUDE_MM, WAVE_LENGTH_MM, contour, fill_shape, gradient, join_runs,
+                           meander, radial, spiral, step_fill, tatami, wave)
 from .stitch_paths import (backstitch, bean, blanket, chain, dedupe, enforce_min, inward_side, order_runs, path_length,
                            polygons, running, split_long, stemstitch, zigzag_outline)
 from .stitch_satin import SPLIT_MM, satin
@@ -313,7 +313,9 @@ def _element_blocks(node, paths, style, scale, index, min_len, start=None, lines
                 runs = []
             elif method == 'meander_fill':
                 cell = max(.6, _float(node, 'meander_scale_percent', 100)/100*10)
-                runs = meander(shape, cell, length, min_len, _seed(node, index), tolerance=tolerance)
+                stitch = _attr(node, 'stipple_stitch', 'run')
+                runs = meander(shape, cell, length, min_len, _seed(node, index), tolerance=tolerance,
+                               stitch=stitch if stitch in STIPPLE_STITCHES else 'run')
             else:
                 underlay = _bool(node, 'fill_underlay', True)
                 runs = tatami(shape, _float(node, 'angle', 0), spacing,

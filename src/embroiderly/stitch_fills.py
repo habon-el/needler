@@ -11,7 +11,7 @@ import numpy as np
 from shapely.affinity import affine_transform
 from shapely.geometry import LineString, MultiLineString, Point, Polygon
 from shapely.ops import unary_union
-from .stitch_paths import Travel, dedupe, enforce_min, lerp, polygons, running, split_long
+from .stitch_paths import Travel, backstitch, dedupe, enforce_min, lerp, polygons, running, split_long, stemstitch
 
 
 def _frame(angle_deg):
@@ -292,8 +292,13 @@ def spiral(shape, spacing=1.2, length=1.0, minimum=0.45, start=None, tolerance=0
     return join_runs(runs, shape, length)
 
 
-def meander(shape, cell=2.0, length=1.0, minimum=0.45, seed=1, smooth=2, tolerance=0.1):
-    """Single-line stipple: trace around a random spanning tree of grid cells."""
+STIPPLE_STITCHES = ('run', 'backstitch', 'stemstitch')
+
+
+def meander(shape, cell=2.0, length=1.0, minimum=0.45, seed=1, smooth=2, tolerance=0.1, stitch='run'):
+    """Single-line stipple: trace around a random spanning tree of grid cells.
+    stitch: 'run' (single run), 'backstitch' (each stitch partly sewn back over, a firmer line)
+    or 'stemstitch' (short slanted stitches overlapping like a rope, along the same path)."""
     zone = shape.buffer(-cell*.25)
     if zone.is_empty:
         return _tiny(shape, minimum)
@@ -329,8 +334,28 @@ def meander(shape, cell=2.0, length=1.0, minimum=0.45, seed=1, smooth=2, toleran
         points = [(left+(x+.5)*cell/2, top+(y+.5)*cell/2) for x, y in loop]
         for _ in range(smooth):
             points = _chaikin(points)
-        runs.append(running(points+[points[0]], length, tolerance))
+        runs.append(_stipple_line(points+[points[0]], shape, length, tolerance, stitch))
     return join_runs(runs, shape, length)
+
+
+def _stipple_line(points, shape, length, tolerance, stitch):
+    """One closed meander loop sewn as single run, backstitch or stemstitch (stitch_paths).
+    The proportions are our own: backstitch 1.2 mm forward and 0.54 mm back, so the back
+    stitch stays above the 0.45 mm minimum on the loop's curves; stemstitch 1.6 mm long
+    across a 0.5 mm band, well inside the 1 mm between neighbouring lanes."""
+    if stitch == 'backstitch':
+        return backstitch(points, max(1.2, length), .45)
+    if stitch == 'stemstitch':
+        sewn = stemstitch(points, max(1.6, length), .5)
+        # The band reaches 0.25 mm to each side of the loop: keep it off the edge.
+        inner = shape.buffer(-.1)
+        if inner.is_empty:
+            return running(points, length, tolerance)
+        from shapely.ops import nearest_points
+        from shapely.prepared import prep
+        inside = prep(inner)
+        return [p if inside.contains(Point(p)) else tuple(nearest_points(inner, Point(p))[0].coords[0]) for p in sewn]
+    return running(points, length, tolerance)
 
 
 def _tree_cycle(tree):

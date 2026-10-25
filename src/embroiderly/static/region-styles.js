@@ -3,7 +3,7 @@
  'use strict';
  const $=id=>document.getElementById(id),studio=window.embroideryStudio;
  if(!studio||!$('stitchRegion'))return;
- let report={areas:[],catalog:[],stale:[],unavailable:''},selected='',active=false,ready=false;
+ let report={areas:[],catalog:[],variants:{},stale:[],unavailable:''},selected='',active=false,ready=false;
  const grid=document.createElement('div');grid.className='stitch-choice-grid';
  const group=document.createElement('fieldset');group.className='stitch-chooser';
  const legend=document.createElement('legend');legend.textContent='Stitch type';group.append(legend,grid);$('regionStyleGallery').append(group);
@@ -11,6 +11,20 @@
  const holes=document.createElement('label');holes.className='region-holes';holes.hidden=true;
  const holeBox=document.createElement('input');holeBox.type='checkbox';holeBox.id='regionHoles';
  holes.append(holeBox,' Sew over holes in this area');$('regionStyleGallery').append(holes);
+ // A choice under the chosen style (Motif pattern, Stipple stitch), stored as 'motif:heart'.
+ const variant=document.createElement('label');variant.className='region-variant';variant.hidden=true;
+ const variantBox=document.createElement('select');variantBox.id='regionVariant';
+ variant.append(document.createElement('span'),variantBox);$('regionStyleGallery').append(variant);
+ const baseOf=style=>style.split(':')[0];
+ variantBox.addEventListener('change',()=>{
+  const base=variantBox.dataset.base,first=(report.variants?.[base]||[])[0]?.[0];
+  const value=variantBox.value===first?base:base+':'+variantBox.value;
+  if(window.PiecePanel){window.PiecePanel.commit('style',value);return}
+  const styles={...(studio.snapshot().region_styles||{})};
+  for(const area of targets())styles[area.id]=value;
+  try{studio.apply({region_styles:styles})}catch(error){$('regionStyleStatus').textContent=error.message}
+  sync();
+ });
  const areaOf=id=>report.areas.find(a=>a.id===id);
  // Stitch direction for the chosen areas; empty = automatic (along the area's long side).
  const direction=document.createElement('label');direction.className='region-direction';
@@ -36,7 +50,7 @@
  }
  function sync(){
   const options=studio.snapshot(),areas=targets(),area=areas[0],busy=$('save').disabled;
-  const styles=new Set(areas.map(a=>options.region_styles?.[a.id]||'tatami'));
+  const full=new Set(areas.map(a=>options.region_styles?.[a.id]||'tatami')),styles=new Set([...full].map(baseOf));
   const incompatible=areas.filter(a=>a.satin_reason).length,flat=areas.filter(a=>a.raised_reason??a.satin_reason).length;
   const blocked=!ready||!!report.unavailable||busy;
   $('stitchRegion').disabled=blocked||!report.areas.length;
@@ -47,6 +61,13 @@
    input.disabled=blocked||!area||limited||areas.some(a=>a.locked);
    input.closest('label').dataset.selected=String(input.checked);
   }
+  const base=styles.size===1?[...styles][0]:'',choices=report.variants?.[base];
+  variant.hidden=!areas.length||!choices;variantBox.disabled=blocked||areas.some(a=>a.locked);
+  if(choices&&variantBox.dataset.base!==base){
+   variantBox.dataset.base=base;variant.firstChild.textContent=base==='motif'?'Pattern ':'Stitch ';
+   variantBox.replaceChildren(...choices.map(([value,name])=>new Option(name,value)));
+  }
+  if(choices){const picked=new Set([...full].map(s=>s.split(':')[1]||choices[0][0]));variantBox.value=picked.size===1?[...picked][0]:''}
   const withHoles=areas.map(t=>areaOf(t.id)).filter(a=>a&&a.holes);
   holes.hidden=!withHoles.length;holeBox.disabled=blocked||areas.some(a=>a.locked);
   const angles=new Set(areas.map(t=>(options.area_angles||{})[t.id]));

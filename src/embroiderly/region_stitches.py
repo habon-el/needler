@@ -23,20 +23,32 @@ CATALOG=[
     ('satin','Satin','Follows the shape · parts up to 8 mm wide'),
     ('raised_satin','3D satin','Three satin layers · experimental, no foam'),
     ('puff','3D puff','Satin over foam · parts 3–6 mm wide (2 mm foam: 2–6)'),
-    ('motif','Motif','Clipped diamond repeats · open fill'),
+    ('motif','Motif','Small repeated shapes · open fill'),
     ('embossed','Embossed','Tatami + diamond overlay · experimental texture'),
     ('ripple','Ripple','Concentric circular waves'),
     ('contour','Offset fill','Rows follow the outline inward, around holes'),
     ('cross','Cross stitch','Clipped diagonal crosses · open fill'),
-    ('stipple','Stipple single run','Meandering open fill'),
+    ('stipple','Stipple','Meandering open fill'),
 ]
+# Choices under a style, first = default. Stored with the style as 'motif:heart'; the default
+# is stored as the plain style, so saved designs keep their look.
+VARIANTS={
+    'motif':[('diamond','Diamonds'),('heart','Hearts'),('star','Stars'),('scale','Scales'),('circle','Circles')],
+    'stipple':[('run','Single run'),('backstitch','Backstitch'),('stemstitch','Stemstitch')],
+}
+
+
+def split_style(style):
+    """'motif:heart' -> ('motif','heart'); a plain style -> (style, its default choice or '')."""
+    base,_,variant=style.partition(':')
+    return base,variant or (VARIANTS[base][0][0] if base in VARIANTS else '')
 
 
 def assignments(options):
     value=options.get('region_styles',{})
     if not isinstance(value,dict) or len(value)>500:
         raise ValueError('Region stitch styles must contain at most 500 area assignments.')
-    allowed={item[0] for item in CATALOG}
+    allowed={item[0] for item in CATALOG}|{f'{base}:{v}' for base,choices in VARIANTS.items() for v,_ in choices[1:]}
     for key,style in value.items():
         if not isinstance(key,str) or len(key)!=20 or any(c not in '0123456789abcdef' for c in key) or not isinstance(style,str) or style not in allowed:
             raise ValueError('Invalid region stitch style. Select a current area and a listed style.')
@@ -129,7 +141,7 @@ def satin_rails(rings,scale):
 def inventory(rgb,alpha,scale,options):
     chosen=assignments(options);items=[]
     if options.get('ink_only') or options.get('line_art') or options.get('artwork_type')=='portrait':
-        return dict(areas=[],stale=list(chosen),catalog=CATALOG,unavailable='Area fills require colour artwork mode. Black lines keep Running/Reinforced; portrait stitching has its own planner.')
+        return dict(areas=[],stale=list(chosen),catalog=CATALOG,variants=VARIANTS,unavailable='Area fills require colour artwork mode. Black lines keep Running/Reinforced; portrait stitching has its own planner.')
     for key,colour,rings in regions(rgb,alpha):
         if len(items)>=500:break
         reason=satin_reason(rings,scale)
@@ -147,14 +159,37 @@ def inventory(rgb,alpha,scale,options):
                           angle=angle_choices(options).get(key)))
     # Styles of duplicated pieces belong to the copies, not to stale picture areas.
     from .piece_layout import copy_ids
-    return dict(areas=items,stale=sorted(set(chosen)-{r['id'] for r in items}-copy_ids(options)),catalog=CATALOG,unavailable='')
+    return dict(areas=items,stale=sorted(set(chosen)-{r['id'] for r in items}-copy_ids(options)),catalog=CATALOG,variants=VARIANTS,unavailable='')
 
 
 def path_data(points):
     return 'M '+' L '.join(f'{x:.5f},{y:.5f}' for x,y in points)
 
 
-def decorative_paths(rings,scale,kind):
+MOTIF_PITCH=4.0  # mm between repeats
+
+
+def motif_shapes(pattern,x,y,row):
+    """Polylines (mm) of one repeat in the cell at (x,y); our own simple shapes, about 3.2 mm."""
+    cx,cy=x+2,y+2
+    if pattern=='heart':
+        t=np.linspace(0,2*math.pi,25)
+        hx=16*np.sin(t)**3;hy=13*np.cos(t)-5*np.cos(2*t)-2*np.cos(3*t)-np.cos(4*t)
+        return [list(zip(cx+hx*.1,cy-(hy+2.5)*.1))]
+    if pattern=='star':
+        a=-math.pi/2+np.arange(11)*math.pi/5;r=np.where(np.arange(11)%2,.75,1.9)
+        return [list(zip(cx+r*np.cos(a),cy+.15+r*np.sin(a)))]
+    if pattern=='circle':
+        a=np.linspace(0,2*math.pi,17)
+        return [list(zip(cx+1.5*np.cos(a),cy+1.5*np.sin(a)))]
+    if pattern=='scale':
+        # Fish scales: half circles joined end to end, every other row shifted half a repeat.
+        a=np.linspace(math.pi,2*math.pi,9);sx=x+(2 if row%2 else 0)
+        return [list(zip(sx+2+2*np.cos(a),y+4+2*np.sin(a)))]
+    return [[(x+2,y),(x+4,y+2),(x+2,y+4),(x,y+2),(x+2,y)]]
+
+
+def decorative_paths(rings,scale,kind,pattern='diamond'):
     p=polygon(rings,scale)
     if not p.is_valid:
         # Pixel contours can revisit a corner. Keep every polygonal component,
@@ -168,12 +203,14 @@ def decorative_paths(rings,scale,kind):
         if repaired.is_empty or not repaired.is_valid:
             raise ValueError('Decorative outline repair would change the selected area. Refine the selection or choose Tatami.')
         p=repaired
-    left,top,right,bottom=p.bounds;pitch=4.0;parts=[]
+    left,top,right,bottom=p.bounds;pitch=MOTIF_PITCH;parts=[]
     if math.ceil((right-left)/pitch)*math.ceil((bottom-top)/pitch)>400:
         raise ValueError('Decorative pattern exceeds 400 cells. Use a smaller area or Tatami.')
-    for y in np.arange(top,bottom,pitch):
-        for x in np.arange(left,right,pitch):
-            shapes=[[(x,y),(x+pitch,y+pitch)],[(x+pitch,y),(x,y+pitch)]] if kind=='cross' else [[(x+2,y),(x+4,y+2),(x+2,y+4),(x,y+2),(x+2,y)]]
+    # Scales are shifted half a repeat on every other row: start one repeat further left.
+    columns=np.arange(left-(pitch if pattern=='scale' else 0),right,pitch)
+    for row,y in enumerate(np.arange(top,bottom,pitch)):
+        for x in columns:
+            shapes=[[(x,y),(x+pitch,y+pitch)],[(x+pitch,y),(x,y+pitch)]] if kind=='cross' else motif_shapes(pattern,x,y,row)
             for shape in shapes:
                 clipped=p.intersection(LineString(shape))
                 segments=[clipped] if clipped.geom_type=='LineString' else list(getattr(clipped,'geoms',[]))
@@ -186,6 +223,7 @@ def decorative_paths(rings,scale,kind):
 
 
 def apply_style(document,node,rings,scale,kind):
+    kind,pattern=split_style(kind)
     if kind=='tatami':return
     if kind=='applique':
         # Placement, stop, tack-down, stop, satin cover (stitch_engine._applique).
@@ -225,6 +263,7 @@ def apply_style(document,node,rings,scale,kind):
             node.set(NS+'running_stitch_tolerance_mm','.15')
         if kind=='stipple':
             node.set(NS+'meander_scale_percent','20');node.set(NS+'smoothness_mm','.3')
+            if pattern!='run':node.set(NS+'stipple_stitch',pattern)  # backstitch or stemstitch (stitch_fills.meander)
             node.set(NS+'clip','true');node.set(NS+'running_stitch_length_mm','1')
             node.set(NS+'running_stitch_tolerance_mm','.15')
         return
@@ -250,7 +289,7 @@ def apply_style(document,node,rings,scale,kind):
         return
     if kind in ('motif','cross','embossed'):
         colour=node.get('style').split(';')[0].split(':')[1]
-        decoration=decorative_paths(rings,scale,kind)
+        decoration=decorative_paths(rings,scale,kind,pattern)
         if not decoration:return  # Embossed retains its base; inventory discloses no fitting repeat.
         target=ET.SubElement(document,'path',id=node.get('id')+'-texture') if kind=='embossed' else node
         # The area outline lets the generator travel inside it between fragments.
@@ -258,5 +297,8 @@ def apply_style(document,node,rings,scale,kind):
         target.set('d',decoration)
         target.set('style',f'fill:none;stroke:{colour};stroke-width:1')
         target.set(NS+'stroke_method','running_stitch');target.set(NS+'running_stitch_length_mm','2')
+        if kind=='motif' and pattern!='diamond':
+            # Curved repeats: shorter stitches that keep their points, so hearts stay round.
+            target.set(NS+'running_stitch_length_mm','1.2');target.set(NS+'running_stitch_tolerance_mm','.05')
         return
     raise ValueError('Unsupported stitch style.')
