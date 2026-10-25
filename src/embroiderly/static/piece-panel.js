@@ -31,6 +31,10 @@
  <label title="0 sews on the edge; more moves the outline outward">Gap mm<input id="pieceOutlineGap" type="number" min="0" max="6" step=".5" value="0"></label>
  <label class="piece-outline-satin">Satin width mm<input id="pieceOutlineWidth" type="number" min="1.2" max="5" step=".1" value="2"></label>
  <label>Thread<input id="pieceOutlineColour" type="color" value="#202020"></label></div></fieldset>
+ <fieldset id="pieceSewOrder"><legend>Sewing order</legend><div class="piece-arrange" role="group" aria-label="Sewing order">
+ <button type="button" data-sew="earlier" title="Sew the selected part one step sooner">↑ Sew earlier</button><button type="button" data-sew="later" title="Sew the selected part one step later">↓ Sew later</button>
+ <button type="button" data-sew="picked" title="Sew the selected parts one after another, in the order you clicked them">Sew in the order I picked</button><button type="button" data-sew="auto" title="Let Needler choose the order again">Automatic order</button></div>
+ <p id="pieceSewNote" class="muted"></p></fieldset>
  <fieldset id="pieceDraw"><legend>Draw a shape</legend><div class="piece-arrange" role="group" aria-label="Draw">
  <button type="button" data-draw="rectangle" aria-pressed="false" title="Drag from one corner to the opposite corner">▭ Rectangle</button><button type="button" data-draw="ellipse" aria-pressed="false" title="Drag from one corner to the opposite corner">◯ Ellipse</button>
  <button type="button" data-draw="polygon" aria-pressed="false" title="Click each corner; double-click, Enter or click the first point to finish. Esc cancels.">⬠ Polygon</button><button type="button" data-draw="freehand" aria-pressed="false" title="Hold and draw the outline; release to close it">✎ Freehand</button>
@@ -42,11 +46,11 @@
  <div class="piece-modes"><button id="pieceMove" type="button" aria-pressed="true">Drag to move</button><button id="pieceRotate" type="button" aria-pressed="false">Drag to rotate</button></div>
  <label class="piece-advanced">Group / subgroup<input id="pieceGroup" maxlength="100" placeholder="For example: Head / Eyes"></label>
  <p id="pieceFeedback" role="status" aria-live="polite">Select a piece to edit its measurements.</p>
- <details class="piece-advanced"><summary>Stitch settings and limitations</summary><p>Stitches rebuild from the outline after a transform. Fill angle follows rotation. Density and underlay retain the existing style preset.</p><p>Individual row spacing, stitch length, staggers, underlay, pull compensation, entry/exit and tie-in/tie-off editors are not available here. Sew-order reordering is not yet supported.</p></details>`;
+ <details class="piece-advanced"><summary>Stitch settings and limitations</summary><p>Stitches rebuild from the outline after a transform. Fill angle follows rotation. Density and underlay retain the existing style preset.</p><p>Individual row spacing, stitch length, staggers, underlay, pull compensation, entry/exit and tie-in/tie-off editors are not available here.</p></details>`;
  panel.insertBefore(properties,$('stitchStyles'));$('stitchStyles').querySelector('summary').textContent='Stitch type';
  $('stitchRegion').closest('label').hidden=true;$('regionStyleStatus').hidden=true;
  const total=document.createElement('output');total.id='pieceStitchTotal';total.textContent='0 total stitches';document.querySelector('.thread-info').append(total);
- let report={pieces:[]},selected=new Set(),advanced=false,linked=true,active=false,pending=false,drag=null,rotate=false,knife=null,drawing=null;
+ let report={pieces:[]},sewn=[],custom=false,selected=new Set(),advanced=false,linked=true,active=false,pending=false,drag=null,rotate=false,knife=null,drawing=null;
  const icon=(kind)=>{const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.classList.add('ui-icon');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',kind==='lock'?'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0v4':kind==='unlock'?'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0':kind==='eye'?'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6':'M3 3l18 18M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z');svg.append(path);return svg};
  function targets(){return report.pieces.filter(p=>selected.has(p.id))}
  function aggregate(items=targets()){
@@ -60,7 +64,7 @@
  async function commit(field,value,ids=[...selected]){
   if(pending||(!ids.length&&field!=='draw'&&field!=='click_fill'))return;
   pending=true;sync();feedback('Saving piece and rebuilding stitches when needed…');
-  try{const ok=await studio.pieceEdit({ids,field,value,linked:advanced?linked:true});feedback(ok?(studio.hasPlayback()?'Saved. Stitches use the updated outline.':'Piece saved. No current stitch plan; review the design before generating.'):'Not applied. See the workspace message; the previous piece is unchanged.')}
+  try{const ok=await studio.pieceEdit({ids,field,value,linked:advanced?linked:true});feedback(ok?(studio.hasPlayback()?(field==='sew_order'?'Saved. Stitches follow the new sewing order.':'Saved. Stitches use the updated outline.'):'Piece saved. No current stitch plan; review the design before generating.'):'Not applied. See the workspace message; the previous piece is unchanged.')}
   catch(error){feedback(error.message)}finally{pending=false;sync()}
  }
  function choose(ids,toggle=false){if(!toggle)selected.clear();for(const id of ids){if(toggle&&selected.has(id))selected.delete(id);else selected.add(id)}studio.pieceView();document.querySelector('[data-topic="styles"]').click();sync();renderRows()}
@@ -92,6 +96,10 @@
   properties.querySelectorAll('.piece-unit').forEach(node=>node.textContent=units());
   $('pieceLink').disabled=disabled||!advanced;$('pieceLink').setAttribute('aria-pressed',String(!advanced||linked));
   $('pieceMove').disabled=$('pieceRotate').disabled=disabled;
+  const sewBlocked=!items.length||pending||studio.isBusy()||!sewn.length;
+  properties.querySelectorAll('[data-sew]').forEach(b=>{b.disabled=sewBlocked});
+  properties.querySelector('[data-sew="picked"]').disabled=sewBlocked||items.length<2;properties.querySelector('[data-sew="auto"]').disabled=!custom||pending||studio.isBusy();
+  $('pieceSewNote').textContent=!sewn.length?'Generate the stitches to change the sewing order.':items.length===1&&sewn.includes(items[0].id)?`Sewn ${sewn.indexOf(items[0].id)+1} of ${sewn.length}.`:custom?'Your own sewing order.':'Automatic sewing order.';
   properties.querySelectorAll('[data-draw],#pieceDrawColour,#pieceFillHoles,#pieceLineStitch').forEach(control=>{control.disabled=pending||studio.isBusy()||!report.pieces.length;});
   properties.querySelectorAll('[data-draw]').forEach(b=>b.setAttribute('aria-pressed',String(drawing?.shape===b.dataset.draw)));
   window.stitchRegionSelection=active&&items.length?{rings:items.flatMap(p=>p.rings)}:null;
@@ -117,7 +125,7 @@
     if(!containers.has(path)){const d=document.createElement('details');d.dataset.group=path;d.open=open.has(path);const summary=document.createElement('summary');summary.textContent=token;d.append(summary);parent.append(d);containers.set(path,d)}parent=containers.get(path);
    }
    parent.append(groupActions(items,group));
-   for(const p of items){const row=document.createElement('div');row.className='piece-row';row.dataset.id=p.id;const select=document.createElement('button');select.type='button';select.className='piece-select';select.setAttribute('aria-pressed',String(selected.has(p.id)));select.title=p.name;const order=document.createElement('span');order.textContent=p.order;order.className='piece-order';const thumb=document.createElementNS('http://www.w3.org/2000/svg','svg');thumb.setAttribute('viewBox',`${p.x_mm-p.width_mm/2} ${p.y_mm-p.height_mm/2} ${Math.max(p.width_mm,.1)} ${Math.max(p.height_mm,.1)}`);thumb.setAttribute('aria-hidden','true');const path=document.createElementNS(thumb.namespaceURI,'path');path.setAttribute('d',p.rings_mm.map(r=>'M '+r.map(x=>x.join(',')).join(' L ')+(p.line?'':' Z')).join(' '));if(p.line){path.setAttribute('fill','none');path.setAttribute('stroke',p.colour);path.setAttribute('stroke-width',String(Math.max(p.width_mm,p.height_mm)/12))}else path.setAttribute('fill',p.colour);path.setAttribute('fill-rule','evenodd');thumb.append(path);const name=document.createElement('span');name.className='piece-label';name.textContent=p.name;select.append(order,thumb,name);select.onclick=e=>choose([p.id],e.ctrlKey||e.metaKey);const swatch=document.createElement('span');swatch.className='piece-swatch';swatch.style.background=p.colour;swatch.title=(p.thread_name||p.colour)+' · '+p.colour;swatch.setAttribute('aria-label','Thread '+(p.thread_name||p.colour));const eye=document.createElement('button');eye.type='button';eye.replaceChildren(icon(p.visible?'eye':'hidden'));eye.setAttribute('aria-label',(p.visible?'Hide ':'Show ')+p.name);eye.disabled=pending||p.locked;eye.onclick=()=>commit('visible',!p.visible,[p.id]);row.append(select,swatch,eye);parent.append(row)}
+   for(const p of items){const row=document.createElement('div');row.className='piece-row';row.dataset.id=p.id;const select=document.createElement('button');select.type='button';select.className='piece-select';select.setAttribute('aria-pressed',String(selected.has(p.id)));select.title=p.name;const order=document.createElement('span');order.textContent=sewn.includes(p.id)?sewn.indexOf(p.id)+1:p.order;order.className='piece-order';const thumb=document.createElementNS('http://www.w3.org/2000/svg','svg');thumb.setAttribute('viewBox',`${p.x_mm-p.width_mm/2} ${p.y_mm-p.height_mm/2} ${Math.max(p.width_mm,.1)} ${Math.max(p.height_mm,.1)}`);thumb.setAttribute('aria-hidden','true');const path=document.createElementNS(thumb.namespaceURI,'path');path.setAttribute('d',p.rings_mm.map(r=>'M '+r.map(x=>x.join(',')).join(' L ')+(p.line?'':' Z')).join(' '));if(p.line){path.setAttribute('fill','none');path.setAttribute('stroke',p.colour);path.setAttribute('stroke-width',String(Math.max(p.width_mm,p.height_mm)/12))}else path.setAttribute('fill',p.colour);path.setAttribute('fill-rule','evenodd');thumb.append(path);const name=document.createElement('span');name.className='piece-label';name.textContent=p.name;select.append(order,thumb,name);select.onclick=e=>choose([p.id],e.ctrlKey||e.metaKey);const swatch=document.createElement('span');swatch.className='piece-swatch';swatch.style.background=p.colour;swatch.title=(p.thread_name||p.colour)+' · '+p.colour;swatch.setAttribute('aria-label','Thread '+(p.thread_name||p.colour));const eye=document.createElement('button');eye.type='button';eye.replaceChildren(icon(p.visible?'eye':'hidden'));eye.setAttribute('aria-label',(p.visible?'Hide ':'Show ')+p.name);eye.disabled=pending||p.locked;eye.onclick=()=>commit('visible',!p.visible,[p.id]);row.append(select,swatch,eye);parent.append(row)}
   }
   for(const [path,container] of containers){
    if(container.querySelector(':scope > .piece-group-actions'))continue;
@@ -135,6 +143,18 @@
  properties.querySelectorAll('[data-arrange]').forEach(button=>button.onclick=()=>{
   const [field,value]=button.dataset.arrange.split(':');commit(field,field==='mirror'?value:Number(value));});
  $('pieceDuplicate').onclick=()=>commit('duplicate',[5,5]);
+ // Sewing order by hand: send every part in its new place; the first selected part decides the spot.
+ properties.querySelectorAll('[data-sew]').forEach(button=>button.onclick=()=>{
+  if(button.dataset.sew==='auto'){commit('sew_order',null,report.pieces.map(p=>p.id));return}
+  const order=[...new Set(sewn)].filter(id=>report.pieces.some(p=>p.id===id));
+  for(const p of report.pieces)if(!order.includes(p.id))order.push(p.id);
+  const ids=[...selected];
+  if(button.dataset.sew==='picked'){const at=Math.min(...ids.map(id=>order.indexOf(id))),rest=order.filter(id=>!selected.has(id));rest.splice(at,0,...ids);commit('sew_order',rest);return}
+  const step=button.dataset.sew==='earlier'?-1:1;
+  for(let i=step<0?1:order.length-2;step<0?i<order.length:i>=0;i-=step)
+   if(selected.has(order[i])&&!selected.has(order[i+step])&&order[i+step]!==undefined)[order[i],order[i+step]]=[order[i+step],order[i]];
+  commit('sew_order',order);
+ });
  // Outline per part: any change applies to the selected parts; None removes it.
  const outlineSpec=()=>$('pieceOutlineStitch').value?{stitch:$('pieceOutlineStitch').value,offset_mm:Number($('pieceOutlineGap').value)||0,
   width_mm:Number($('pieceOutlineWidth').value)||2,colour:$('pieceOutlineColour').value}:null;
@@ -232,7 +252,7 @@
  },true);
  canvas.addEventListener('pointerup',e=>{if(!drag)return;e.stopImmediatePropagation();const done=drag;drag=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(rotate&&done.angle)commit('rotation',(done.items.length===1?done.box.rotation:0)+done.angle);else if(done.position)commit('position',done.position);else sync()},true);
  const cancel=()=>{if(drag){drag=null;sync()}};canvas.addEventListener('pointercancel',cancel,true);canvas.addEventListener('lostpointercapture',cancel,true);
- window.addEventListener('studio:preview',e=>{total.textContent=Number(e.detail.stitchCount||0).toLocaleString()+' total stitches';report=e.detail.report.piece_layout||{pieces:[]};selected=new Set([...selected].filter(id=>report.pieces.some(p=>p.id===id)));renderRows();sync()});
+ window.addEventListener('studio:preview',e=>{total.textContent=Number(e.detail.stitchCount||0).toLocaleString()+' total stitches';report=e.detail.report.piece_layout||{pieces:[]};sewn=e.detail.sewParts||[];custom=Array.isArray(e.detail.options.sew_sequence)&&e.detail.options.sew_sequence.length>0;selected=new Set([...selected].filter(id=>report.pieces.some(p=>p.id===id)));renderRows();sync()});
  window.addEventListener('studio:topic',e=>{active=e.detail==='styles';sync()});
  window.addEventListener('studio:controls',()=>{if(!drag)sync()});
  new MutationObserver(()=>sync()).observe(document.documentElement,{attributes:true,attributeFilter:['data-units']});

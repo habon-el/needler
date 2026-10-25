@@ -134,6 +134,30 @@ def layer_passes(passes):
     return [(colour,choice,mask) for colour,choice,mask,_ in out]
 
 
+def hand_passes(passes,sequence):
+    """Sewing order by hand (sew_sequence.py): one pass per part, in the chosen order. Specks
+    too small to be a part stay right after the last part of their thread."""
+    from .region_stitches import region_id
+    from .sew_sequence import arrange
+    parts=[];here=np.zeros(2)
+    for colour,choice,mask in passes:
+        contours,hierarchy=cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
+        if hierarchy is None:continue
+        rest=mask.copy()
+        outer=[i for i,c in enumerate(contours) if hierarchy[0,i,3]==-1 and cv2.contourArea(c)>=4]
+        for i in closest_join(outer,contours,here):
+            here=contours[i][:,0,:].mean(axis=0)
+            rings=[contours[i]];child=hierarchy[0,i,2]
+            while child!=-1:
+                rings.append(contours[child]);child=hierarchy[0,child,0]
+            part=np.zeros_like(mask);cv2.drawContours(part,rings[:1],-1,1,-1)
+            if len(rings)>1:cv2.drawContours(part,rings[1:],-1,0,-1);cv2.drawContours(part,rings[1:],-1,1,1)
+            part&=mask;rest&=~part
+            parts.append((region_id(rings),(colour,choice,part)))
+        if rest.any():parts.append((None,(colour,choice,rest)))
+    return [parts[i][1] for i in arrange([key for key,_ in parts],sequence)]
+
+
 def add_satin_area(document,rings,thread,index,spacing,pull,knockout):
     """An area sewn as satin columns that follow its centre line (stitch_engine._satin_area)."""
     d=' '.join('M '+' L '.join(f'{x},{y}' for x,y in ring[:,0,:])+' Z' for ring in rings)
@@ -394,6 +418,11 @@ def digitize(source, directory, height_mm=100, colours=None):
         # Best look: back to front. A part lying inside another part (a cheek in a head) is sewn
         # after it, even when its thread was used before; the colour order decides otherwise.
         passes=layer_passes(passes)
+    from .sew_sequence import choices as sew_choices
+    sequence=sew_choices(settings)
+    if sequence and not piece_layout:
+        passes=hand_passes(passes,sequence)
+    sewn_parts=[]
     # Outlines per part (part_outlines.py): collected with their parts, sewn after all fills.
     from .part_outlines import choices as outline_choices, add as add_part_outline
     part_outlines=outline_choices(settings);pending_outlines=[]
@@ -412,7 +441,7 @@ def digitize(source, directory, height_mm=100, colours=None):
             rings=[c];child=hierarchy[0,i,2]
             while child!=-1:
                 rings.append(contours[child]);child=hierarchy[0,child,0]
-            identity=region_id(rings)
+            identity=region_id(rings);sewn_parts.append(identity)
             if identity in part_outlines:pending_outlines.append(([r[:,0,:] for r in rings],part_outlines[identity]))
             style=region_styles.get(identity)
             if filled_holes.get(identity)=='fill' and len(rings)>1:
@@ -655,6 +684,8 @@ def digitize(source, directory, height_mm=100, colours=None):
     if puff_threads:
         payload['puff']={'threads':puff_threads,'foam_mm':foam_mm}
     if cut_pieces:payload['applique']={'pieces':len(cut_pieces),'cut_file':'applique-cut.svg'}
+    # Parts in the order they are sewn, for moving one earlier or later (sew_sequence.py).
+    payload['sew_parts']=[e.get('id')[6:] for e in document.iter('path') if (e.get('id') or '').startswith('piece-')] if piece_layout else sewn_parts
     (directory/'playback.json').write_text(json.dumps(payload))
     from .release_gate import record_context
     record_context(directory,alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,origin)

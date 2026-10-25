@@ -102,7 +102,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 ## 7. Sequencing
 | Tool | Needler | Status | P |
 |---|---|---|---|
-| Sequence by colour / by selection / move up-down | Sew earlier / later | ◐ | P2 |
+| Sequence by colour / by selection / move up-down | Pieces panel "Sewing order": Sew earlier / Sew later, Sew in the order I picked (Ctrl-click order), Automatic order; both stitch paths follow it | ✅ 2026-10-25 | |
 | Apply closest join | `engine.closest_join` | ✅ 2026-10-24 | |
 | Optimize colour changes | one block per colour, also for edited pieces, copies and cut parts | ✅ 2026-10-24 | |
 | Branching, auto-sequence outlines | `_branch`, line-art Euler routes | ◐ | P2 |

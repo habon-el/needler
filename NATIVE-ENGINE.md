@@ -299,3 +299,17 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Engine and piece path both collect outlines with their parts and sew them after all fills; the
   piece path widens its canvas by the outline's reach. Locked parts keep their outline.
 
+## Sewing order by hand (added 2026-10-25)
+
+- `sew_sequence: [part id, ...]` (at most 2000, no repeats), set with the piece command `sew_order`
+  (a full list with every part in its new place; None goes back to automatic); checked by
+  `sew_sequence.choices`. The order moves no piece, so the lock guard ignores it.
+- `sew_sequence.arrange`: named parts follow the list; a part not named (new, redrawn, or a speck
+  too small to be a part) keeps its automatic place right after the part sewn before it.
+- Colour generator: after the automatic order (colours or Best look), `engine.hand_passes` cuts
+  each thread into one pass per part (its outer ring minus its holes; same ids as the Pieces panel)
+  and sews them in the chosen order. Fills still reach under the parts sewn after them.
+- Piece path: `piece_generation.append` reorders the pieces the same way.
+- The stitch result carries `sew_parts` (part ids in sewing order); the Pieces panel numbers its
+  rows by it and builds the new list from it: Sew earlier / later swap the selection one step,
+  Sew in the order I picked puts the picked parts together, in click order, at the first one's place.

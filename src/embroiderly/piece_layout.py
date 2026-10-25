@@ -207,6 +207,21 @@ def change(options, report, command, image=None):
     if len(selected) != len(ids):
         raise ValueError('A selected piece no longer exists.')
     field, value = command.get('field'), command.get('value')
+    if field == 'sew_order':
+        # Sewing order by hand: every part, in the order to sew it; None goes back to automatic.
+        # It moves no piece, so locked pieces can be reordered too.
+        from .sew_sequence import choices
+        if value is None:
+            updated = deepcopy(options)
+            updated.pop('sew_sequence', None)
+            return updated
+        known = {p['id'] for p in report['pieces']}
+        if not isinstance(value, list) or not set(ids) <= set(value) or any(key not in known for key in value if isinstance(key, str)):
+            raise ValueError('The parts changed. Generate the stitches again, then change the sewing order.')
+        updated = deepcopy(options)
+        updated['sew_sequence'] = value
+        choices(updated)
+        return updated
     if any(p['locked'] for p in selected) and not (field == 'locked' and value is False):
         raise ValueError('This piece is locked. Unlock it before changing it.')
     updated = deepcopy(options); stored = updated.setdefault('piece_edits', {})
@@ -537,7 +552,8 @@ def guard(previous, proposed):
     locked = {key: item for key, item in edits(previous).items() if item.get('locked')}
     if not locked:
         return
-    ignore = {'piece_edits', 'region_styles', 'interactions', 'area_outlines'}
+    # The sewing order moves no piece, so it can change while a piece is locked.
+    ignore = {'piece_edits', 'region_styles', 'interactions', 'area_outlines', 'sew_sequence'}
     if {k:v for k,v in previous.items() if k not in ignore} != {k:v for k,v in proposed.items() if k not in ignore}:
         raise ValueError('A piece is locked. Unlock it before changing artwork, colours or design-wide settings.')
     new = edits(proposed)

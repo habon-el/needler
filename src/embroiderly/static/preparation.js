@@ -325,7 +325,7 @@ async function requestPreview(action,pieceCommand=null,restoreOptions=null){
   await new Promise((resolve,reject)=>{isolated.onload=resolve;isolated.onerror=reject;isolated.src=result.isolated});
   if(version!==revision){queued=true;return}
   renderPalette(result.palette);metrics(result.report);
-  window.dispatchEvent(new CustomEvent('studio:preview',{detail:{options:JSON.parse(JSON.stringify(options)),report:result.report,stitchCount:result.playback?.stitch_count??playback?.stitch_count??0,portraitAudit:result.playback?.portrait_audit,applique:result.playback?.applique,hasPlayback:!!result.playback||!!playback}}));
+  window.dispatchEvent(new CustomEvent('studio:preview',{detail:{options:JSON.parse(JSON.stringify(options)),report:result.report,stitchCount:result.playback?.stitch_count??playback?.stitch_count??0,portraitAudit:result.playback?.portrait_audit,applique:result.playback?.applique,sewParts:result.playback?.sew_parts??playback?.sew_parts??[],hasPlayback:!!result.playback||!!playback}}));
   if(reviewRequired){
    setView('prepared');draw();status(result.error);
    window.dispatchEvent(new Event('studio:cleanup-needed'));
@@ -632,7 +632,7 @@ window.embroideryStudio={
  previewInfo:()=>({status:stitchLayer.status,frameMs:stitchLayer.surface?.lastFrameMs,builds:stitchLayer.surface?.builds}),
  focusReview:bounds=>{selectedBounds=bounds.slice();setView('review');const c=canvases[0],base=Math.min(c.width/width,c.height/height)*.92;zoom=Math.max(.5,Math.min(12,.75*Math.min(c.width/(Math.max(1,bounds[2]-bounds[0])*base),c.height/(Math.max(1,bounds[3]-bounds[1])*base))));panX=(width/2-(bounds[0]+bounds[2])/2)*base*zoom/c.width;panY=(height/2-(bounds[1]+bounds[3])/2)*base*zoom/c.height;if(playback)cursor=playback.steps.length;draw()},
  resultInfo,
- hasPlayback:()=>!!playback,
+ hasPlayback:()=>!!playback,sewParts:()=>playback?.sew_parts||[],
  // Read-only view of the exported needle path for the 3D viewer.
  playbackView:()=>playback?{plan:playback,cursor,colourMap:colourPreviewMap,fabric:$('fabric').value,threadWidth:Number($('threadVisualWidth').value),lightAngle:Number($('lightAngle').value)}:null,
  seek,
@@ -640,7 +640,7 @@ window.embroideryStudio={
  apply:patch=>{if(nativeMode)throw Error('Use the Text controls to edit embroidery letters. Picture edits cannot change this design.');if(busy)throw new Error('Wait for the current preparation to finish.');remember();Object.assign(options,patch);options.interactions++;syncControls();schedule();setView('prepared')},
  point:e=>point(e,canvases[0]),
  piecePoint:(e,canvas)=>{const r=canvas.getBoundingClientRect(),t=transform(canvas);return [(e.clientX-r.left-t.x)/t.s,(e.clientY-r.top-t.y)/t.s]},
- pieceEdit:async command=>{if(nativeMode)throw Error('Edit the embroidery font with Text; picture-piece transforms do not apply.');if(busy)throw Error('Wait for the current operation to finish.');clearTimeout(timer);const generate=['position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible','outline'].includes(command.field);if(generate&&!$('confirmed').checked)throw Error('Approve the selected subject before editing stitches.');return requestPreview(generate?'digitize':'save',command)},
+ pieceEdit:async command=>{if(nativeMode)throw Error('Edit the embroidery font with Text; picture-piece transforms do not apply.');if(busy)throw Error('Wait for the current operation to finish.');clearTimeout(timer);const generate=['position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible','outline','sew_order'].includes(command.field);if(generate&&!$('confirmed').checked)throw Error('Approve the selected subject before editing stitches.');return requestPreview(generate?'digitize':'save',command)},
  pieceReport:()=>latest?.report?.piece_layout,
  pieceView:()=>setView('prepared'),
  selectOriginal:()=>setView('original'),
