@@ -403,3 +403,23 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   the stitches cross their counters) go to fill right above `max_scale` as before.
 - Why 12 mm: wider split rows sew no better than fill and pull the letter in more, and pull
   compensation stays in mm (the release gate's envelope is the column plus its mm pull).
+
+## Digitize for me: photos of one object, detail wishes (added 2026-10-25)
+
+- `auto_digitize.classify`: with a plain background, the subject is judged alone (pixels more than
+  40 away from the border colour). A colourful subject that is not flat colour (subject flatness
+  under 0.9, over 20 % strongly coloured) is `object_photo`: the colour path, with
+  2 x its colour families + 2 threads (at most 8). `hue_families` counts 30 degree hue bins
+  holding 5 % of the strongly coloured pixels, neighbouring bins merged.
+- Such a photo is cut out by shape (selection `grabcut` on the whole picture, edge -2), not by
+  removing the background colour: a photo's edge blends into the background, and removing that
+  colour left specks along the edge and in the highlights that blocked the stitches.
+- Retries never go below one thread per colour family plus one (red and green are never merged
+  into a brown). `parse_request` understands detail wishes ("all the details", "detailed",
+  "keep it simple"): detail starts with one more colour and a 0.5 mm² floor, cuts alone are
+  accepted, and retries first smooth edges and merge specks up to 2.5 mm², then drop one colour
+  at a time down to that limit (two extra attempts). Photos and detail wishes under 150 mm get a
+  size tip.
+- `satin_font._dot`: a cut grazing a corner meets the shape at a single point; that no longer
+  crashes satin areas.
+- Known gap: the cut-out keeps a ring of background about 1 mm wide, sewn as a near-white thread.

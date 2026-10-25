@@ -497,8 +497,8 @@ def _dot(component, k):
         hit = component.intersection(cut)
         if hit.is_empty:
             continue
-        ends = [((x-center[0])*nrm[0]+(y-center[1])*nrm[1]) for x, y in hit.coords] if isinstance(hit, LineString) else \
-            [((x-center[0])*nrm[0]+(y-center[1])*nrm[1]) for g in hit.geoms for x, y in g.coords]
+        # A cut grazing a corner meets the shape at a single point (no geoms): use its coordinates.
+        ends = [((x-center[0])*nrm[0]+(y-center[1])*nrm[1]) for g in getattr(hit, 'geoms', [hit]) for x, y in g.coords]
         a.append((center[0]+nrm[0]*max(ends), center[1]+nrm[1]*max(ends)))
         b.append((center[0]+nrm[0]*min(ends), center[1]+nrm[1]*min(ends)))
     if len(a) < 2:

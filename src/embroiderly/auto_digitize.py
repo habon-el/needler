@@ -70,7 +70,35 @@ def classify(image, max_side=384):
     facts.update(colours=colours, flat=round(flat, 3), background=background)
     count = max(2, min(8, colours - (1 if background else 0)))
     facts['thread_colours'] = count
+    if background:
+        # A plain background makes any picture look flat. Judge the subject alone: a colourful
+        # photo of one object (a rose on white) is sewn in colour, with enough threads for its
+        # shading and never fewer than its colour families (red and green stay apart).
+        rgb_all = np.asarray(rgba.convert('RGB'), np.float32)
+        edge = np.concatenate([rgb_all[0], rgb_all[-1], rgb_all[:, 0], rgb_all[:, -1]])
+        subject = alpha & (np.abs(rgb_all-np.median(edge, axis=0)).max(2) > 40)
+        if subject.mean() > .02:
+            inside = subject[alpha]
+            facts['hues'] = hue_families(rgb_all[subject])
+            subject_flat = float((error[inside] < 18).mean())
+            facts['subject_flat'] = round(subject_flat, 3)
+            if subject_flat < .9 and float(((sat > .35) & (lum > 50))[inside].mean()) > .2:
+                facts['object_photo'] = True
+                facts['thread_colours'] = max(count, min(8, 2*max(1, facts['hues'])+2))
+                return 'logo', facts
     return ('logo' if flat >= .75 else 'photo'), facts
+
+
+def hue_families(rgb):
+    """How many clearly different colour families (red, green, blue...) the pixels have:
+    30 degree hue bins holding at least 5 % of the strongly coloured pixels, neighbours merged."""
+    hsv = np.asarray(Image.fromarray(rgb.reshape(1, -1, 3).astype(np.uint8)).convert('HSV'), np.float32)[0]
+    strong = hsv[(hsv[:, 1] > 90) & (hsv[:, 2] > 50)]
+    if len(strong) < 20:
+        return 0
+    bins = np.bincount((strong[:, 0]*12/256).astype(int) % 12, minlength=12)/len(strong) >= .05
+    # Neighbouring bins are one family (a red that leans orange): count the runs around the wheel.
+    return int(sum(1 for i in range(12) if bins[i] and not bins[i-1])) or int(bins.all())
 
 
 def parse_request(text):
@@ -99,6 +127,11 @@ def parse_request(text):
         if re.search(pattern, text):
             wish['fabric'] = fabric
             break
+    # Detail wishes: keep small parts and more colours, and never trade them away on a retry.
+    if re.search(r'(all|every|full|fine|lots of|more|keep(ing)?( the| all)?)\s+(the\s+)?details?|\bdetailed\b|\brealistic\b', text):
+        wish['detail'] = 'more'
+    elif re.search(r'\bsimple\b|\bsimpler\b|\bminimal\b|\bfewer details\b|\bless detail', text):
+        wish['detail'] = 'less'
     if re.search(r'\boutlines?\b|\boutlined\b', text):
         wish['outlines'] = True
     if re.search(r'keep\b.{0,25}back ?ground|back ?ground.{0,20}\b(stitch|sew|fill|keep)', text):
@@ -138,6 +171,17 @@ def plan(kind, facts, wish, image_size, saved):
     if wish.get('outlines') and kind == 'logo':
         # Add outlines: one dark running line around every colour, sewn last.
         options.update(outlines=True, outline_colour=wish.get('outline_colour', 'auto'))
+    if wish.get('detail') == 'more' and kind in ('logo', 'photo'):
+        options['floor_mm2'] = DETAIL_FLOOR_MM2[4]
+        if not wish.get('colours'):
+            if kind == 'photo':
+                options.pop('photo_style', None)
+                options['count'] = 6
+            options['count'] = min(8, int(options.get('count', 4))+1)
+    elif wish.get('detail') == 'less' and kind in ('logo', 'photo'):
+        options['floor_mm2'] = DETAIL_FLOOR_MM2[2]
+        if not wish.get('colours'):
+            options['count'] = max(2, int(options.get('count', 4))-1)
     if wish.get('floor_mm2') and kind in ('logo', 'photo'):
         # The Detail slider: the smallest colour area kept (a details slider).
         options['floor_mm2'] = wish['floor_mm2']
@@ -172,8 +216,10 @@ def score(result, wish=None):
     return (1e6 if result.get('gate') else 0) + 1000 * result['trims'] / max(1, result['stitches']) + 500 * off
 
 
-def adjust(options, kind, issues, attempt):
-    """Next settings, or None when no rule applies. Returns (options, kind, why)."""
+def adjust(options, kind, issues, attempt, least=2, detail=None):
+    """Next settings, or None when no rule applies. Returns (options, kind, why).
+    least: fewest thread colours allowed (the picture's colour families stay apart).
+    detail='more': the person asked for detail, so small parts and colours are not traded away."""
     text = ' '.join(i['text'] for i in issues)
     kinds = {i['kind'] for i in issues}
     nxt = dict(options)
@@ -188,11 +234,27 @@ def adjust(options, kind, issues, attempt):
             nxt['line_retrace_mm'] = retrace * 2
             return nxt, kind, f"Letting the needle travel back over sewn lines for up to {retrace * 2:g} mm instead of cutting the thread."
         floor = float(options.get('floor_mm2', 1))
+        if detail == 'more':
+            if kinds <= {'cuts'}:
+                return None   # cuts are the price of the detail asked for: keep it
+            # Smoother edges and merged specks first; then one colour fewer at a time, never
+            # merging different colour families (red and green stay apart).
+            if floor < 2.5:
+                nxt['floor_mm2'] = round(min(2.5, max(1.0, floor * 2.5)), 2)
+                nxt['simplify'] = min(100, int(options.get('simplify', 0)) + 30)
+                nxt['smooth'] = min(3, int(options.get('smooth', 1)) + 1)
+                return nxt, kind, (f"Smoothing edges and merging only specks smaller than {nxt['floor_mm2']:g} mm² "
+                                   "to make it sewable; your colours stay.")
+            if kind == 'ink' or int(options.get('count', 4)) <= max(2, least):
+                return None
+            nxt['count'] = int(options.get('count', 4)) - 1
+            return nxt, kind, (f"Using {nxt['count']} colours: thin bands of shading were too small to sew. "
+                               "Different colours (like red and green) stay separate.")
         nxt['floor_mm2'] = round(min(25, max(2.5, floor * 2.5)), 1)
         nxt['simplify'] = min(100, int(options.get('simplify', 0)) + 30)
         nxt['smooth'] = min(3, int(options.get('smooth', 1)) + 1)
         why = f"Merging details smaller than {nxt['floor_mm2']} mm² and smoothing edges"
-        if 'cuts' in kinds and kind != 'ink' and int(options.get('count', 4)) > 2:
+        if 'cuts' in kinds and kind != 'ink' and int(options.get('count', 4)) > max(2, least):
             nxt['count'] = int(options.get('count', 4)) - 1
             why += f", and using {nxt['count']} colours"
         return nxt, kind, why + ' to make it easier to sew.'
@@ -274,7 +336,9 @@ class AutoDigitizer:
                 options = {**options, 'cleanup_decisions': decisions}
             else:
                 # Not a cleanup item (e.g. left by smoothing): paint it with the colour around it.
-                paint = self._paint_specks(path, blockers)
+                # Photos on a plain background leave many one-pixel specks along the edge;
+                # stay under preparation's 500 paint strokes.
+                paint = self._paint_specks(path, blockers)[:max(0, 480-len(options.get('edits', [])))]
                 if not paint:
                     break
                 options = {**options, 'edits': [*options.get('edits', []), *paint]}
@@ -299,7 +363,7 @@ class AutoDigitizer:
             result['gate'] = str(error)
         return result, options
 
-    def _paint_specks(self, path, boxes, limit=40):
+    def _paint_specks(self, path, boxes, limit=200):
         """Paint edits giving each tiny unsewable detail the commonest colour just around it."""
         # Blocker boxes are in the working picture (at most 768 px), like every edit.
         from .preparation import load_image
@@ -325,8 +389,14 @@ class AutoDigitizer:
             if wish.get('kind'):
                 self._log(job, f"You asked for {KINDS[wish['kind']].lower()}.")
                 kind = wish['kind']
+            elif facts.get('object_photo'):
+                self._log(job, 'Looked at the picture: a photo of one object on a plain background; it is sewn in colour.')
             else:
                 self._log(job, f'Looked at the picture: {KINDS[kind].lower()}.')
+            if wish.get('detail') == 'more':
+                self._log(job, 'You asked for detail: small parts and more colours are kept.')
+            # Different colour families (red and green) are never merged into one thread on a retry.
+            job['least'] = facts.get('hues', 0)+1 if facts.get('hues', 0) >= 2 else 2
             if wish.get('keep_background') and kind in ('line_art', 'ink'):
                 # Line modes leave the background as bare fabric; keeping it needs colour mode.
                 kind = 'logo'
@@ -340,7 +410,15 @@ class AutoDigitizer:
                 from .colour_knockout import proposal_patch
                 with Image.open(path) as image:
                     patch = proposal_patch(image, options)
-                if patch:
+                if facts.get('object_photo'):
+                    # A photo's edge blends into the background, so removing that colour leaves
+                    # specks along it and in the highlights. Cut the object out by shape instead
+                    # (the Subject step's cut-out).
+                    from .preparation import load_image
+                    w, h = load_image(path).size
+                    options.update(selection='grabcut', rect=[2, 2, w-2, h-2], hints=[], edge=-2)
+                    self._log(job, 'Cutting the object out of its plain background; say “keep the background” to stitch it.')
+                elif patch:
                     options.update(patch)
                     self._log(job, f"Leaving out the plain background ({patch['colour_knockouts'][-1]['colour']}); "
                                    "say “keep the background” to stitch it.")
@@ -378,8 +456,14 @@ class AutoDigitizer:
                               if options.get('photo_style') == 'one_colour' else
                               f"{options.get('count')} thread colours; photos are hard to stitch, so expect to review it")}[kind]
         self._log(job, f"Chose {describe}; {options['height_mm']:g} mm high.")
+        if (wish.get('detail') == 'more' or kind == 'photo') and options['height_mm'] < 150 \
+                and not wish.get('height_mm') and not wish.get('width_mm'):
+            # Thread is about 0.4 mm wide: folds and veins a few millimetres across need room.
+            self._log(job, f"Tip: at {options['height_mm']:g} mm, small details become a few millimetres or less and merge. "
+                           "For more detail, ask for a bigger size, for example “15 cm tall”.")
         attempts, fits = [], 0
-        for number in range(1, MAX_ATTEMPTS + 1):
+        attempts_allowed = MAX_ATTEMPTS + (2 if wish.get('detail') == 'more' else 0)
+        for number in range(1, attempts_allowed + 1):
             self._log(job, f'Attempt {number}: making stitches…')
             result, options = self._attempt(path, options, .8 if number == 1 else 1.5)
             result.update(options=options, kind=kind, number=number)
@@ -397,8 +481,8 @@ class AutoDigitizer:
                                f"{result['width_mm']:g} × {result['height_mm']:g} mm sewn. All checks passed.")
                 break
             self._log(job, f"Attempt {number}: " + ' '.join(i['text'] for i in issues))
-            step = adjust(options, kind, issues, number)
-            if not step or number == MAX_ATTEMPTS:
+            step = adjust(options, kind, issues, number, least=job.get('least', 2), detail=wish.get('detail'))
+            if not step or number == attempts_allowed:
                 self._log(job, 'No further automatic fix applies; keeping the best attempt.')
                 break
             options, kind, why = step
