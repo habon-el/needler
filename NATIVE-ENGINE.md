@@ -606,3 +606,28 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Tests: patterns repeat inside the area with identical repeats and the hole empty, the saved
   diamond output is unchanged, backstitch and stemstitch turn back on themselves and stay inside,
   and every new choice through the release gate.
+
+## Guides, grid and snap (added 2026-10-26)
+
+- Preparation option `canvas_guides`: a list of up to 20 guides (`canvas_guides.MAX_GUIDES`),
+  each `{axis, mm}`: axis `x` is a line down at X mm, `y` a line across at Y mm, measured from the
+  hoop centre like piece positions (positive Y is down), within 500 mm, rounded to 0.1 mm. Anything
+  else is refused (`canvas_guides.checked`), on the guides route and on `/artwork/<name>`.
+- Guides are drawing aids and never reach the stitches. `preparation_key` and the saved-plan match
+  (`saved_plans.equivalent`) leave them out, so a design with and without guides has the same
+  prepared artwork name and the same machine files, and the stitch plan already made is kept. The
+  lock guard ignores them and the design-review snapshot leaves them out.
+- Saving: `POST /api/guides/<name>` `{guides}` writes only `canvas_guides` into the saved options
+  (an empty list removes it) and returns the guides and the new piece revision. The studio calls it
+  through `embroideryStudio.keepGuides`, which updates the options in the page without
+  `apply`/`schedule`, so there is no new preview and the stitches stay current. While the studio is
+  busy the save waits for the next preview.
+- `static/canvas-guides.js`: "Guides and snap" in the Pieces panel: + Across / + Down, a position
+  box per guide (mm or inches with the units setting), ✕ to remove. On the canvas a guide is dragged
+  within 5 screen pixels of it; a new one is dragged in from the top or left edge (8 pixels); one
+  dropped off the canvas is removed. Guides are thin magenta lines over the pieces.
+- Snap (per browser, `needler.snap`) and Grid Off / 1 / 5 / 10 mm (`needler.grid`): with Snap on,
+  drawn corners and points (not freehand) and drag-to-move lock within 6 screen pixels onto a guide,
+  the hoop centre lines or the grid line nearest; a moved piece snaps by its left, centre or right
+  and top, centre or bottom. `window.snapPoint` and `window.snapMove` are the hooks piece-panel.js
+  uses. The grid is drawn faintly when its lines are at least 6 screen pixels apart.

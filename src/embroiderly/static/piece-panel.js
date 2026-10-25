@@ -224,6 +224,8 @@
   return Array.from({length:48},(_,i)=>[(x0+x1)/2+(x1-x0)/2*Math.cos(i*Math.PI/24),(y0+y1)/2+(y1-y0)/2*Math.sin(i*Math.PI/24)]);
  };
  const isLine=()=>drawing&&(drawing.shape==='line'||drawing.shape==='freehand_line');
+ // Snap (canvas-guides.js): corners and points go to guides, the hoop centre lines and the grid; freehand and Click to fill stay free.
+ const snapped=at=>window.snapPoint&&!drawing.shape.startsWith('freehand')&&drawing.shape!=='fill'?window.snapPoint(at):at;
  const showDrawing=hover=>{const ring=outline(drawing.points,hover);window.stitchRegionSelection=ring.length>1?{rings:[isLine()?[...ring,...ring.slice(0,-1).reverse()]:[...ring,ring[0]]]}:null;studio.redraw()};
  const finishDrawing=()=>{
   const {shape,points}=drawing,colour=$('pieceDrawColour').value;drawing=null;window.stitchRegionSelection=null;
@@ -233,7 +235,7 @@
  };
  canvas.addEventListener('pointerdown',e=>{
   if(!drawing||!active||e.button!==0||pending||studio.isBusy())return;
-  e.stopImmediatePropagation();e.preventDefault();const at=studio.piecePoint(e,canvas);
+  e.stopImmediatePropagation();e.preventDefault();const at=snapped(studio.piecePoint(e,canvas));
   if(drawing.shape==='fill'){
    drawing=null;sync();commit('click_fill',{point:toMm(at),colour:$('pieceDrawColour').value,holes:$('pieceFillHoles').checked});return;
   }
@@ -246,7 +248,7 @@
   drawing.points=[at];drawing.down=true;canvas.setPointerCapture(e.pointerId);
  },true);
  canvas.addEventListener('pointermove',e=>{
-  if(!drawing)return;const at=studio.piecePoint(e,canvas);
+  if(!drawing)return;const at=snapped(studio.piecePoint(e,canvas));
   if(drawing.shape==='polygon'||drawing.shape==='line'){if(drawing.points.length)showDrawing(at);return}
   if(!drawing.down)return;e.stopImmediatePropagation();
   const last=drawing.points[drawing.points.length-1];
@@ -273,7 +275,8 @@
   drag={at,box:aggregate(),items:targets(),pointer:e.pointerId};canvas.setPointerCapture(e.pointerId);e.preventDefault();
  },true);
  canvas.addEventListener('pointermove',e=>{
-  if(!drag)return;e.stopImmediatePropagation();const at=studio.piecePoint(e,canvas),dx=(at[0]-drag.at[0])*report.scale,dy=(at[1]-drag.at[1])*report.scale;
+  if(!drag)return;e.stopImmediatePropagation();const at=studio.piecePoint(e,canvas);let dx=(at[0]-drag.at[0])*report.scale,dy=(at[1]-drag.at[1])*report.scale;
+  if(!rotate&&window.snapMove)[dx,dy]=window.snapMove(drag.box,dx,dy);
   if(rotate){const cx=(drag.box.x_mm+report.origin_mm[0])/report.scale,cy=(drag.box.y_mm+report.origin_mm[1])/report.scale;drag.angle=(Math.atan2(at[1]-cy,at[0]-cx)-Math.atan2(drag.at[1]-cy,drag.at[0]-cx))*180/Math.PI;$('pieceRotation').value=format((drag.box.rotation||0)+drag.angle,true)}
   else{$('pieceX').value=format(drag.box.x_mm+dx);$('pieceY').value=format(drag.box.y_mm+dy);drag.position=[drag.box.x_mm+dx,drag.box.y_mm+dy];window.stitchRegionSelection={rings:drag.items.flatMap(p=>p.rings.map(r=>r.map(([x,y])=>[x+dx/report.scale,y+dy/report.scale])))}}studio.redraw();
  },true);

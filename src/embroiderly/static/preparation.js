@@ -164,6 +164,7 @@ function draw(){
     c.strokeStyle='#126957';c.lineWidth=2/t.s;c.beginPath();c.moveTo(split,0);c.lineTo(split,height);c.stroke();
   }
   if(i===1&&currentView!=='proposal')window.PiecePanel?.paint(c,t.s);
+  if(i===1&&currentView!=='proposal')window.CanvasGuides?.paint(c,t.s);
   if(i===1&&currentView!=='proposal'&&window.stitchRegionSelection){
     c.save();c.beginPath();
     for(const ring of window.stitchRegionSelection.rings){ring.forEach(([x,y],j)=>j?c.lineTo(x,y):c.moveTo(x,y));c.closePath()}
@@ -642,6 +643,16 @@ window.embroideryStudio={
  piecePoint:(e,canvas)=>{const r=canvas.getBoundingClientRect(),t=transform(canvas);return [(e.clientX-r.left-t.x)/t.s,(e.clientY-r.top-t.y)/t.s]},
  pieceEdit:async command=>{if(nativeMode)throw Error('Edit the embroidery font with Text; picture-piece transforms do not apply.');if(busy)throw Error('Wait for the current operation to finish.');clearTimeout(timer);const generate=['position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible','outline','sew_order','align','distribute','match_size','mirror_copy','circle','array','weld','smooth'].includes(command.field);if(generate&&!$('confirmed').checked)throw Error('Approve the selected subject before editing stitches.');return requestPreview(generate?'digitize':'save',command)},
  pieceReport:()=>latest?.report?.piece_layout,
+ // Canvas guides (canvas-guides.js) are drawing aids: saved on their own route, with no new preview,
+ // so the current stitch plan and machine files stay. False while busy: the caller retries afterwards.
+ keepGuides:async guides=>{
+  if(nativeMode||busy)return false;
+  const response=await fetch('/api/guides/'+encodeURIComponent(config.name),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({guides})});
+  const result=await response.json();if(!response.ok)throw Error(result.error||'Guides not saved. Try again.');
+  const accepted=JSON.parse(acceptedOptions);
+  for(const kept of [options,accepted]){if(result.guides.length)kept.canvas_guides=result.guides;else delete kept.canvas_guides}
+  acceptedOptions=JSON.stringify(accepted);pieceRevision=result.piece_revision;return true;
+ },
  pieceView:()=>setView('prepared'),
  selectOriginal:()=>setView('original'),
  isBusy:()=>busy

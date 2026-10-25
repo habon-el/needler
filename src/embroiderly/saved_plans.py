@@ -14,6 +14,7 @@ def equivalent(a, b):
     def normalized(value):
         result={**DEFAULTS, **value}
         result.pop('interactions', None)  # UI history count is not stitch geometry.
+        result.pop('canvas_guides', None)  # Nor are the canvas guides.
         return result
     return normalized(a)==normalized(b)
 

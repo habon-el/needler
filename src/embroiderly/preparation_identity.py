@@ -23,7 +23,9 @@ def revision():
 
 
 def preparation_key(source_bytes, options):
+    from .canvas_guides import without_guides
     digest = hashlib.sha256(source_bytes)
-    digest.update(json.dumps(options, sort_keys=True).encode())
+    # Guides on the canvas are drawing aids: they never make a different preparation or stitch plan.
+    digest.update(json.dumps(without_guides(options), sort_keys=True).encode())
     digest.update(revision().encode())
     return digest.hexdigest()[:24]

@@ -16,6 +16,7 @@ import numpy as np
 from PIL import Image
 from skimage.color import rgb2lab
 
+from .canvas_guides import without_guides
 from .detail_loss import groups, location
 from .preparation import load_image, prepare, selection, edit_brush, data_url
 from .provider_budget import BudgetError, BudgetedProvider, read_policy
@@ -95,7 +96,7 @@ def snapshot(path, options):
     reference.putalpha(Image.fromarray(mask.astype(np.uint8)*255))
     result = comparison(reference, prepared, report['height_mm'], report['detail_loss'])
     identity = digest(VERSION.encode() + path.read_bytes() + reference.tobytes() + prepared.tobytes()
-                      + json.dumps(options, sort_keys=True, allow_nan=False).encode())
+                      + json.dumps(without_guides(options), sort_keys=True, allow_nan=False).encode())
     result.update(snapshot=identity, reference=data_url(reference), artwork=data_url(prepared),
                   note='Chosen palette, brightness and cleanup changes may be intentional. Review them; nothing is changed by this check.')
     return reference, prepared, result

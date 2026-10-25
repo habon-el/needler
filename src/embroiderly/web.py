@@ -86,6 +86,8 @@ def create_app(workspace: Path | None = None) -> Flask:
     register_thread_variants(app, root)
     from .colourways import register_colourways
     register_colourways(app, root)
+    from .canvas_guides import register_guides
+    register_guides(app, root)
     from .thread_surface_routes import register_thread_surface
     register_thread_surface(app, root)
     app.config["MAX_CONTENT_LENGTH"] = 12 * 1024 * 1024

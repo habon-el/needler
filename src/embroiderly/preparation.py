@@ -527,6 +527,8 @@ def register_preparation(app,root):
             from .piece_layout import guard as guard_pieces, change as change_pieces
             previous_options=json.loads(saved.read_text()) if saved.exists() else {}
             guard_pieces(previous_options,options)
+            from .canvas_guides import check as check_guides
+            check_guides(options)
             piece_command=body.get('piece_command')
             if piece_command or body.get('piece_undo'):
                 expected=hashlib.sha256(saved.read_bytes()).hexdigest() if saved.exists() else None

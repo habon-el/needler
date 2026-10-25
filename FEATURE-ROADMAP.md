@@ -20,7 +20,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Product visualizer, product/fabric colour | Fabric colour, PNG mockup | ◐ | P3 |
 | Colourways (create, rename, switch) | Colours panel "Colourway": Save as new, Rename, Delete, and a menu to switch; each colourway keeps the thread colours (and border thread) per design, and the stitches and machine files follow the one in use | ✅ 2026-10-25 | |
 | Thread charts (166), match to chart, colour wheel | `thread_matching.py` (pyembroidery charts, CIEDE2000) | ◐ fewer charts | P3 |
-| Grid, rulers, guides, snap, measure | Ruler, measure | ◐ no guides or snap | P3 |
+| Grid, rulers, guides, snap, measure | Ruler and measure; Pieces panel "Guides and snap": + Across / + Down guides (or drag one in from the canvas top or left edge), drag on the canvas or type the position in mm from the hoop centre, ✕ or drop off the canvas to remove, up to 20, saved with the design; Snap: moving and drawing pieces lock onto guides, the hoop centre lines and the grid; faint grid 1 / 5 / 10 mm. Guides never change stitches | ✅ 2026-10-26 | |
 
 ## 2. Digitizing (manual)
 | Tool | Needler | Status | P |
