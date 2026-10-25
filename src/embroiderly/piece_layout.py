@@ -133,6 +133,8 @@ def inventory(region_report, options, width, height, scale):
     hoop = options.get('piece_hoop_mm', [100, 100])
     if not isinstance(hoop, list) or len(hoop) != 2 or any(type(v) not in (float, int) or not math.isfinite(v) or not 10 <= v <= 1000 for v in hoop):
         raise ValueError('Hoop width and height must be 10–1000 mm.')
+    if 'hoop_id' in options and (not isinstance(options['hoop_id'], str) or not re.fullmatch('[a-z0-9-]{1,60}', options['hoop_id'])):
+        raise ValueError('Choose a listed hoop.')
     # Existing user-owned minimum-region setting, not a new silent seed.
     floor = float(options.get('floor_mm2', 1))
     for index, area in enumerate(areas):
@@ -552,8 +554,8 @@ def guard(previous, proposed):
     locked = {key: item for key, item in edits(previous).items() if item.get('locked')}
     if not locked:
         return
-    # The sewing order moves no piece, so it can change while a piece is locked.
-    ignore = {'piece_edits', 'region_styles', 'interactions', 'area_outlines', 'sew_sequence'}
+    # The sewing order and the hoop move no piece, so they can change while a piece is locked.
+    ignore = {'piece_edits', 'region_styles', 'interactions', 'area_outlines', 'sew_sequence', 'piece_hoop_mm', 'hoop_id'}
     if {k:v for k,v in previous.items() if k not in ignore} != {k:v for k,v in proposed.items() if k not in ignore}:
         raise ValueError('A piece is locked. Unlock it before changing artwork, colours or design-wide settings.')
     new = edits(proposed)

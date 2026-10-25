@@ -313,3 +313,20 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - The stitch result carries `sew_parts` (part ids in sewing order); the Pieces panel numbers its
   rows by it and builds the new list from it: Sew earlier / later swap the selection one step,
   Sew in the order I picked puts the picked parts together, in click order, at the first one's place.
+
+## Hoop picker (added 2026-10-25)
+
+- `hoops.py`: `CATALOG` of sewing fields (mm, as the hoop sits on the machine) for common sizes
+  and machine brands; ids are `<brand>-<w>x<h>`. The user's own hoops are kept for every design
+  in `work/hoops.json` (`mine-<hex>`, name up to 40 characters, 10-1000 mm, at most 50).
+  Routes: `GET/POST /api/hoops`, `DELETE /api/hoops/<id>`.
+- A design keeps `hoop_id` and `piece_hoop_mm` = [width, height] as placed; Turn swaps the two.
+  `piece_layout.inventory` checks pieces against that field (red "outside the hoop") and refuses
+  an id that is not `[a-z0-9-]{1,60}`. The hoop moves no piece, so the lock guard ignores it.
+- `hoop-controls.js` (inside the fabric box): the menu, Turn, a fit note from the visible parts'
+  outlines (or the canvas), "Show on canvas" (per browser) and My own hoop. The Pieces panel
+  paint draws the hoop, centred on the design, with its name. Changing the hoop is a design
+  setting like the fabric: stitches are generated again.
+- The worksheet names the chosen hoop and, when the design is larger, says so and suggests the
+  smallest common hoop that fits.
+

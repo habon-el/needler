@@ -65,3 +65,11 @@
 #fontList .font-name { font:11px system-ui, sans-serif; opacity:.7; }
 /* Instant letter preview over the canvas while typing (text-make.js). */
 .text-preview { position:absolute; z-index:4; pointer-events:none; background:transparent !important; border:0 !important; box-shadow:none !important; }
+/* Hoop picker (hoop-controls.js), inside the fabric box. */
+.hoop-controls { margin-top:10px; }
+.hoop-controls .hoop-row { display:flex; gap:6px; align-items:end; }
+.hoop-controls .hoop-row select, .hoop-controls .hoop-row label { flex:1; min-width:0; }
+.hoop-controls label.hoop-show { display:flex; gap:6px; align-items:center; margin-top:6px; }
+.hoop-controls input:not([type=checkbox]) { width:100%; min-height:28px; box-sizing:border-box; }
+.hoop-controls #hoopFit[data-level=red] { color:var(--ui-danger, #b42318); }
+.hoop-controls details { margin-top:6px; font-size:12px; }

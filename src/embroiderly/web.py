@@ -53,6 +53,25 @@ def create_app(workspace: Path | None = None) -> Flask:
         return jsonify(default=DEFAULT, fabrics=[dict(id=r['fabric'], label=r.get('label', r['fabric']),
                                                       stabilizer=r.get('stabilizer', ''), backing=r.get('backing'),
                                                       topping=r.get('topping')) for r in presets()])
+    @app.get('/api/hoops')
+    def hoop_list():
+        # Hoop menu (hoops.py): sewing fields by machine brand and the user's own hoops.
+        from .hoops import listed, saved
+        return jsonify(brands=listed(), saved=saved(root))
+    @app.post('/api/hoops')
+    def hoop_save():
+        from .hoops import save
+        try:
+            return jsonify(saved=save(root, request.get_json(silent=True)))
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+    @app.delete('/api/hoops/<hoop_id>')
+    def hoop_delete(hoop_id):
+        from .hoops import delete
+        try:
+            return jsonify(saved=delete(root, hoop_id))
+        except ValueError as error:
+            return jsonify(error=str(error)), 404
     from .assistance import register_assistance
     register_assistance(app, root)
     from .ai_draft import register_ai_draft
@@ -157,7 +176,13 @@ def create_app(workspace: Path | None = None) -> Flask:
         from .worksheet import page, fabric_info
         playback=json.loads(target.read_text())
         try:
-            return page(playback,'Embroidery design',fabric_info((playback.get('generation_policy') or {}).get('fabric_preset')))
+            # The hoop chosen for this design, as placed (hoops.py).
+            metadata=uploads/Path(name).with_suffix('.prep.json')
+            options=json.loads(metadata.read_text()).get('options',{}) if metadata.is_file() else {}
+            from .hoops import find
+            chosen=find(root,options.get('hoop_id')) if isinstance(options.get('hoop_id'),str) else None
+            hoop=dict(name=f"{chosen['brand']} {chosen['name']}",field=options.get('piece_hoop_mm') or [chosen['width_mm'],chosen['height_mm']]) if chosen else None
+            return page(playback,'Embroidery design',fabric_info((playback.get('generation_policy') or {}).get('fabric_preset')),hoop)
         except ValueError as error:
             abort(422,str(error))
     @app.get('/applique-cut/<name>')

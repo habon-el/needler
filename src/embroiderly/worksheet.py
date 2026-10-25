@@ -116,14 +116,21 @@ def picture(steps, info):
             f'viewBox="{left:.1f} {top:.1f} {width:.1f} {height:.1f}">{lines}{marks}</svg>')
 
 
-def page(playback, title, fabric=None):
+def page(playback, title, fabric=None, hoop=None):
+    """hoop: the hoop chosen for the design, {name, field: [width, height] mm as placed}."""
     info = summary(playback, fabric)
     rows = ''.join(
         f'<tr><td>{n}</td><td><span class="chip" style="background:{escape(b["colour"])}"></span>{escape(b["colour"])}</td>'
         f'<td>{escape(b["thread"]) or "—"}</td><td class="num">{b["stitches"]:,}</td><td class="num">{b["trims"]}</td>'
         f'<td>{escape("; ".join(b["notes"]))}</td><td class="tick"></td></tr>'
         for n, b in enumerate(info['sequence'], 1))
-    hoop = f'{info["hoop"][0]} × {info["hoop"][1]} mm or larger' if info['hoop'] else 'Larger than common hoops: split the design'
+    suggested = f'{info["hoop"][0]} × {info["hoop"][1]} mm or larger' if info['hoop'] else 'Larger than common hoops: split the design'
+    if hoop:
+        w, h = hoop['field']
+        fits = info['width'] <= w and info['height'] <= h
+        hoop = f'{hoop["name"]} ({w:g} × {h:g} mm)' + ('' if fits else f' is too small; use {suggested}')
+    else:
+        hoop = suggested
     facts = [('Size', f'{info["width"]:.1f} × {info["height"]:.1f} mm'), ('Stitches', f'{info["stitches"]:,}'),
              ('Thread changes', str(info['changes'])), ('Cuts', str(info['trims'])),
              ('Sewing time', f'about {info["minutes"]} min at {STITCHES_PER_MINUTE} stitches/min'), ('Hoop', hoop)]

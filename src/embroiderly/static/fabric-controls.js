@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   <label for="sewOrder">Sewing order</label>
   <select id="sewOrder" title="Best look sews back to front: a part lying on another is sewn after it, even if that thread was used before. It can add colour changes."><option value="colours">Fewest colour changes</option><option value="layers">Best look (back to front)</option></select>`;
  anchor.after(box);
+ // Hoop picker (hoop-controls.js) sits with the other design-wide choices.
+ const hoop=await window.hoopControls?.(studio);if(hoop)box.append(hoop);
  const select=$('fabricPreset'),advice=$('fabricAdvice');
  // Short hint; the full advice is on hover.
  const describe=()=>{const f=data.fabrics.find(x=>x.id===select.value);

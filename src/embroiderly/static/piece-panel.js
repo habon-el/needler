@@ -81,7 +81,7 @@
   $('pieceLock').replaceChildren(icon(locked?'lock':'unlock'));$('pieceLock').disabled=!box||pending||studio.isBusy();$('pieceLock').setAttribute('aria-label',locked?'Unlock piece':'Lock piece');$('pieceLock').title=locked?'Unlock before editing':'Lock against manual and automatic changes';
   $('pieceSize').textContent=box?`Size ${format(box.width_mm)} × ${format(box.height_mm)} ${units()}`:'No piece selected';
   $('pieceNodes').textContent=items.length?`Nodes ${items.reduce((n,p)=>n+p.nodes,0)} · outline points`:'';
-  $('pieceTransform').title='Reference hoop '+(report.hoop_mm||[]).join(' × ')+' mm. Rectangular reference, not a validated machine profile.';
+  $('pieceTransform').title=(window.hoopLabel||'Reference hoop '+(report.hoop_mm||[]).join(' × ')+' mm')+'. Positions are measured from the hoop centre.';
   $('pieceAudit').textContent=items.length?`${items.some(p=>p.audit.level==='red')?'RED — check size':items.some(p=>p.audit.level==='yellow')?'YELLOW — check thin span':'GREEN — area check'} · ${[...new Set(items.flatMap(p=>p.audit.messages))].join(' ')}`:'';
   $('pieceAudit').dataset.level=items.some(p=>p.audit.level==='red')?'red':items.some(p=>p.audit.level==='yellow')?'yellow':'green';
   properties.querySelectorAll('[data-arrange],#pieceDuplicate,#pieceDelete,#pieceSkew,#pieceKnife').forEach(control=>{control.disabled=disabled;});
@@ -264,11 +264,12 @@
    for(const p of [...report.pieces].sort((a,b)=>(b.under?1:0)-(a.under?1:0))){if(!p.visible)continue;context.beginPath();for(const ring of p.rings){ring.forEach(([x,y],j)=>j?context.lineTo(x,y):context.moveTo(x,y));if(!p.line)context.closePath()}
     if(p.line){context.save();context.lineWidth=(p.line==='triple'?.6:.35)/report.scale;context.lineCap=context.lineJoin='round';context.strokeStyle=p.colour;context.stroke();context.restore()}else{context.fillStyle=p.colour;context.fill('evenodd')}}
   }
-  if(!active)return;
+  // The hoop: always while editing pieces, otherwise when "Show on canvas" is on (hoop-controls.js).
+  if(!active&&!window.hoopShown)return;
   const [ox,oy]=report.origin_mm.map(v=>v/report.scale),[w,h]=report.hoop_mm.map(v=>v/report.scale);
   context.save();context.lineWidth=1/scale;context.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--ui-muted');context.setLineDash([5/scale,5/scale]);context.strokeRect(ox-w/2,oy-h/2,w,h);
   context.beginPath();context.moveTo(ox-6/scale,oy);context.lineTo(ox+6/scale,oy);context.moveTo(ox,oy-6/scale);context.lineTo(ox,oy+6/scale);context.stroke();context.setLineDash([]);
-  context.font=`${11/scale}px system-ui`;context.fillStyle=context.strokeStyle;context.fillText('0,0 · Y ↓',ox+8/scale,oy-8/scale);context.restore();
+  context.font=`${11/scale}px system-ui`;context.fillStyle=context.strokeStyle;if(active)context.fillText('0,0 · Y ↓',ox+8/scale,oy-8/scale);if(window.hoopLabel)context.fillText(window.hoopLabel,ox-w/2+4/scale,oy-h/2-6/scale);context.restore();
  }};
  renderRows();sync();
 })();
