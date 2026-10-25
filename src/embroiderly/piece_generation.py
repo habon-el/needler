@@ -38,6 +38,19 @@ def append(document, layout, scale, settings, colours=None):
     filled_holes = hole_choices(settings)
     chosen_angles = angle_choices(settings)
     for p in selected:
+        if p.get('line'):
+            # An open stitched line: running or triple stitch along it (the band it sews is sewn area).
+            thread = (colours or {}).get(p['colour'], {}).get('thread', p['colour'])
+            points = np.asarray(p['rings'][0], float)-start
+            cv2.polylines(mask, [np.rint(points).astype(np.int32)], False, 1, thickness=max(3, int(np.ceil(.6/scale))+2))
+            node = ET.SubElement(document, 'path', id='piece-'+p['id'], d=path_data(points),
+                                 style=f'fill:none;stroke:{thread};stroke-width:{.2/scale}')
+            node.set(NS+'stroke_method', 'running_stitch')
+            node.set(NS+'running_stitch_length_mm', '2.5' if p['line'] == 'running' else '2.2')
+            if p['line'] == 'triple':
+                node.set(NS+'bean_stitch_repeats', '1')
+            node.set(NS+'trim_after', 'true')
+            continue
         # Remove / fill holes: only the outer outline, so stitches run across the holes.
         rings = [np.asarray(r, float)-start for r in (p['rings'][:1] if filled_holes.get(p['id']) == 'fill' else p['rings'])]
         local = np.zeros_like(mask)

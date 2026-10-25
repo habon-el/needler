@@ -268,3 +268,11 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   sews `under` pieces first, so the lines and (without holes) the parts inside lie on top.
 - Choosing any drawing tool switches to the Stitch artwork view, where clicks reach the pieces.
 
+## Open stitched lines (added 2026-10-25)
+
+- `draw` with shape `line` (clicked points) or `freehand_line` (simplified 0.1 mm) and
+  `stitch: 'running' | 'triple'`; stored as a drawn piece with one open ring and `line`.
+- Inventory reports a line's length instead of an area; lines cannot be cut or given area styles.
+- `piece_generation` sews a line as a running stitch (2.5 mm) or a triple stitch (2.2 mm,
+  `bean_stitch_repeats` 1); a 0.6 mm band along it is sewn area for the release gate.
+

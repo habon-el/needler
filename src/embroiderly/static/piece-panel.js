@@ -29,6 +29,8 @@
  <fieldset id="pieceDraw"><legend>Draw a shape</legend><div class="piece-arrange" role="group" aria-label="Draw">
  <button type="button" data-draw="rectangle" aria-pressed="false" title="Drag from one corner to the opposite corner">▭ Rectangle</button><button type="button" data-draw="ellipse" aria-pressed="false" title="Drag from one corner to the opposite corner">◯ Ellipse</button>
  <button type="button" data-draw="polygon" aria-pressed="false" title="Click each corner; double-click, Enter or click the first point to finish. Esc cancels.">⬠ Polygon</button><button type="button" data-draw="freehand" aria-pressed="false" title="Hold and draw the outline; release to close it">✎ Freehand</button>
+ <button type="button" data-draw="line" aria-pressed="false" title="Click each point of a stitched line; double-click or Enter to finish. Esc cancels.">〰 Line</button><button type="button" data-draw="freehand_line" aria-pressed="false" title="Hold and draw a stitched line">✎ Freehand line</button>
+ <label title="Running: a fine single line. Triple: each stitch sewn three times, bold.">Line <select id="pieceLineStitch"><option value="running">Running</option><option value="triple">Triple</option></select></label>
  <button type="button" data-draw="fill" aria-pressed="false" title="Click an empty space closed by lines to fill it. The fill is sewn first, under the lines.">🪣 Click to fill</button>
  <label title="Leave the parts inside the space open; off fills under them too"><input id="pieceFillHoles" type="checkbox" checked> Keep holes</label>
  <label>Thread <input id="pieceDrawColour" type="color" value="#202020"></label></div></fieldset>
@@ -80,7 +82,7 @@
   properties.querySelectorAll('.piece-unit').forEach(node=>node.textContent=units());
   $('pieceLink').disabled=disabled||!advanced;$('pieceLink').setAttribute('aria-pressed',String(!advanced||linked));
   $('pieceMove').disabled=$('pieceRotate').disabled=disabled;
-  properties.querySelectorAll('[data-draw],#pieceDrawColour,#pieceFillHoles').forEach(control=>{control.disabled=pending||studio.isBusy()||!report.pieces.length;});
+  properties.querySelectorAll('[data-draw],#pieceDrawColour,#pieceFillHoles,#pieceLineStitch').forEach(control=>{control.disabled=pending||studio.isBusy()||!report.pieces.length;});
   properties.querySelectorAll('[data-draw]').forEach(b=>b.setAttribute('aria-pressed',String(drawing?.shape===b.dataset.draw)));
   window.stitchRegionSelection=active&&items.length?{rings:items.flatMap(p=>p.rings)}:null;
   const target=$('stitchRegion');target.value=items.length===1?items[0].id:'';target.dispatchEvent(new Event('change'));
@@ -105,7 +107,7 @@
     if(!containers.has(path)){const d=document.createElement('details');d.dataset.group=path;d.open=open.has(path);const summary=document.createElement('summary');summary.textContent=token;d.append(summary);parent.append(d);containers.set(path,d)}parent=containers.get(path);
    }
    parent.append(groupActions(items,group));
-   for(const p of items){const row=document.createElement('div');row.className='piece-row';row.dataset.id=p.id;const select=document.createElement('button');select.type='button';select.className='piece-select';select.setAttribute('aria-pressed',String(selected.has(p.id)));select.title=p.name;const order=document.createElement('span');order.textContent=p.order;order.className='piece-order';const thumb=document.createElementNS('http://www.w3.org/2000/svg','svg');thumb.setAttribute('viewBox',`${p.x_mm-p.width_mm/2} ${p.y_mm-p.height_mm/2} ${Math.max(p.width_mm,.1)} ${Math.max(p.height_mm,.1)}`);thumb.setAttribute('aria-hidden','true');const path=document.createElementNS(thumb.namespaceURI,'path');path.setAttribute('d',p.rings_mm.map(r=>'M '+r.map(x=>x.join(',')).join(' L ')+' Z').join(' '));path.setAttribute('fill',p.colour);path.setAttribute('fill-rule','evenodd');thumb.append(path);const name=document.createElement('span');name.className='piece-label';name.textContent=p.name;select.append(order,thumb,name);select.onclick=e=>choose([p.id],e.ctrlKey||e.metaKey);const swatch=document.createElement('span');swatch.className='piece-swatch';swatch.style.background=p.colour;swatch.title=(p.thread_name||p.colour)+' · '+p.colour;swatch.setAttribute('aria-label','Thread '+(p.thread_name||p.colour));const eye=document.createElement('button');eye.type='button';eye.replaceChildren(icon(p.visible?'eye':'hidden'));eye.setAttribute('aria-label',(p.visible?'Hide ':'Show ')+p.name);eye.disabled=pending||p.locked;eye.onclick=()=>commit('visible',!p.visible,[p.id]);row.append(select,swatch,eye);parent.append(row)}
+   for(const p of items){const row=document.createElement('div');row.className='piece-row';row.dataset.id=p.id;const select=document.createElement('button');select.type='button';select.className='piece-select';select.setAttribute('aria-pressed',String(selected.has(p.id)));select.title=p.name;const order=document.createElement('span');order.textContent=p.order;order.className='piece-order';const thumb=document.createElementNS('http://www.w3.org/2000/svg','svg');thumb.setAttribute('viewBox',`${p.x_mm-p.width_mm/2} ${p.y_mm-p.height_mm/2} ${Math.max(p.width_mm,.1)} ${Math.max(p.height_mm,.1)}`);thumb.setAttribute('aria-hidden','true');const path=document.createElementNS(thumb.namespaceURI,'path');path.setAttribute('d',p.rings_mm.map(r=>'M '+r.map(x=>x.join(',')).join(' L ')+(p.line?'':' Z')).join(' '));if(p.line){path.setAttribute('fill','none');path.setAttribute('stroke',p.colour);path.setAttribute('stroke-width',String(Math.max(p.width_mm,p.height_mm)/12))}else path.setAttribute('fill',p.colour);path.setAttribute('fill-rule','evenodd');thumb.append(path);const name=document.createElement('span');name.className='piece-label';name.textContent=p.name;select.append(order,thumb,name);select.onclick=e=>choose([p.id],e.ctrlKey||e.metaKey);const swatch=document.createElement('span');swatch.className='piece-swatch';swatch.style.background=p.colour;swatch.title=(p.thread_name||p.colour)+' · '+p.colour;swatch.setAttribute('aria-label','Thread '+(p.thread_name||p.colour));const eye=document.createElement('button');eye.type='button';eye.replaceChildren(icon(p.visible?'eye':'hidden'));eye.setAttribute('aria-label',(p.visible?'Hide ':'Show ')+p.name);eye.disabled=pending||p.locked;eye.onclick=()=>commit('visible',!p.visible,[p.id]);row.append(select,swatch,eye);parent.append(row)}
   }
   for(const [path,container] of containers){
    if(container.querySelector(':scope > .piece-group-actions'))continue;
@@ -159,12 +161,13 @@
   if(drawing.shape==='rectangle')return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
   return Array.from({length:48},(_,i)=>[(x0+x1)/2+(x1-x0)/2*Math.cos(i*Math.PI/24),(y0+y1)/2+(y1-y0)/2*Math.sin(i*Math.PI/24)]);
  };
- const showDrawing=hover=>{const ring=outline(drawing.points,hover);window.stitchRegionSelection=ring.length>1?{rings:[[...ring,ring[0]]]}:null;studio.redraw()};
+ const isLine=()=>drawing&&(drawing.shape==='line'||drawing.shape==='freehand_line');
+ const showDrawing=hover=>{const ring=outline(drawing.points,hover);window.stitchRegionSelection=ring.length>1?{rings:[isLine()?[...ring,...ring.slice(0,-1).reverse()]:[...ring,ring[0]]]}:null;studio.redraw()};
  const finishDrawing=()=>{
   const {shape,points}=drawing,colour=$('pieceDrawColour').value;drawing=null;window.stitchRegionSelection=null;
   const corners=shape==='rectangle'||shape==='ellipse'?[points[0],points[points.length-1]]:points;
   if(corners.length<(shape==='polygon'||shape==='freehand'?3:2)){feedback('Shape not drawn. Choose a shape and try again.');sync();return}
-  commit('draw',{shape,points:corners.map(toMm),colour});
+  commit('draw',{shape,points:corners.map(toMm),colour,...(shape==='line'||shape==='freehand_line'?{stitch:$('pieceLineStitch').value}:{})});
  };
  canvas.addEventListener('pointerdown',e=>{
   if(!drawing||!active||e.button!==0||pending||studio.isBusy())return;
@@ -172,6 +175,7 @@
   if(drawing.shape==='fill'){
    drawing=null;sync();commit('click_fill',{point:toMm(at),colour:$('pieceDrawColour').value,holes:$('pieceFillHoles').checked});return;
   }
+  if(drawing.shape==='line'){drawing.points.push(at);showDrawing();return}
   if(drawing.shape==='polygon'){
    const first=drawing.points[0],near=first&&Math.hypot(at[0]-first[0],at[1]-first[1])*report.scale<1.5;
    if(near&&drawing.points.length>=3){finishDrawing();return}
@@ -181,26 +185,27 @@
  },true);
  canvas.addEventListener('pointermove',e=>{
   if(!drawing)return;const at=studio.piecePoint(e,canvas);
-  if(drawing.shape==='polygon'){if(drawing.points.length)showDrawing(at);return}
+  if(drawing.shape==='polygon'||drawing.shape==='line'){if(drawing.points.length)showDrawing(at);return}
   if(!drawing.down)return;e.stopImmediatePropagation();
   const last=drawing.points[drawing.points.length-1];
-  if(drawing.shape==='freehand'){if(Math.hypot(at[0]-last[0],at[1]-last[1])*report.scale>=.5&&drawing.points.length<1990)drawing.points.push(at);showDrawing()}
+  if(drawing.shape==='freehand'||drawing.shape==='freehand_line'){if(Math.hypot(at[0]-last[0],at[1]-last[1])*report.scale>=.5&&drawing.points.length<1990)drawing.points.push(at);showDrawing()}
   else{drawing.points=[drawing.points[0],at];showDrawing()}
  },true);
  canvas.addEventListener('pointerup',e=>{
   if(!drawing||!drawing.down)return;e.stopImmediatePropagation();drawing.down=false;
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);finishDrawing();
  },true);
- canvas.addEventListener('dblclick',e=>{if(drawing?.shape==='polygon'){e.stopImmediatePropagation();e.preventDefault();drawing.points=drawing.points.filter((p,i,a)=>!i||Math.hypot(p[0]-a[i-1][0],p[1]-a[i-1][1])>0);finishDrawing()}},true);
+ canvas.addEventListener('dblclick',e=>{if(drawing?.shape==='polygon'||drawing?.shape==='line'){e.stopImmediatePropagation();e.preventDefault();drawing.points=drawing.points.filter((p,i,a)=>!i||Math.hypot(p[0]-a[i-1][0],p[1]-a[i-1][1])>0);finishDrawing()}},true);
  document.addEventListener('keydown',e=>{
   if(!drawing||e.isComposing)return;
   if(e.key==='Escape'){e.preventDefault();drawOn(null);feedback('Drawing cancelled.')}
-  else if(e.key==='Enter'&&drawing.shape==='polygon'){e.preventDefault();finishDrawing()}
+  else if(e.key==='Enter'&&(drawing.shape==='polygon'||drawing.shape==='line')){e.preventDefault();finishDrawing()}
  });
  canvas.addEventListener('pointerdown',e=>{
   if(!active||$('tool').value==='measure'||studio.navigationGesture(e)||e.button!==0||pending||studio.isBusy())return;
   e.stopImmediatePropagation();const at=studio.piecePoint(e,canvas),context=canvas.getContext('2d');
-  const hit=[...report.pieces].reverse().find(p=>{if(!p.visible)return false;const path=new Path2D();for(const r of p.rings){r.forEach(([x,y],i)=>i?path.lineTo(x,y):path.moveTo(x,y));path.closePath()}return context.isPointInPath(path,...at,'evenodd')});
+  const hit=[...report.pieces].reverse().find(p=>{if(!p.visible)return false;const path=new Path2D();for(const r of p.rings){r.forEach(([x,y],i)=>i?path.lineTo(x,y):path.moveTo(x,y));if(!p.line)path.closePath()}
+   if(p.line){context.save();context.lineWidth=1.5/report.scale;const on=context.isPointInStroke(path,...at);context.restore();return on}return context.isPointInPath(path,...at,'evenodd')});
   if(!hit)return;if(!selected.has(hit.id)||e.ctrlKey||e.metaKey)choose([hit.id],e.ctrlKey||e.metaKey);
   if(targets().some(p=>p.locked)){feedback('This piece is locked. Unlock it before dragging.');return}
   drag={at,box:aggregate(),items:targets(),pointer:e.pointerId};canvas.setPointerCapture(e.pointerId);e.preventDefault();
@@ -221,7 +226,8 @@
   if(report.transformed){
    context.save();context.setTransform(1,0,0,1,0,0);context.clearRect(0,0,context.canvas.width,context.canvas.height);context.restore();
    // Filled spaces are sewn first (under the lines): paint them first too.
-   for(const p of [...report.pieces].sort((a,b)=>(b.under?1:0)-(a.under?1:0))){if(!p.visible)continue;context.beginPath();for(const ring of p.rings){ring.forEach(([x,y],j)=>j?context.lineTo(x,y):context.moveTo(x,y));context.closePath()}context.fillStyle=p.colour;context.fill('evenodd')}
+   for(const p of [...report.pieces].sort((a,b)=>(b.under?1:0)-(a.under?1:0))){if(!p.visible)continue;context.beginPath();for(const ring of p.rings){ring.forEach(([x,y],j)=>j?context.lineTo(x,y):context.moveTo(x,y));if(!p.line)context.closePath()}
+    if(p.line){context.save();context.lineWidth=(p.line==='triple'?.6:.35)/report.scale;context.lineCap=context.lineJoin='round';context.strokeStyle=p.colour;context.stroke();context.restore()}else{context.fillStyle=p.colour;context.fill('evenodd')}}
   }
   if(!active)return;
   const [ox,oy]=report.origin_mm.map(v=>v/report.scale),[w,h]=report.hoop_mm.map(v=>v/report.scale);

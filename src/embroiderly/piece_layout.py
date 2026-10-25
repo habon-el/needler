@@ -13,10 +13,12 @@ import cv2
 import numpy as np
 
 IDENTITY = [1., 0., 0., 1., 0., 0.]
-FIELDS = {'name', 'group', 'visible', 'locked', 'matrix', 'rotation', 'source', 'rings', 'cut', 'drawn', 'under'}
+FIELDS = {'name', 'group', 'visible', 'locked', 'matrix', 'rotation', 'source', 'rings', 'cut', 'drawn', 'under', 'line'}
+LINE_STITCHES = ('running', 'triple')   # open lines: a fine single run, or each stitch sewn three times
+LINE_SHAPES = ('line', 'freehand_line')
 FILL_GAP_MM = .4      # click to fill: gaps in the lines up to about twice this are bridged
 FILL_TUCK_MM = .3     # the fill reaches this far under the lines around it, so no gap shows
-SHAPES = ('rectangle', 'ellipse', 'polygon', 'freehand')
+SHAPES = ('rectangle', 'ellipse', 'polygon', 'freehand', 'line', 'freehand_line')
 MAX_DRAWN_POINTS = 2000
 MAX_COPIES = 100
 MAX_PART_POINTS = 20000
@@ -77,13 +79,15 @@ def edits(options):
         if 'rings' in item:
             rings = item['rings']
             if not ('source' in item or 'drawn' in item) or not isinstance(rings, list) or not rings or any(
-                    not isinstance(r, list) or len(r) < 3 or any(
+                    not isinstance(r, list) or len(r) < (2 if 'line' in item or 'line' in value.get(item.get('source'), {}) else 3) or any(
                         not isinstance(p, list) or len(p) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) for v in p)
                         for p in r) for r in rings):
                 raise ValueError('A cut part has an invalid outline.')
         if 'drawn' in item and ('source' in item or 'rings' not in item or not isinstance(item['drawn'], str)
                                 or not re.fullmatch('#[0-9a-f]{6}', item['drawn'])):
             raise ValueError('A drawn shape needs an outline and a thread colour.')
+        if 'line' in item and (item['line'] not in LINE_STITCHES or 'drawn' not in item or len(item.get('rings', [])) != 1):
+            raise ValueError('Invalid stitched line.')
         if 'under' in item and (item['under'] is not True or 'drawn' not in item):
             raise ValueError('Invalid filled space.')
         if 'cut' in item and item['cut'] is not True:
@@ -104,7 +108,7 @@ def inventory(region_report, options, width, height, scale):
     for key, item in saved.items():
         if 'drawn' in item:
             areas.append({'id': key, 'colour': item['drawn'], 'rings': item['rings'], 'style': styles.get(key, 'tatami'),
-                          'under': item.get('under', False)})
+                          'under': item.get('under', False), 'line': item.get('line')})
     # Duplicates reuse their original's outline and colour, with their own transform and style.
     by_id = {a['id']: a for a in areas}
     for key, item in saved.items():
@@ -139,6 +143,21 @@ def inventory(region_report, options, width, height, scale):
             points = np.asarray(ring, float)*scale-origin
             rings.append((np.c_[points, np.ones(len(points))] @ m.T)[:, :2].tolist())
         left, top, right, bottom = bounds(rings)
+        if area.get('line'):
+            # An open stitched line: no area, no satin; its length is what matters.
+            length = float(np.linalg.norm(np.diff(np.asarray(rings[0]), axis=0), axis=1).sum())
+            outside = left < -hoop[0]/2 or right > hoop[0]/2 or top < -hoop[1]/2 or bottom > hoop[1]/2
+            messages = (['Piece extends outside the hoop.'] if outside else []) + [f'Stitched line, {length:.1f} mm long.']
+            result.append(dict(id=area['id'], order=index+1, name=item.get('name') or f'Line {index+1}',
+                               group=item.get('group', ''), colour=area['colour'], style='line', line=area['line'],
+                               visible=item.get('visible', True), locked=item.get('locked', False), copy=True, under=False,
+                               rings_mm=rings, rings=[((np.asarray(r)+origin)/scale).tolist() for r in rings],
+                               x_mm=(left+right)/2, y_mm=(top+bottom)/2, width_mm=right-left, height_mm=bottom-top,
+                               rotation=item.get('rotation', 0), nodes=len(rings[0]), area_mm2=0.0,
+                               satin_reason='A stitched line has no satin.',
+                               audit=dict(level='red' if outside else 'green', messages=messages, outside_hoop=outside,
+                                          minimum_area_mm2=floor)))
+            continue
         from .region_stitches import polygon
         shape = polygon(rings, 1)
         area_mm2 = float(shape.area)
@@ -216,6 +235,8 @@ def change(options, report, command, image=None):
         edits(updated)
         return updated
     if field == 'knife':
+        if any(p.get('line') for p in selected):
+            raise ValueError('A stitched line cannot be cut. Delete it and draw it again.')
         return knife(updated, report, selected, value)
     if field == 'delete':
         if not set(ids) <= copies:
@@ -295,8 +316,11 @@ def draw(updated, report, value):
     Rectangle and ellipse take two opposite corners; polygon and freehand take the outline points."""
     import hashlib
     from shapely.geometry import Polygon
-    if not isinstance(value, dict) or set(value) != {'shape', 'points', 'colour'} or value['shape'] not in SHAPES:
+    if not isinstance(value, dict) or not {'shape', 'points', 'colour'} <= set(value) <= {'shape', 'points', 'colour', 'stitch'} \
+            or value['shape'] not in SHAPES:
         raise ValueError('Choose a rectangle, ellipse, polygon or freehand shape.')
+    if value['shape'] in LINE_SHAPES:
+        return draw_line(updated, report, value)
     colour, points = value['colour'], value['points']
     if not isinstance(colour, str) or not re.fullmatch('#[0-9a-fA-F]{6}', colour):
         raise ValueError('Choose a thread colour for the shape.')
@@ -334,6 +358,39 @@ def draw(updated, report, value):
         n += 1
     count = sum('drawn' in item for item in stored.values())+1
     stored[key] = {'drawn': colour.lower(), 'rings': [ring], 'name': f"{value['shape'].capitalize()} {count}"}
+    edits(updated)
+    return updated
+
+
+def draw_line(updated, report, value):
+    """An open stitched line (clicked points or freehand), sewn as a running or triple stitch."""
+    import hashlib
+    from shapely.geometry import LineString
+    colour, points, stitch = value['colour'], value['points'], value.get('stitch', 'running')
+    if not isinstance(colour, str) or not re.fullmatch('#[0-9a-fA-F]{6}', colour):
+        raise ValueError('Choose a thread colour for the line.')
+    if stitch not in LINE_STITCHES:
+        raise ValueError('Choose a running or triple stitch line.')
+    if not isinstance(points, list) or not 2 <= len(points) <= MAX_DRAWN_POINTS or any(
+            not isinstance(p, list) or len(p) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 1000 for v in p)
+            for p in points):
+        raise ValueError('Draw the line on the hoop.')
+    line = LineString(points)
+    if value['shape'] == 'freehand_line':
+        line = line.simplify(.1)
+    if line.length < 2:
+        raise ValueError('The line is too short to stitch. Draw at least 2 mm.')
+    origin, scale = np.array(report['origin_mm']), report['scale']
+    ring = [[round(x, 2), round(y, 2)] for x, y in ((np.asarray(line.coords)+origin)/scale).tolist()]
+    stored = updated.setdefault('piece_edits', {})
+    n = 0
+    while True:
+        key = hashlib.sha256(f'line:{ring}:{n}'.encode()).hexdigest()[:20]
+        if key not in stored:
+            break
+        n += 1
+    count = sum('line' in item for item in stored.values())+1
+    stored[key] = {'drawn': colour.lower(), 'rings': [ring], 'line': stitch, 'name': f'Line {count}'}
     edits(updated)
     return updated
 
@@ -483,6 +540,9 @@ def render(image, report):
         if not p['visible']:
             continue
         mask = np.zeros(array.shape[:2], np.uint8)
-        cv2.fillPoly(mask, [np.rint(r).astype(np.int32) for r in p['rings']], 1)
+        if p.get('line'):
+            cv2.polylines(mask, [np.rint(r).astype(np.int32) for r in p['rings']], False, 1, thickness=2)
+        else:
+            cv2.fillPoly(mask, [np.rint(r).astype(np.int32) for r in p['rings']], 1)
         array[mask > 0] = [int(p['colour'][i:i+2], 16) for i in (1, 3, 5)]+[255]
     return Image.fromarray(array)
