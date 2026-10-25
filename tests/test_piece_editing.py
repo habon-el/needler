@@ -170,3 +170,16 @@ def test_applique_pieces_still_pass_after_piece_edits(tmp_path):
         options = r['options']
     assert r.get('playback'), r.get('error')
     assert checked_bytes(tmp_path/'work'/'inkstitch-preview'/Path(r['prepared_name']).stem, 'dst')
+
+
+def test_duplicates_do_not_add_colour_changes(tmp_path):
+    client, options, r = route_setup(tmp_path)
+    pieces = r['report']['piece_layout']['pieces']
+    first = pieces[0]
+    response = client.post('/artwork/p.png', json=dict(options=options, piece_revision=r['piece_revision'],
+                                                        subject_confirmed=True, digitize=True,
+                                                        piece_command=dict(ids=[first['id']], field='duplicate', value=[0, 30])))
+    body = response.get_json()
+    assert response.status_code == 200, body
+    colours = {p['colour'] for p in body['report']['piece_layout']['pieces']}
+    assert len(body['playback']['colors']) == len(colours)

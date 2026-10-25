@@ -56,3 +56,27 @@ def test_density_choice_scales_stitches_and_passes_the_release_gate(tmp_path):
     assert counts['lighter'] < counts['normal'] < counts['denser']
     with pytest.raises(ValueError):
         design(tmp_path/'bad', {'density': 'thick'})
+
+
+def test_chosen_stitch_direction_turns_the_rows(tmp_path):
+    import math
+    import pyembroidery as emb
+    from embroiderly.region_stitches import angle_choices
+
+    def mean_direction(folder):
+        pattern = emb.read(str(folder/'out'/'design.dst'))
+        pts = [(x, y) for x, y, c in pattern.stitches if (c & 0xff) == emb.STITCH]
+        angles = [math.degrees(math.atan2(-(b[1]-a[1]), b[0]-a[0])) % 180
+                  for a, b in zip(pts, pts[1:]) if math.dist(a, b) > 20]   # long row stitches (>2 mm)
+        return sorted(angles)[len(angles)//2]
+
+    image_ids = {}
+    payload, _ = design(tmp_path/'auto', {})
+    array = np.asarray(Image.open(tmp_path/'auto'/'prepared.png').convert('RGBA'))
+    for key, colour, rings in regions(array[..., :3], array[..., 3] > 0):
+        image_ids[colour] = key
+    turned, _ = design(tmp_path/'turned', {'area_angles': {k: 90 for k in image_ids.values()}})
+    assert abs(mean_direction(tmp_path/'turned') - 90) < 15
+    assert checked_bytes(tmp_path/'turned'/'out', 'dst')
+    with pytest.raises(ValueError):
+        angle_choices({'area_angles': {'a'*20: 400}})

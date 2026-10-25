@@ -12,6 +12,16 @@
  const holeBox=document.createElement('input');holeBox.type='checkbox';holeBox.id='regionHoles';
  holes.append(holeBox,' Sew over holes in this area');$('regionStyleGallery').append(holes);
  const areaOf=id=>report.areas.find(a=>a.id===id);
+ // Stitch direction for the chosen areas; empty = automatic (along the area's long side).
+ const direction=document.createElement('label');direction.className='region-direction';
+ const angleBox=document.createElement('input');angleBox.type='number';angleBox.min='-180';angleBox.max='180';angleBox.step='5';
+ angleBox.id='regionAngle';angleBox.placeholder='Auto';
+ direction.append('Stitch direction ° ',angleBox);$('regionStyleGallery').append(direction);
+ angleBox.addEventListener('change',()=>{
+  const chosen={...(studio.snapshot().area_angles||{})},v=angleBox.value.trim(),n=Number(v);
+  for(const t of targets()){if(v==='')delete chosen[t.id];else if(Number.isFinite(n))chosen[t.id]=Math.max(-180,Math.min(180,n));}
+  try{studio.apply({area_angles:chosen})}catch(error){$('regionStyleStatus').textContent=error.message}
+ });
  holeBox.addEventListener('change',()=>{
   const chosen={...(studio.snapshot().area_holes||{})};
   for(const t of targets()){const a=areaOf(t.id);if(!a||!a.holes)continue;if(holeBox.checked)chosen[a.id]='fill';else delete chosen[a.id];}
@@ -39,6 +49,9 @@
   }
   const withHoles=areas.map(t=>areaOf(t.id)).filter(a=>a&&a.holes);
   holes.hidden=!withHoles.length;holeBox.disabled=blocked||areas.some(a=>a.locked);
+  const angles=new Set(areas.map(t=>(options.area_angles||{})[t.id]));
+  direction.hidden=!areas.length;angleBox.disabled=blocked||areas.some(a=>a.locked);
+  if(document.activeElement!==angleBox)angleBox.value=angles.size===1&&[...angles][0]!==undefined?[...angles][0]:'';
   holeBox.checked=withHoles.length>0&&withHoles.every(a=>(options.area_holes||{})[a.id]==='fill');
   $('regionStyleStatus').textContent=!ready?'Preparing current areas…':report.unavailable||(!area?(report.areas.length?'Choose a colour or one area first. Nothing is selected.':'No filled areas available.'):`${selected.startsWith('colour:')?area.colour+' · '+areas.length+' areas':'Area '+(report.areas.indexOf(area)+1)+' · '+area.colour}. Green is only a target highlight in Thread plan, not thread colour. ${styles.size>1?'Mixed stitch styles.':'Current style: '+(report.catalog.find(c=>c[0]===[...styles][0])?.[1]||'Tatami')+'.'} Choose a style, then Update stitches.`);
   if(report.stale.length)$('regionStyleStatus').textContent+=' Artwork changed: '+report.stale.length+' assignments no longer match. Reset area styles before generating.';

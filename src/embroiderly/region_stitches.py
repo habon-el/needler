@@ -51,6 +51,16 @@ def hole_choices(options):
     return value
 
 
+def angle_choices(options):
+    """Stitch direction per area, degrees (0 = horizontal rows, positive = rising to the right)."""
+    value=options.get('area_angles',{})
+    if not isinstance(value,dict) or len(value)>500 or any(
+            not isinstance(k,str) or len(k)!=20 or any(c not in '0123456789abcdef' for c in k)
+            or type(v) not in (int,float) or not -180<=v<=180 for k,v in value.items()):
+        raise ValueError('Enter a stitch direction from -180° to 180°.')
+    return value
+
+
 def region_id(rings):
     return hashlib.sha256(b'|'.join(np.asarray(r,dtype='<i4').tobytes() for r in rings)).hexdigest()[:20]
 
@@ -111,7 +121,8 @@ def inventory(rgb,alpha,scale,options):
                     notice='Embossed: this area is too small for a texture repeat; its base fill is preserved.'
             except ValueError as error:notice=str(error)
         items.append(dict(id=key,colour=colour,bounds=[x,y,w,h],rings=[r.reshape(-1,2).tolist() for r in rings],style_notice=notice,style=chosen.get(key,'tatami'),satin_reason=reason,
-                          holes=len(rings)-1,holes_filled=hole_choices(options).get(key)=='fill'))
+                          holes=len(rings)-1,holes_filled=hole_choices(options).get(key)=='fill',
+                          angle=angle_choices(options).get(key)))
     # Styles of duplicated pieces belong to the copies, not to stale picture areas.
     from .piece_layout import copy_ids
     return dict(areas=items,stale=sorted(set(chosen)-{r['id'] for r in items}-copy_ids(options)),catalog=CATALOG,unavailable='')

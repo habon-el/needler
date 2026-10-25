@@ -222,6 +222,8 @@ def digitize(source, directory, height_mm=100, colours=None):
     region_styles=assignments(settings)
     from .region_stitches import hole_choices
     filled_holes=hole_choices(settings)
+    from .region_stitches import angle_choices
+    chosen_angles=angle_choices(settings)
     # 3D puff for every area that can hold foam; others stay flat.
     puff_all=settings.get('puff') is True
     from .stitch_engine import puff_min_mm
@@ -314,6 +316,9 @@ def digitize(source, directory, height_mm=100, colours=None):
             if plain:
                 node.set('{http://inkstitch.org/namespace}angle',f'{fill_angle(rings):.1f}')
             apply_style(document,node,rings,scale,style or 'tatami')
+            if identity in chosen_angles:
+                # Stitch direction chosen for this area replaces the automatic one.
+                node.set('{http://inkstitch.org/namespace}angle',f'{float(chosen_angles[identity]):g}')
             if style=='puff':
                 node.set('{http://inkstitch.org/namespace}puff_foam_mm',f'{foam_mm:g}')
                 node.set('{http://inkstitch.org/namespace}pull_compensation_mm',puff_pull)

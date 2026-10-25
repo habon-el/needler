@@ -194,3 +194,13 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   (corners sharper than about 60°) instead of refusing the border; only near-hairpins are refused.
 - Density (`density`: lighter / normal / denser = spacing × 1.12 / 1 / 0.9) scales fill row spacing and satin
   spacing in `generation_policy.apply`; puff keeps its own. Menu "Density" next to Fabric.
+
+## Direction and order (added 2026-10-24)
+
+- `area_angles` ({area id: degrees}, −180 to 180; 0 = horizontal rows, positive = rising to the right),
+  checked by `region_stitches.angle_choices`, overrides the automatic fill angle in the colour loop and the
+  piece path (absolute on the hoop). Style panel: "Stitch direction °", empty = automatic.
+- Auto start: `stitch_engine.generate` passes the last stitch so far to each element; tatami starts at its
+  nearest corner.
+- Piece path: pieces are grouped by thread colour (stable, first-seen order), so copies and cut parts do not
+  add colour changes.

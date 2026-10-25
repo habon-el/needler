@@ -227,7 +227,8 @@ def _puff_area(shape, spacing, pull, min_len, foam_mm=3.0):
     return join_runs(rings + runs, shape, 1.5)
 
 
-def _element_blocks(node, paths, style, scale, index, min_len):
+def _element_blocks(node, paths, style, scale, index, min_len, start=None):
+    """start: where the needle is (the last stitch so far); fills begin at their nearest corner."""
     stroke = sg.colour(style.get('stroke'))
     fill = sg.colour(style.get('fill', '#000000')) if 'fill' in style or sg.local(node.tag) != 'line' else None
     mm = [([(x*scale, y*scale) for x, y in pts], closed) for pts, closed in paths]
@@ -307,7 +308,8 @@ def _element_blocks(node, paths, style, scale, index, min_len):
                               underlay_angle=(float(_attr(node, 'fill_underlay_angle')) if _attr(node, 'fill_underlay_angle') not in (None, '') else None),
                               underlay_spacing=(_float(node, 'fill_underlay_row_spacing_mm', 0) or None),
                               underlay_inset=_float(node, 'fill_underlay_inset_mm', .3),
-                              underlay_max_len=max(1.0, _float(node, 'fill_underlay_max_stitch_length_mm', 3.0)))
+                              underlay_max_len=max(1.0, _float(node, 'fill_underlay_max_stitch_length_mm', 3.0)),
+                              start=start)
             emit(fill, runs)
         for block in blocks:
             block.region = shape
@@ -489,7 +491,9 @@ def generate(source):
     blocks = []
     for index, (node, paths, style, _) in enumerate(sg.elements(root, tolerance=.02/scale)):
         min_len = _float(node, 'min_stitch_length_mm', document_min if document_min is not None else .45)
-        made = _element_blocks(node, paths, style, scale, index, min_len)
+        # Auto start: each fill begins near where the previous part ended (shorter travel).
+        made = _element_blocks(node, paths, style, scale, index, min_len,
+                               tuple(blocks[-1].points[-1]) if blocks else None)
         for block in made:
             block.min_len = min_len
             # Over foam, tie-offs are six 1 mm stitches: short locks pull out of the foam.

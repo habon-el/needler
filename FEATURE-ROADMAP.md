@@ -27,7 +27,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 |---|---|---|---|
 | Digitize closed / open shape, blocks, freehand | Area editing is picture-based; point editing in editor | ◐ no vector drawing tools | P2 |
 | Digitize holes, fill holes, remove holes | cut a hole: Erase area; remove / fill holes: "Sew over holes in this area" (stitches run across, an empty hole is filled) | ✅ 2026-10-24 | |
-| Add / remove stitch angles | Stitch direction review | ◐ | P2 |
+| Add / remove stitch angles | "Stitch direction °" per area in the style panel (empty = automatic) | ✅ 2026-10-24 | |
 | Reshape, knife, split curve, break apart | Knife: drag a line across a piece to cut it into parts (each part its own piece); split at point, move points | ◐ no node reshaping of pieces | P3 |
 | Click to fill (with/without holes), turning fill, outline, centerline | Area styles, auto satin, line art | ◐ no click tool | P2 |
 | Appliqué (placement, tack-down, cover, stops) and Export cutting | area style Appliqué: placement run, stop, zigzag tack-down, stop, 3 mm satin cover; cutting shapes SVG at actual size | ✅ 2026-10-24 | |
@@ -81,7 +81,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Textured edge, feather edge | — | ✗ | P3 |
 | 3D globe effect, hand stitch effect | — | ✗ | P3 |
 | Tie-in / tie-off, trims, "Always tie-off & trim" | locks, trims | ✅ | |
-| Auto start and end, closest join | `engine.closest_join` (areas nearest-first) + branching | ◐ entry/exit points not yet chosen per area | P2 |
+| Auto start and end, closest join | areas nearest-first, and each fill starts at the corner nearest the previous stitch; branching | ✅ 2026-10-24 | |
 | Remove small stitches, minimum stitch | min-stitch filter | ✅ | |
 | Adjust stitch spacing (scale density) | Density: Lighter / Normal / Denser next to Fabric | ✅ 2026-10-24 | |
 
@@ -104,7 +104,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 |---|---|---|---|
 | Sequence by colour / by selection / move up-down | Sew earlier / later | ◐ | P2 |
 | Apply closest join | `engine.closest_join` | ✅ 2026-10-24 | |
-| Optimize colour changes | largest-colour-first | ◐ | P2 |
+| Optimize colour changes | one block per colour, also for edited pieces, copies and cut parts | ✅ 2026-10-24 | |
 | Branching, auto-sequence outlines | `_branch`, line-art Euler routes | ◐ | P2 |
 | Travel by stitch / colour / object (Stitch Player) | Playback | ✅ | |
 

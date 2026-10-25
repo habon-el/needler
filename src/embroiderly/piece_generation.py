@@ -15,6 +15,12 @@ def append(document, layout, scale, settings, colours=None):
                 (colours or {}).get(p['colour'], {}).get('include', True)]
     if not selected:
         raise ValueError('No visible pieces. Show at least one piece before generating stitches.')
+    # Optimize colour changes: copies and cut parts are listed last, so group each thread's
+    # pieces together (stable, in first-seen colour order) instead of switching back and forth.
+    first = {}
+    for p in selected:
+        first.setdefault(p['colour'], len(first))
+    selected = sorted(selected, key=lambda p: first[p['colour']])
     points = np.concatenate([np.asarray(r) for p in selected for r in p['rings']])
     low, high = points.min(axis=0), points.max(axis=0)
     # An appliqué cover (and its mitred corners) sews up to ~4.5 mm past the outline: keep it on the canvas.
@@ -27,8 +33,9 @@ def append(document, layout, scale, settings, colours=None):
     document.set('height', f'{size[1]*scale}mm')
     document.set('viewBox', f'0 0 {size[0]} {size[1]}')
     mask = np.zeros((size[1], size[0]), np.uint8)
-    from .region_stitches import hole_choices
+    from .region_stitches import angle_choices, hole_choices
     filled_holes = hole_choices(settings)
+    chosen_angles = angle_choices(settings)
     for p in selected:
         # Remove / fill holes: only the outer outline, so stitches run across the holes.
         rings = [np.asarray(r, float)-start for r in (p['rings'][:1] if filled_holes.get(p['id']) == 'fill' else p['rings'])]
@@ -48,6 +55,9 @@ def append(document, layout, scale, settings, colours=None):
         if p['rotation']:
             node.set(NS+'angle', str(-p['rotation']))
         apply_style(document, node, rings, scale, p['style'])
+        if p['id'] in chosen_angles:
+            # A chosen stitch direction is absolute on the hoop, whatever the piece's rotation.
+            node.set(NS+'angle', f"{float(chosen_angles[p['id']]):g}")
     display_origin = ((low+high)*scale/2).tolist()
     mask_origin = ((low+high-2*start)*scale/2).tolist()
     return len(selected), mask.astype(bool), display_origin, mask_origin
