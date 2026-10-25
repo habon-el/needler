@@ -13,7 +13,9 @@ import cv2
 import numpy as np
 
 IDENTITY = [1., 0., 0., 1., 0., 0.]
-FIELDS = {'name', 'group', 'visible', 'locked', 'matrix', 'rotation', 'source', 'rings', 'cut', 'drawn'}
+FIELDS = {'name', 'group', 'visible', 'locked', 'matrix', 'rotation', 'source', 'rings', 'cut', 'drawn', 'under'}
+FILL_GAP_MM = .4      # click to fill: gaps in the lines up to about twice this are bridged
+FILL_TUCK_MM = .3     # the fill reaches this far under the lines around it, so no gap shows
 SHAPES = ('rectangle', 'ellipse', 'polygon', 'freehand')
 MAX_DRAWN_POINTS = 2000
 MAX_COPIES = 100
@@ -82,6 +84,8 @@ def edits(options):
         if 'drawn' in item and ('source' in item or 'rings' not in item or not isinstance(item['drawn'], str)
                                 or not re.fullmatch('#[0-9a-f]{6}', item['drawn'])):
             raise ValueError('A drawn shape needs an outline and a thread colour.')
+        if 'under' in item and (item['under'] is not True or 'drawn' not in item):
+            raise ValueError('Invalid filled space.')
         if 'cut' in item and item['cut'] is not True:
             raise ValueError('Invalid cut piece.')
     if sum('source' in item or 'drawn' in item for item in value.values()) > MAX_COPIES:
@@ -99,7 +103,8 @@ def inventory(region_report, options, width, height, scale):
     # Drawn shapes: their own outline (picture pixels) and thread colour; they can be copied and cut too.
     for key, item in saved.items():
         if 'drawn' in item:
-            areas.append({'id': key, 'colour': item['drawn'], 'rings': item['rings'], 'style': styles.get(key, 'tatami')})
+            areas.append({'id': key, 'colour': item['drawn'], 'rings': item['rings'], 'style': styles.get(key, 'tatami'),
+                          'under': item.get('under', False)})
     # Duplicates reuse their original's outline and colour, with their own transform and style.
     by_id = {a['id']: a for a in areas}
     for key, item in saved.items():
@@ -157,6 +162,7 @@ def inventory(region_report, options, width, height, scale):
         result.append(dict(id=area['id'], order=index+1, name=item.get('name') or f'Part {index+1}',
                            group=item.get('group', ''), colour=area['colour'], style=area['style'],
                            visible=item.get('visible', True), locked=item.get('locked', False), copy='source' in item or 'drawn' in item,
+                           under=bool(area.get('under')),
                            rings_mm=rings, rings=pixel_rings, x_mm=(left+right)/2, y_mm=(top+bottom)/2,
                            width_mm=right-left, height_mm=bottom-top, rotation=item.get('rotation', 0),
                            nodes=sum(len(r) for r in rings), area_mm2=area_mm2, satin_reason=reason,
@@ -165,12 +171,16 @@ def inventory(region_report, options, width, height, scale):
                 transformed=geometry_changed(options),unavailable=region_report.get('unavailable', ''))
 
 
-def change(options, report, command):
+def change(options, report, command, image=None):
     """Apply one atomic command to geometry; callers regenerate before committing."""
     if not isinstance(command, dict) or set(command)-{'ids', 'field', 'value', 'linked'}:
         raise ValueError('Invalid piece edit.')
     if command.get('field') == 'draw':
         return draw(deepcopy(options), report, command.get('value'))
+    if command.get('field') == 'click_fill':
+        if image is None:
+            raise ValueError('Click to fill needs the prepared artwork.')
+        return click_fill(deepcopy(options), report, image, command.get('value'))
     ids = command.get('ids')
     if not isinstance(ids, list) or not ids or len(set(ids)) != len(ids):
         raise ValueError('Select the pieces to edit.')
@@ -324,6 +334,69 @@ def draw(updated, report, value):
         n += 1
     count = sum('drawn' in item for item in stored.values())+1
     stored[key] = {'drawn': colour.lower(), 'rings': [ring], 'name': f"{value['shape'].capitalize()} {count}"}
+    edits(updated)
+    return updated
+
+
+def click_fill(updated, report, image, value):
+    """Click to fill: the empty space under the click, closed by the artwork around it, becomes
+    a new piece in the chosen thread. Small gaps in the lines are bridged; a space open to the
+    outside is refused. The fill is sewn first and reaches a little under the lines, so the lines
+    (and, without holes, the parts inside it) lie on top. value: {point (mm), colour, holes}."""
+    import hashlib
+    if not isinstance(value, dict) or set(value) != {'point', 'colour', 'holes'} or type(value['holes']) is not bool:
+        raise ValueError('Click inside an empty space to fill it.')
+    colour, point = value['colour'], value['point']
+    if not isinstance(colour, str) or not re.fullmatch('#[0-9a-fA-F]{6}', colour):
+        raise ValueError('Choose a thread colour for the fill.')
+    if not isinstance(point, list) or len(point) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) for v in point):
+        raise ValueError('Click inside an empty space to fill it.')
+    rgba = np.asarray(image)
+    if rgba.ndim != 3 or rgba.shape[2] != 4:
+        raise ValueError('Click to fill needs the prepared artwork.')
+    scale = report['scale']
+    x, y = ((np.asarray(point, float)+np.array(report['origin_mm']))/scale).round().astype(int)
+    height, width = rgba.shape[:2]
+    if not (0 <= x < width and 0 <= y < height):
+        raise ValueError('Click inside the artwork.')
+    sewn = (rgba[:, :, 3] > 127).astype(np.uint8)
+    if sewn[y, x]:
+        raise ValueError('This part is already stitched. Click an empty space, or choose its stitch type in Stitch styles.')
+    gap = max(1, int(round(FILL_GAP_MM/scale)))
+    disc = lambda r: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2*r+1, 2*r+1))
+    # Close small gaps in the lines first, so the fill does not leak out through them.
+    open_space = (1-cv2.dilate(sewn, disc(gap))).astype(np.uint8)
+    if not open_space[y, x]:
+        raise ValueError('Click a little further from the lines.')
+    count, labels = cv2.connectedComponents(open_space, connectivity=4)
+    space = (labels == labels[y, x]).astype(np.uint8)
+    if space[0, :].any() or space[-1, :].any() or space[:, 0].any() or space[:, -1].any():
+        raise ValueError('This space is open to the outside. Click inside a closed shape, or close the gap in the lines.')
+    # Back out to the lines, then a little under them.
+    space = cv2.dilate(space, disc(gap)) & (1-sewn)
+    space = cv2.dilate(space, disc(max(1, int(round(FILL_TUCK_MM/scale)))))
+    contours, hierarchy = cv2.findContours(space, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    outer = max((i for i in range(len(contours)) if hierarchy[0, i, 3] == -1), key=lambda i: cv2.contourArea(contours[i]))
+    rings = [contours[outer]]
+    if value['holes']:
+        child = hierarchy[0, outer, 2]
+        while child != -1:
+            if cv2.contourArea(contours[child]) >= 4:
+                rings.append(contours[child])
+            child = hierarchy[0, child, 0]
+    if cv2.contourArea(rings[0])*scale*scale < 1.0:
+        raise ValueError('This space is too small to fill. Fill at least 1 mm².')
+    rings = [[[float(px), float(py)] for px, py in cv2.approxPolyDP(r, .5, True)[:, 0, :]] for r in rings]
+    rings = [r for r in rings if len(r) >= 3]
+    stored = updated.setdefault('piece_edits', {})
+    n = 0
+    while True:
+        key = hashlib.sha256(f'fill:{rings[0]}:{n}'.encode()).hexdigest()[:20]
+        if key not in stored:
+            break
+        n += 1
+    count = sum('drawn' in item for item in stored.values())+1
+    stored[key] = {'drawn': colour.lower(), 'rings': rings, 'name': f'Fill {count}', 'under': True}
     edits(updated)
     return updated
 

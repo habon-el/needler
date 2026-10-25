@@ -258,3 +258,13 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   the letters with corners rounded by 2.5 x its half width, sewn last; it counts as sewn area in the
   release gate like the letters. Not with 3D puff yet.
 
+## Click to fill (added 2026-10-25)
+
+- `piece_command {field: 'click_fill', value: {point (mm), colour, holes}}`; the route passes the
+  prepared artwork (`piece_layout.change(..., image=)`). The sewn pixels are grown by 0.4 mm to bridge
+  small gaps, the clicked empty pixel's 4-connected space is taken (refused if it reaches the image
+  edge: open to the outside), grown back to the lines and 0.3 mm under them.
+- Stored like a drawn shape (`drawn`, `rings` with holes) plus `under: true`; `piece_generation`
+  sews `under` pieces first, so the lines and (without holes) the parts inside lie on top.
+- Choosing any drawing tool switches to the Stitch artwork view, where clicks reach the pieces.
+

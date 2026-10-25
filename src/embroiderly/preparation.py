@@ -533,8 +533,9 @@ def register_preparation(app,root):
                 if body.get('piece_revision')!=expected:
                     return jsonify(error='This design changed in another window. Reload before editing pieces.'),409
             if piece_command:
-                _,_,current_report=prepare(path,options,decisions/(path.name+'.masks'))
-                options=change_pieces(options,current_report['piece_layout'],piece_command)
+                prepared_image,_,current_report=prepare(path,options,decisions/(path.name+'.masks'))
+                options=change_pieces(options,current_report['piece_layout'],piece_command,
+                                      image=prepared_image.convert('RGBA') if piece_command.get('field')=='click_fill' else None)
                 body['save']=True
                 if piece_command['field'] in ('position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible'):
                     body['digitize']=True

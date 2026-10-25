@@ -20,7 +20,8 @@ def append(document, layout, scale, settings, colours=None):
     first = {}
     for p in selected:
         first.setdefault(p['colour'], len(first))
-    selected = sorted(selected, key=lambda p: first[p['colour']])
+    # Filled spaces (click to fill) go first: the lines and parts around and inside them lie on top.
+    selected = sorted(selected, key=lambda p: (not p.get('under'), first[p['colour']]))
     points = np.concatenate([np.asarray(r) for p in selected for r in p['rings']])
     low, high = points.min(axis=0), points.max(axis=0)
     # An appliqué cover (and its mitred corners) sews up to ~4.5 mm past the outline: keep it on the canvas.

@@ -29,6 +29,8 @@
  <fieldset id="pieceDraw"><legend>Draw a shape</legend><div class="piece-arrange" role="group" aria-label="Draw">
  <button type="button" data-draw="rectangle" aria-pressed="false" title="Drag from one corner to the opposite corner">▭ Rectangle</button><button type="button" data-draw="ellipse" aria-pressed="false" title="Drag from one corner to the opposite corner">◯ Ellipse</button>
  <button type="button" data-draw="polygon" aria-pressed="false" title="Click each corner; double-click, Enter or click the first point to finish. Esc cancels.">⬠ Polygon</button><button type="button" data-draw="freehand" aria-pressed="false" title="Hold and draw the outline; release to close it">✎ Freehand</button>
+ <button type="button" data-draw="fill" aria-pressed="false" title="Click an empty space closed by lines to fill it. The fill is sewn first, under the lines.">🪣 Click to fill</button>
+ <label title="Leave the parts inside the space open; off fills under them too"><input id="pieceFillHoles" type="checkbox" checked> Keep holes</label>
  <label>Thread <input id="pieceDrawColour" type="color" value="#202020"></label></div></fieldset>
  <div class="piece-modes"><button id="pieceMove" type="button" aria-pressed="true">Drag to move</button><button id="pieceRotate" type="button" aria-pressed="false">Drag to rotate</button></div>
  <label class="piece-advanced">Group / subgroup<input id="pieceGroup" maxlength="100" placeholder="For example: Head / Eyes"></label>
@@ -49,7 +51,7 @@
  function format(value,angle=false){return value===null?'—':(value/(units()==='in'&&!angle?25.4:1)).toFixed(units()==='in'&&!angle?3:1)}
  function feedback(message){$('pieceFeedback').textContent=message}
  async function commit(field,value,ids=[...selected]){
-  if(pending||(!ids.length&&field!=='draw'))return;
+  if(pending||(!ids.length&&field!=='draw'&&field!=='click_fill'))return;
   pending=true;sync();feedback('Saving piece and rebuilding stitches when needed…');
   try{const ok=await studio.pieceEdit({ids,field,value,linked:advanced?linked:true});feedback(ok?(studio.hasPlayback()?'Saved. Stitches use the updated outline.':'Piece saved. No current stitch plan; review the design before generating.'):'Not applied. See the workspace message; the previous piece is unchanged.')}
   catch(error){feedback(error.message)}finally{pending=false;sync()}
@@ -78,7 +80,7 @@
   properties.querySelectorAll('.piece-unit').forEach(node=>node.textContent=units());
   $('pieceLink').disabled=disabled||!advanced;$('pieceLink').setAttribute('aria-pressed',String(!advanced||linked));
   $('pieceMove').disabled=$('pieceRotate').disabled=disabled;
-  properties.querySelectorAll('[data-draw],#pieceDrawColour').forEach(control=>{control.disabled=pending||studio.isBusy()||!report.pieces.length;});
+  properties.querySelectorAll('[data-draw],#pieceDrawColour,#pieceFillHoles').forEach(control=>{control.disabled=pending||studio.isBusy()||!report.pieces.length;});
   properties.querySelectorAll('[data-draw]').forEach(b=>b.setAttribute('aria-pressed',String(drawing?.shape===b.dataset.draw)));
   window.stitchRegionSelection=active&&items.length?{rings:items.flatMap(p=>p.rings)}:null;
   const target=$('stitchRegion');target.value=items.length===1?items[0].id:'';target.dispatchEvent(new Event('change'));
@@ -148,7 +150,7 @@
   commit('knife',line);
  },true);
  // Draw a shape: rectangle / ellipse by dragging corners, freehand by dragging, polygon by clicking corners.
- const drawOn=shape=>{drawing=shape&&drawing?.shape!==shape?{shape,points:[]}:null;if(drawing){knifeOn(false);feedback($('pieceDraw').querySelector(`[data-draw="${shape}"]`).title+'.')}window.stitchRegionSelection=null;sync()};
+ const drawOn=shape=>{drawing=shape&&drawing?.shape!==shape?{shape,points:[]}:null;if(drawing){knifeOn(false);studio.pieceView();feedback($('pieceDraw').querySelector(`[data-draw="${shape}"]`).title+'.')}window.stitchRegionSelection=null;sync()};
  properties.querySelectorAll('[data-draw]').forEach(b=>b.onclick=()=>drawOn(b.dataset.draw));
  const outline=(points,hover)=>{
   const all=hover?[...points,hover]:points;if(all.length<2)return all;
@@ -167,6 +169,9 @@
  canvas.addEventListener('pointerdown',e=>{
   if(!drawing||!active||e.button!==0||pending||studio.isBusy())return;
   e.stopImmediatePropagation();e.preventDefault();const at=studio.piecePoint(e,canvas);
+  if(drawing.shape==='fill'){
+   drawing=null;sync();commit('click_fill',{point:toMm(at),colour:$('pieceDrawColour').value,holes:$('pieceFillHoles').checked});return;
+  }
   if(drawing.shape==='polygon'){
    const first=drawing.points[0],near=first&&Math.hypot(at[0]-first[0],at[1]-first[1])*report.scale<1.5;
    if(near&&drawing.points.length>=3){finishDrawing();return}
@@ -215,7 +220,8 @@
   if(!report.pieces.length||$('middleView').value==='isolated')return;
   if(report.transformed){
    context.save();context.setTransform(1,0,0,1,0,0);context.clearRect(0,0,context.canvas.width,context.canvas.height);context.restore();
-   for(const p of report.pieces){if(!p.visible)continue;context.beginPath();for(const ring of p.rings){ring.forEach(([x,y],j)=>j?context.lineTo(x,y):context.moveTo(x,y));context.closePath()}context.fillStyle=p.colour;context.fill('evenodd')}
+   // Filled spaces are sewn first (under the lines): paint them first too.
+   for(const p of [...report.pieces].sort((a,b)=>(b.under?1:0)-(a.under?1:0))){if(!p.visible)continue;context.beginPath();for(const ring of p.rings){ring.forEach(([x,y],j)=>j?context.lineTo(x,y):context.moveTo(x,y));context.closePath()}context.fillStyle=p.colour;context.fill('evenodd')}
   }
   if(!active)return;
   const [ox,oy]=report.origin_mm.map(v=>v/report.scale),[w,h]=report.hoop_mm.map(v=>v/report.scale);

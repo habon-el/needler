@@ -29,7 +29,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Digitize holes, fill holes, remove holes | cut a hole: Erase area; remove / fill holes: "Sew over holes in this area" (stitches run across, an empty hole is filled) | ✅ 2026-10-24 | |
 | Add / remove stitch angles | "Stitch direction °" per area in the style panel (empty = automatic) | ✅ 2026-10-24 | |
 | Reshape, knife, split curve, break apart | Knife: drag a line across a piece to cut it into parts (each part its own piece); split at point, move points | ◐ no node reshaping of pieces | P3 |
-| Click to fill (with/without holes), turning fill, outline, centerline | Area styles, auto satin, line art | ◐ no click tool | P2 |
+| Click to fill (with/without holes), turning fill, outline, centerline | Pieces panel "Click to fill": click an empty space closed by the artwork; it fills up to and 0.3 mm under the lines (gaps up to ~0.8 mm bridged), sewn first; Keep holes on/off. Auto satin, line art | ✅ 2026-10-25 | |
 | Appliqué (placement, tack-down, cover, stops) and Export cutting | area style Appliqué: placement run, stop, zigzag tack-down, stop, 3 mm satin cover; cutting shapes SVG at actual size | ✅ 2026-10-24 | |
 | Partial appliqué, combine appliqué, remove appliqué overlaps | — | ✗ | P3 |
 | Buttonholes, basting stitch markers | — | ✗ | P3 |
