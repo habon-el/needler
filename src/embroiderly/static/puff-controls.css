@@ -78,3 +78,11 @@
 .colourway-controls select, .colourway-controls input { width:100%; min-height:28px; box-sizing:border-box; }
 .colourway-controls .colourway-row { display:flex; gap:6px; margin-top:6px; }
 .colourway-controls .colourway-row button { flex:1; min-width:0; }
+/* Stitch edits under the playback controls (stitch-edits.js). */
+.stitch-edits { margin-top:6px; font-size:12px; }
+.stitch-edit-actions { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.stitch-edit-actions button { min-height:28px; padding:2px 10px; font-size:12px; }
+.stitch-edit-list { list-style:none; margin:4px 0 0; padding:0; display:flex; flex-wrap:wrap; gap:4px; }
+.stitch-edit-list li { display:flex; align-items:center; border:1px solid var(--ui-line,#d4ddd8); border-radius:6px; }
+.stitch-edit-list button { border:0; background:transparent; min-height:24px; padding:1px 6px; font-size:11px; }
+.stitch-edit-note { margin:4px 0 0; }

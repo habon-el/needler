@@ -590,8 +590,10 @@ def guard(previous, proposed):
     locked = {key: item for key, item in edits(previous).items() if item.get('locked')}
     if not locked:
         return
-    # The sewing order and the hoop move no piece, so they can change while a piece is locked.
-    ignore = {'piece_edits', 'region_styles', 'interactions', 'area_outlines', 'sew_sequence', 'piece_hoop_mm', 'hoop_id'}
+    # The sewing order, the hoop and stitch edits (a stop, a cut, one stitch) move no piece, so they can change
+    # while a piece is locked.
+    ignore = {'piece_edits', 'region_styles', 'interactions', 'area_outlines', 'sew_sequence', 'piece_hoop_mm', 'hoop_id',
+              'stitch_edits'}
     if {k:v for k,v in previous.items() if k not in ignore} != {k:v for k,v in proposed.items() if k not in ignore}:
         raise ValueError('A piece is locked. Unlock it before changing artwork, colours or design-wide settings.')
     new = edits(proposed)

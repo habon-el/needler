@@ -585,8 +585,12 @@ def digitize(source, directory, height_mm=100, colours=None):
         policy['piece_integration']=[digest(Path(__file__).with_name(n)) for n in ('piece_generation.py','piece_layout.py')]
     # Exact stitch removal areas (stitch_cuts.py) change the plan after generation.
     cuts=[] if piece_layout else [c for c in settings.get('stitch_cuts',[]) if isinstance(c,dict) and len(c.get('points',[]))>=3]
+    # Stops, cuts and single-stitch edits (stitch_edits.py) too, after the removal areas.
+    from .stitch_edits import choices as edit_choices
+    stitch_edits=edit_choices(settings)
     key=hashlib.sha256((cache_key(source,svg)+json.dumps(policy,sort_keys=True)+(json.dumps(piece_layout,sort_keys=True) if piece_layout else '')
                         +(json.dumps(cuts,sort_keys=True) if cuts else '')
+                        +(json.dumps(stitch_edits,sort_keys=True) if stitch_edits else '')
                         # The allowed-stitching mask is recorded only on a fresh run; a cached result
                         # must not keep an older mask when only the mask changed.
                         +hashlib.sha256(np.packbits(release_mask).tobytes()+str(release_mask.shape).encode()).hexdigest()
@@ -595,7 +599,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     if cached is not None:return cached
     # Both machine files come from one engine plan. PES v6 retains custom RGB.
     from .thread_recolour import reuse
-    recoloured=None if border or piece_layout or cuts else reuse(directory,svg,policy)
+    recoloured=None if border or piece_layout or cuts or stitch_edits else reuse(directory,svg,policy)
     if recoloured:
         plan_bytes,previous_pes=recoloured
     else:
@@ -610,6 +614,18 @@ def digitize(source, directory, height_mm=100, colours=None):
         plan=json.loads(plan_bytes);plan['stitches'],removed=cut_stitches(plan['stitches'],areas)
         if not any(s[2]=='STITCH' for s in plan['stitches']):raise ValueError('Removing those stitches leaves nothing to sew. Undo the removal.')
         plan.setdefault('extras',{})['stitches_removed']=removed
+        plan_bytes=json.dumps(plan).encode()
+    if stitch_edits:
+        from .stitch_edits import apply as edit_stitches
+        from .knockout_routing import RemovedPixels
+        # Edits are placed in playback millimetres; pieces are shifted after the plan is made.
+        shift=(np.asarray(piece_origin)-np.asarray(piece_layout['origin_mm']))*10 if piece_layout else np.zeros(2)
+        frame=(np.asarray(mask_origin)-shift/10).tolist() if piece_layout else source_origin
+        pixels=RemovedPixels(alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,frame)
+        plan=json.loads(plan_bytes)
+        edit_report=edit_stitches(plan,stitch_edits,lambda x,y:(x*10-shift[0],y*10-shift[1]),
+                                  lambda a,b:pixels.crosses([a[0]+shift[0],a[1]+shift[1]],[b[0]+shift[0],b[1]+shift[1]]))
+        plan.setdefault('extras',{})['stitch_edits']=edit_report
         plan_bytes=json.dumps(plan).encode()
     raw=directory/'engine-plan.json'
     raw.write_bytes(plan_bytes)
@@ -686,6 +702,8 @@ def digitize(source, directory, height_mm=100, colours=None):
     puff_threads=json.loads(plan_bytes).get('extras',{}).get('puff_threads',[])
     if puff_threads:
         payload['puff']={'threads':puff_threads,'foam_mm':foam_mm}
+    edit_report=json.loads(plan_bytes).get('extras',{}).get('stitch_edits')
+    if edit_report:payload['stitch_edits']=edit_report
     if cut_pieces:payload['applique']={'pieces':len(cut_pieces),'cut_file':'applique-cut.svg'}
     # Parts in the order they are sewn, for moving one earlier or later (sew_sequence.py).
     payload['sew_parts']=[e.get('id')[6:] for e in document.iter('path') if (e.get('id') or '').startswith('piece-')] if piece_layout else sewn_parts

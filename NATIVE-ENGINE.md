@@ -456,3 +456,30 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   (preparation.py and `pieceEdit` lists); copies share their original's thread, so no colour change.
 - Pieces panel: a Repeat group under Transform with Mirror copy ⇋ ⇅, Around / Radius mm / Turn /
   Circle and Rows / Columns / Gap mm / Array.
+
+## Stitch edits: stops, cuts, single stitches (added 2026-10-25)
+
+- `stitch_edits: [{kind: stop|trim|delete|move, x, y, n[, to]}]` (at most 200, in the order added),
+  checked by `stitch_edits.choices`. x, y are the stitch's place in playback millimetres and n its
+  place in the sewing order (the n-th sewn stitch); `to` is the new place of a moved stitch, at most
+  3 mm away.
+- `engine.py` applies them to the plan after the exact removal areas (`stitch_cuts`), in the order
+  added, and they enter the cache key (and turn off colour-only reuse). Each edit is matched to the
+  sewn stitch within 0.15 mm whose order is closest to n; if none is left (the design changed) it is
+  left out and `playback.stitch_edits.dropped` says so in plain words. Piece layouts are matched in
+  the shifted playback frame.
+- Stop: a thread change to the same thread right after the stitch (after its cut, if any); the
+  thread list repeats the thread and later puff threads move up one. PES reads it back as STOP, DST
+  as a colour change. `playback.stitch_edits.stops` lists the thread numbers after each added stop;
+  the worksheet notes "Machine stop you added" on that block and the colour strip in playback titles
+  a same-thread block "Machine stop".
+- Cut: a 0.6 mm tie-off along the run, TRIM, a jump back and a 0.6 mm tie-in on the next stitch (as
+  `stitch_cuts` does). Refused where the thread is already cut or changes thread.
+- Delete removes one stitch; move puts it (and the jump onto it, for a run's first stitch) at `to`.
+  Both are refused with a plain message when a new stitch would be under 0.3 mm or over 7 mm, or
+  would cross empty fabric (the release mask, `RemovedPixels`); a run's first stitch cannot be deleted.
+  The written files still go through spacing and lock repair and the release gate like any other.
+- Check stitches: `stitch-edits.js` under the playback controls: Add stop here, Add cut here, Delete
+  this stitch, Move this stitch (then click the new place), at the last stitch playback has reached;
+  a list of the edits (click to show it in playback, × to remove) and any left-out notes. Stitch
+  edits move no piece, so the lock guard ignores them.

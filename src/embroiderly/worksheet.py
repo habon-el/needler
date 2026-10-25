@@ -53,6 +53,7 @@ def summary(playback, fabric=None):
     from .thread_matching import rank_threads, CHARTS
     puff = playback.get('puff') or {}
     puff_threads = set(puff.get('threads', []))
+    added_stops = set((playback.get('stitch_edits') or {}).get('stops', []))
     # One thread chart for the whole design (the one closest overall), so the operator
     # pulls threads from a single brand rather than a mix.
     distinct = sorted({b['colour'] for b in sequence})
@@ -71,6 +72,8 @@ def summary(playback, fabric=None):
         notes = []
         if number in puff_threads:
             notes.append(f"Stop before: lay {puff.get('foam_mm', 3):g} mm puff foam over the outline")
+        elif number in added_stops:
+            notes.append('Machine stop you added (same thread): do what you planned here, then continue')
         elif number and block['colour'] == sequence[number-1]['colour']:
             notes.append('Machine stop (same thread)'+(': place or trim the appliqué fabric' if playback.get('applique') else ''))
         block['notes'] = notes

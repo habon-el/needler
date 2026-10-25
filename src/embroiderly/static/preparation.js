@@ -540,7 +540,7 @@ function buildColourStops(){
  const blocks=[];let start=0;
  playback.steps.forEach((s,i)=>{if(s.t==='color_change'){blocks.push({start,end:i,colour:playback.steps[start]?.color});start=i+1}});
  blocks.push({start,end:playback.steps.length,colour:playback.steps[start]?.color});
- blocks.forEach((b,i)=>{const button=document.createElement('button');button.style.background=colourPreviewMap[b.colour]||b.colour;button.style.flexGrow=Math.max(1,b.end-b.start);button.title='Thread '+(i+1)+' · '+(colourPreviewMap[b.colour]||b.colour);button.setAttribute('aria-label',button.title);
+ blocks.forEach((b,i)=>{const button=document.createElement('button');button.style.background=colourPreviewMap[b.colour]||b.colour;button.style.flexGrow=Math.max(1,b.end-b.start);button.title=(i&&b.colour===blocks[i-1].colour?'Machine stop · ':'')+'Thread '+(i+1)+' · '+(colourPreviewMap[b.colour]||b.colour);button.setAttribute('aria-label',button.title);
  button.onclick=()=>{cursor=b.start;running=false;$('run').textContent='▶ Play';setView('stitched');transport()};strip.append(button)});
 }
 $('redo').onclick=()=>restoreHistory(true);

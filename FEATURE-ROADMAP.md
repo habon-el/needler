@@ -95,7 +95,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Create outlines and offsets, outline design, create border | Outer-silhouette border (`borders.py`); Pieces panel Outline per part: Running, Triple or Satin, on the edge or a gap up to 6 mm outward, own thread colour, sewn after all fills | ✅ 2026-10-25 | |
 | Smooth shapes, weld | — | ✗ | P3 |
 | Remove overlaps | Colour knockout; areas never stack | ✅ | |
-| Stitch edit, insert stop/trim, convert to manual | Remove stitches by area | ◐ | P3 |
+| Stitch edit, insert stop/trim, convert to manual | Remove stitches by area; Check stitches: Add stop here, Add cut here (tie-off and tie-in), Delete this stitch, Move this stitch (up to 3 mm) at the playback position, saved with the design and checked against 0.3–7 mm and empty fabric. Converting a whole part to hand-placed stitches is not offered | ✅ 2026-10-25 | |
 | Recognize stitches (machine file → objects) | — | ✗ | P3 |
 | Morphing (pinch, punch, twirl, wave) | — | ✗ | P3 |
 
