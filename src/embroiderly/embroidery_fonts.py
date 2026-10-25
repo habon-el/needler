@@ -273,6 +273,54 @@ def size_profile(cap_mm, width_mm, zigzag_mm):
 
 
 BASELINES = ('straight', 'arc_over', 'arc_under')
+FRAMES = ('none', 'circle', 'oval', 'square', 'diamond', 'hexagon', 'shield', 'heart')
+MONOGRAM_MIDDLE = 1.35   # classic monogram: the middle initial is this much bigger
+
+
+def _frame_ring(kind, bounds, margin, radius):
+    """A closed frame line around the letters' bounds (px), at least `margin` clear of them,
+    with points about every 0.6 mm so the satin follows curves smoothly."""
+    import numpy as np
+    from shapely.geometry import Polygon, box
+    from shapely import segmentize
+    left, top, right, bottom = bounds
+    cx, cy = (left+right)/2, (top+bottom)/2
+    w, h = (right-left)/2+margin, (bottom-top)/2+margin   # half sizes of the clear box
+    t = np.linspace(0, 2*math.pi, 240, endpoint=False)
+    if kind == 'circle':
+        r = math.hypot(w, h)
+        shape = Polygon(np.c_[cx+r*np.cos(t), cy+r*np.sin(t)])
+    elif kind == 'oval':
+        shape = Polygon(np.c_[cx+w*math.sqrt(2)*np.cos(t), cy+h*math.sqrt(2)*np.sin(t)])
+    elif kind == 'square':
+        shape = box(cx-w, cy-h, cx+w, cy+h).buffer(min(w, h)*.25, join_style='round').buffer(-min(w, h)*.12)
+    elif kind == 'diamond':
+        shape = Polygon([(cx, cy-2*h), (cx+2*w, cy), (cx, cy+2*h), (cx-2*w, cy)])
+    elif kind == 'hexagon':
+        tall = h*1.3
+        reach = w/(1-h/(2*tall))
+        shape = Polygon([(cx-reach, cy), (cx-reach/2, cy-tall), (cx+reach/2, cy-tall),
+                         (cx+reach, cy), (cx+reach/2, cy+tall), (cx-reach/2, cy+tall)])
+    elif kind == 'shield':
+        width, top_y, side_y, point_y = w*1.15, cy-h*1.2, cy+h*.35, cy+h*2.1
+        # Sides curve in to a point at the bottom (the control point sits halfway down the side).
+        curve = [((1-u)**2*width+2*(1-u)*u*width, (1-u)**2*side_y+2*(1-u)*u*(side_y+point_y)/2+u*u*point_y)
+                 for u in np.linspace(0, 1, 40)]
+        shape = Polygon([(cx-width, top_y), (cx+width, top_y)]+[(cx+x, y) for x, y in curve]
+                        + [(cx-x, y) for x, y in curve[::-1]])
+    elif kind == 'heart':
+        x, y = 16*np.sin(t)**3, -(13*np.cos(t)-5*np.cos(2*t)-2*np.cos(3*t)-np.cos(4*t))
+        k = max(w/10.5, h/7.5)
+        shape = Polygon(np.c_[cx+k*x, cy+k*(y+1.5)])
+        # Round the dip at the top: a satin cannot turn inside a cusp.
+        shape = shape.buffer(4*radius).buffer(-4*radius)
+    else:
+        raise ValueError('Choose a listed frame.')
+    # Round the corners a little: satin turns a rounded corner cleanly, a sharp one folds over.
+    shape = shape.buffer(-2.5*radius).buffer(2.5*radius)
+    shape = segmentize(shape.simplify(.1/PX_MM), .6/PX_MM)
+    ring = [tuple(p) for p in shape.exterior.coords][:-1]
+    return [p for i, p in enumerate(ring) if i == 0 or math.dist(p, ring[i-1]) > 1e-6]
 SEQUENCES = ('left', 'centre')
 
 
@@ -301,7 +349,7 @@ def _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, r
 
 def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0, fill=False,
            pull_mm=None, letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', radius_mm=None,
-           sequence='left', arc_degrees=None):
+           sequence='left', arc_degrees=None, frame='none', frame_mm=2.5, classic=False):
     """SVG of satin-column lettering; user units are CSS px (96 per inch).
     puff: letters over foam (see stitch_satin._puff_satin). Each letter has a
     placement line sewn before the stop for the foam, then a perforation line
@@ -314,6 +362,10 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
     inside both instead of a cut."""
     if baseline not in BASELINES or sequence not in SEQUENCES:
         raise ValueError('Choose a listed baseline and letter order.')
+    if frame not in FRAMES:
+        raise ValueError('Choose a listed frame.')
+    if frame != 'none' and puff:
+        raise ValueError('A frame cannot be 3D puff yet. Turn off 3D puff or choose no frame.')
     from .stitch_engine import PUFF_MAX_MM, puff_min_mm
     puff_columns = (puff_min_mm(foam_mm), PUFF_MAX_MM)
     puff_pull = '.35' if foam_mm < 2.5 else '.45'  # outer edge; sewn 0.05 mm inside
@@ -347,6 +399,20 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                                baseline_of(row)]
                 for (row, glyphs), width in zip(placed, widths) for index, (_, x, *_) in enumerate(glyphs)}
     size = (widest+em_px, len(lines)*line_px+em_px)
+    if classic:
+        # Classic monogram: two or three initials, the middle one bigger, all centred on one line.
+        letters = [index for index, g in enumerate(placed[0][1]) if g[0] != ' ']
+        if len(lines) > 1 or baseline != 'straight' or not 2 <= len(letters) <= 3:
+            raise ValueError('A classic monogram is two or three initials on one straight line.')
+        middle = letters[1] if len(letters) == 3 else None
+        x = 0.0
+        for index in letters:
+            char = placed[0][1][index][0]
+            l, t, r, b = glyph_columns(font_path(key), char)[2].bounds
+            scale_px = em_px*(MONOGRAM_MIDDLE if index == middle else 1)
+            matrices[0, index] = [scale_px, 0, 0, scale_px, x-l*scale_px, -(t+b)/2*scale_px]
+            x += (r-l)*scale_px+.12*em_px
+    frame_columns = []
     if baseline != 'straight':
         if len(lines) > 1:
             raise ValueError('Arc lettering takes one line. Remove the line breaks or use a straight baseline.')
@@ -359,13 +425,31 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
         else:
             radius_px = float(radius_mm)/PX_MM
         matrices = _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, radius_px)
-        # Keep the bent words on the page: measure them and move them in by half an em.
+    if baseline != 'straight' or classic or frame != 'none':
+        # Keep the bent words (and the frame) on the page: measure them and move them in by half an em.
         from shapely.affinity import affine_transform
         from shapely.ops import unary_union
         outline = unary_union([affine_transform(glyph_columns(font_path(key), char)[2], matrices[row, index])
                                for row, glyphs in placed for index, (char, *_) in enumerate(glyphs) if char != ' '])
         if not outline.is_empty:
             left, top, right, bottom = outline.bounds
+            if frame != 'none':
+                # A satin frame around the letters, clear of them by about a third of a capital.
+                from .borders import satin_rails
+                radius = float(frame_mm)/2/PX_MM
+                cap_px = cap_height(key)*em_px
+                ring = _frame_ring(frame, outline.bounds, max(.35*cap_px, 1.5/PX_MM)+radius, radius)
+                try:
+                    frame_columns = satin_rails(ring+[ring[0]], radius)
+                except ValueError:
+                    raise ValueError('This frame does not fit at this size. Choose another frame, '
+                                     'a thinner frame or bigger letters.') from None
+                xs = [p[0] for a, b in frame_columns for p in (*a, *b)]
+                ys = [p[1] for a, b in frame_columns for p in (*a, *b)]
+                left, top = min(left, min(xs)), min(top, min(ys))
+                right, bottom = max(right, max(xs)), max(bottom, max(ys))
+                frame_columns = [([(x+em_px/2-left, y+em_px/2-top) for x, y in a],
+                                  [(x+em_px/2-left, y+em_px/2-top) for x, y in b]) for a, b in frame_columns]
             for m in matrices.values():
                 m[4] += em_px/2-left
                 m[5] += em_px/2-top
@@ -519,6 +603,21 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                     sewn_letters.append(dict(group=group, last=nodes[-1], end=previous_end,
                                              start=_lerp(first[0][0], first[1][0], .5), columns=sewn_columns))
         _join_touching(sewn_letters, colour)
+    if frame_columns:
+        # The frame is sewn last, around the letters, as satin halves that meet at both ends.
+        group = ET.SubElement(root, f'{{{SVG_NS}}}g', {f'{{{INK_NS}}}letter-group': 'line',
+                                                       f'{{{LABEL_NS}}}label': 'frame'})
+        nodes = []
+        for a, b in frame_columns:
+            count += 1
+            nodes.append(ET.SubElement(group, f'{{{SVG_NS}}}path', {
+                'id': f'frame{count}', 'd': ' '.join([_path([tuple(p) for p in a]), _path([tuple(p) for p in b])]),
+                'style': f'fill:none;stroke:{colour};stroke-width:{.2/PX_MM:.3f}',
+                f'{{{INK_NS}}}satin_column': 'true', f'{{{INK_NS}}}satin_pairs': 'indexed',
+                f'{{{INK_NS}}}pull_compensation_mm': f'{pull_mm:g}',
+                **{f'{{{INK_NS}}}{name}': value
+                   for name, value in size_profile(size_mm, float(frame_mm), data['zigzag_mm']).items()}}))
+        nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
     return ET.tostring(root, encoding='unicode')
 
 

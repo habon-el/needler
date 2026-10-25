@@ -44,6 +44,104 @@ def thickness_mm(rings,scale):
 
 
 HAIRLINE_MM=.45   # areas thinner than about one thread are sewn as a run, not satin
+STROKE_SATIN_MM=6.5  # long stroke-like areas up to this wide are satin too (a stem, a swirl, a letter stroke)
+LIMB_MIN_MM2=1.5     # thin parts of a larger area (claws, tips, stems) at least this big become satin
+LIMB_OVERLAP_MM=.4   # a limb's satin and the body's fill overlap this much, so no gap opens between them
+
+
+def area_mm2(rings,scale):
+    return (cv2.contourArea(rings[0])-sum(cv2.contourArea(r) for r in rings[1:]))*scale*scale
+
+
+def stroke_like(rings,scale,thick):
+    """A long band (its length at least four times its width): satin follows it better than rows of fill."""
+    return area_mm2(rings,scale)/max(thick,.1)>=4*thick
+
+
+def _plane(rings):
+    x,y,w,h=cv2.boundingRect(np.vstack(rings))
+    plane=np.zeros((h+4,w+4),np.uint8)
+    cv2.drawContours(plane,[rings[0]-[x-2,y-2]],-1,1,-1)
+    for ring in rings[1:]:cv2.drawContours(plane,[ring-[x-2,y-2]],-1,0,-1)
+    return plane,np.array([x-2,y-2])
+
+
+def _rings_of(mask,offset):
+    contours,hierarchy=cv2.findContours(mask.astype(np.uint8),cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
+    if hierarchy is None:return []
+    out=[]
+    for i,c in enumerate(contours):
+        if hierarchy[0,i,3]!=-1 or cv2.contourArea(c)<4:continue
+        rings=[c+offset];child=hierarchy[0,i,2]
+        while child!=-1:
+            rings.append(contours[child]+offset);child=hierarchy[0,child,0]
+        out.append(rings)
+    return out
+
+
+def thin_limbs(rings,scale):
+    """Split thin parts (claws, stems, feather tips, swirl ends) off a thick area: the body keeps its
+    fill and each limb becomes satin that follows and tapers with it, as a digitizer would split them.
+    The two overlap by LIMB_OVERLAP_MM. Returns (body rings, [limb rings]); no limbs leaves the area whole."""
+    plane,offset=_plane(rings)
+    r=max(1,int(round(SMALL_SATIN_MM/2/scale)))
+    body=cv2.morphologyEx(plane,cv2.MORPH_OPEN,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2*r+1,2*r+1)))
+    count,labels,stats,_=cv2.connectedComponentsWithStats((plane&(1-body)).astype(np.uint8),connectivity=8)
+    limbs=np.zeros_like(plane)
+    for i in range(1,count):
+        part=(labels==i).astype(np.uint8)
+        size=stats[i,cv2.CC_STAT_AREA]*scale*scale
+        if size<LIMB_MIN_MM2:continue
+        width=2*float(cv2.distanceTransform(np.pad(part,1),cv2.DIST_L2,5).max())*scale
+        if size/max(width,.1)<2*width:continue   # a bump on the edge, not a limb: it stays in the fill
+        limbs|=part
+    if not limbs.any():return rings,[]
+    grow=cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2*max(1,int(math.ceil(LIMB_OVERLAP_MM/scale)))+1,)*2)
+    kept=_rings_of(cv2.dilate(plane&(1-limbs),grow)&plane,offset)
+    if len(kept)!=1:return rings,[]   # the body would fall apart into pieces: keep it whole
+    count,labels=cv2.connectedComponents(limbs,connectivity=8)
+    parts=[]
+    for i in range(1,count):
+        parts+=_rings_of(cv2.dilate((labels==i).astype(np.uint8),grow)&plane,offset)
+    return kept[0],parts
+
+
+LAYER_AREAS_MAX=400   # more separate parts than this: keep the colour order (layering them is slow)
+
+
+def layer_passes(passes):
+    """Back-to-front order: each part's depth is how many parts of other threads enclose it
+    (it sits in their hole). Parts are sewn by depth, then in the usual colour order; parts of
+    one thread at one depth stay together. Returns [(colour, choice, mask)], a thread may repeat."""
+    parts=[]
+    for rank,(colour,choice,mask) in enumerate(passes):
+        count,labels=cv2.connectedComponents(mask,connectivity=8)
+        for i in range(1,count):
+            part=(labels==i).astype(np.uint8)
+            outer,_=cv2.findContours(part,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+            ys,xs=np.nonzero(part)
+            parts.append(dict(rank=rank,mask=part,outer=max(outer,key=cv2.contourArea),point=(float(xs[0]),float(ys[0]))))
+            if len(parts)>LAYER_AREAS_MAX:return passes
+    for a in parts:
+        a['depth']=sum(1 for b in parts if b['rank']!=a['rank'] and cv2.pointPolygonTest(b['outer'],a['point'],False)>0)
+    out=[]
+    for a in sorted(parts,key=lambda a:(a['depth'],a['rank'])):
+        colour,choice,_=passes[a['rank']]
+        if out and out[-1][3]==(a['depth'],a['rank']):
+            out[-1][2]|=a['mask']
+        else:
+            out.append([colour,choice,a['mask'].copy(),(a['depth'],a['rank'])])
+    return [(colour,choice,mask) for colour,choice,mask,_ in out]
+
+
+def add_satin_area(document,rings,thread,index,spacing,pull,knockout):
+    """An area sewn as satin columns that follow its centre line (stitch_engine._satin_area)."""
+    d=' '.join('M '+' L '.join(f'{x},{y}' for x,y in ring[:,0,:])+' Z' for ring in rings)
+    node=ET.SubElement(document,'path',id=f'area{index}',d=d,style=f'fill:{thread};fill-rule:evenodd;stroke:none')
+    node.set('{http://inkstitch.org/namespace}fill_method','auto_satin')
+    if spacing:node.set('{http://inkstitch.org/namespace}zigzag_spacing_mm',f'{float(spacing):g}')
+    if not knockout:node.set('{http://inkstitch.org/namespace}pull_compensation_mm',str(pull))
+    return node
 
 
 def contours_too_thin(contours,hierarchy,scale):
@@ -66,9 +164,18 @@ def add_hairline(document,points,thread,index,closed):
                 '{http://inkstitch.org/namespace}trim_after':'true'})
 
 
+def darker(thread,factor=.55):
+    """A darker shade of a thread colour for outlines and shading (very dark threads get black)."""
+    rgb=[int(thread[i:i+2],16) for i in (1,3,5)]
+    if max(rgb)<60:return '#000000'
+    return '#%02x%02x%02x'%tuple(int(v*factor) for v in rgb)
+
+
 def colour_outlines(document,exact,alpha,masks,scale,thread,retrace_mm):
     """Add outlines: one running line along every colour boundary and the
-    outer edge, routed as continuous branched runs (line_art) and sewn last."""
+    outer edge, routed as continuous branched runs (line_art) and sewn last.
+    thread: one colour for every outline, or a list (one per mask) for per-part shades;
+    a boundary between two parts takes the shade of the part sewn later (it lies on top)."""
     label=np.full(alpha.shape,-1,np.int32)
     for k,m in enumerate(masks):label[m]=k
     edge=np.zeros(alpha.shape,bool)
@@ -77,7 +184,16 @@ def colour_outlines(document,exact,alpha,masks,scale,thread,retrace_mm):
     edge[[0,-1],:]|=label[[0,-1],:]>=0;edge[:,[0,-1]]|=label[:,[0,-1]]>=0
     edge&=label>=0
     if not edge.any():return 0,np.zeros(alpha.shape,bool)
-    return add_line_art(document,exact,alpha,scale,None,retrace_mm,layers=[(thread,edge)])
+    if isinstance(thread,str):
+        return add_line_art(document,exact,alpha,scale,None,retrace_mm,layers=[(thread,edge)])
+    # Each edge pixel belongs to the part on top: one with a lower (earlier) or empty neighbour.
+    lowest=np.minimum.reduce([np.roll(label,1,0),np.roll(label,-1,0),np.roll(label,1,1),np.roll(label,-1,1)])
+    lowest[[0,-1],:]=-1;lowest[:,[0,-1]]=-1
+    owned=edge&(lowest<label)
+    shades={}
+    for k,t in enumerate(thread):
+        shades[t]=shades.get(t,np.zeros(alpha.shape,bool))|(owned&(label==k))
+    return add_line_art(document,exact,alpha,scale,None,retrace_mm,layers=list(shades.items()))
 
 
 def cutting_svg(pieces,scale):
@@ -258,21 +374,27 @@ def digitize(source, directory, height_mm=100, colours=None):
     # Pixels of each included colour, in sewing order, so a fill can reach under the
     # colours sewn after it (fill_shaping.OVERLAP_MM).
     from .fill_shaping import grown as overlap_rings, angle as fill_angle
-    sewn_masks=[]
+    sewn_masks=[];sewn_threads=[]
     for colour in ([] if piece_layout else palette):
         key='#%02x%02x%02x'%tuple(colour)
         choice=(colours or {}).get(key,{'include':prepared or not np.all(colour>=245),'thread':key})
-        if choice['include']:sewn_masks.append(np.all(array==colour,axis=2)&alpha)
+        if choice['include']:sewn_masks.append(np.all(array==colour,axis=2)&alpha);sewn_threads.append(choice['thread'])
     later=np.zeros(alpha.shape,bool)
     for m in sewn_masks:later|=m
     here=np.zeros(2)  # where the last area ended (pixels); the design starts top left
     cut_pieces=[]     # appliqué outlines (pixel rings) for the fabric cutting file
+    passes=[]
     for colour in ([] if piece_layout else palette):
         key='#%02x%02x%02x'%tuple(colour)
         choice=(colours or {}).get(key,{'include':prepared or not np.all(colour>=245),'thread':key})
-        if not choice['include']:
-            continue
-        mask=(np.all(array==colour,axis=2)&alpha).astype('uint8')
+        if choice['include']:passes.append((colour,choice,(np.all(array==colour,axis=2)&alpha).astype('uint8')))
+    if settings.get('sew_order','colours') not in ('colours','layers'):
+        raise ValueError('Choose a listed sewing order.')
+    if settings.get('sew_order')=='layers':
+        # Best look: back to front. A part lying inside another part (a cheek in a head) is sewn
+        # after it, even when its thread was used before; the colour order decides otherwise.
+        passes=layer_passes(passes)
+    for colour,choice,mask in passes:
         later&=~mask.astype(bool)
         release_mask |= mask.astype(bool)
         contours,hierarchy=cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
@@ -301,8 +423,13 @@ def digitize(source, directory, height_mm=100, colours=None):
                 # Thinner than one thread: no satin forms; a run around its edge sews the line.
                 add_hairline(document,c[:,0,:],choice['thread'],objects,closed=True);objects+=1
                 continue
+            # Long bands become satin; thin limbs of thick areas are split off as satin (sewn after the body).
+            stroke=style is None and not knockout and SMALL_SATIN_MM<thick<=STROKE_SATIN_MM and stroke_like(rings,scale,thick)
+            limbs=[]
+            if style is None and not knockout and not stroke and thick>SMALL_SATIN_MM and settings.get('smart_satin',True) is not False:
+                rings,limbs=thin_limbs(rings,scale)
             # Plain fills overlap the colours sewn after them and run along their long side.
-            plain=style is None and thick>SMALL_SATIN_MM and not knockout
+            plain=style is None and thick>SMALL_SATIN_MM and not knockout and not stroke
             shaped=overlap_rings(rings,later,scale) if plain and later.any() else [rings]
             parts=[]
             for piece in shaped:
@@ -335,7 +462,7 @@ def digitize(source, directory, height_mm=100, colours=None):
                 band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
                 grow=max(1,int(math.ceil((float(puff_pull)+.05)/scale)))
                 release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
-            if style is None and thickness_mm(rings,scale)<=SMALL_SATIN_MM:
+            if style is None and (stroke or thickness_mm(rings,scale)<=SMALL_SATIN_MM) or node.get('{http://inkstitch.org/namespace}fill_method')=='auto_satin' and style=='satin':
                 # Narrow or small shapes are satin, as a digitizer would do them:
                 # rows of fill turn ragged and gappy below a few millimetres.
                 node.set('{http://inkstitch.org/namespace}fill_method','auto_satin')
@@ -350,12 +477,20 @@ def digitize(source, directory, height_mm=100, colours=None):
                 # Removed areas stay exact: keep stitches inside by the file rounding.
                 node.set('{http://inkstitch.org/namespace}edge_inset_mm',str(GRID_ROUNDING_MM))
             objects+=1
+            for limb in limbs:
+                # Thin limbs on top of the body's fill, same thread: satin that follows and tapers.
+                add_satin_area(document,limb,choice['thread'],objects,satin_spacing,satin_pull,knockout);objects+=1
+                band=np.zeros_like(mask);cv2.drawContours(band,limb,-1,1,-1)
+                grow=max(1,int(math.ceil(satin_pull/scale)))
+                release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
     outline_thread=settings.get('outline_colour','#202020')
     if settings.get('outlines') is True and not line_art and not piece_layout and settings.get('ink_only') is not True and objects:
-        if not (isinstance(outline_thread,str) and len(outline_thread)==7 and outline_thread[0]=='#'
+        if outline_thread!='auto' and not (isinstance(outline_thread,str) and len(outline_thread)==7 and outline_thread[0]=='#'
                 and all(ch in '0123456789abcdefABCDEF' for ch in outline_thread[1:])):
             raise ValueError('Choose an outline thread colour.')
-        count,drawn=colour_outlines(document,exact,alpha,sewn_masks,scale,outline_thread.lower(),
+        # auto: each part is outlined in a darker shade of its own thread, as digitizers define details.
+        thread=[darker(t) for t in sewn_threads] if outline_thread=='auto' else outline_thread.lower()
+        count,drawn=colour_outlines(document,exact,alpha,sewn_masks,scale,thread,
                                     min(30.,max(2.,float(settings.get('line_retrace_mm',6.)))))
         objects+=count;release_mask|=drawn&alpha
     detail=settings.get('line_details','off')

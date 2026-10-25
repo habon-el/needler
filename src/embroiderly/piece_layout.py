@@ -146,12 +146,9 @@ def inventory(region_report, options, width, height, scale):
             if level == 'green':level='yellow'
             messages.append(f'Bounding span {span:.3f} mm is below the {MIN_STITCH_MM:g} mm output-segment minimum; check the generated route. This is a geometric warning, not a fabric assessment.')
         reason = ''
-        from .region_stitches import satin_rails
-        try:
-            satin_rails(rings, 1)
-        except ValueError as error:
-            reason = str(error)
-        if area['style'] in ('satin', 'raised_satin') and reason:
+        from .region_stitches import satin_reason
+        reason = satin_reason(rings, 1)
+        if area['style'] == 'satin' and reason:
             level = 'red'; messages.append(reason)
         outside = left < -hoop[0]/2 or right > hoop[0]/2 or top < -hoop[1]/2 or bottom > hoop[1]/2
         if outside:

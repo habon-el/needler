@@ -94,3 +94,33 @@ def test_curve_in_degrees_follows_the_length_of_the_words():
     assert settings['arc_degrees'] == 90 and 'arc_radius_mm' not in settings
     with tempfile.TemporaryDirectory() as folder:
         assert ln.build(Path(folder), settings)['checks_passed']
+
+
+@pytest.mark.parametrize('frame', ['circle', 'oval', 'square', 'diamond', 'hexagon', 'shield', 'heart'])
+def test_monogram_frames_pass_the_release_gate(frame):
+    body = dict(text='JAM', font='graduate', height_mm=14, available_width_mm=300, colour='#202020',
+                frame=frame, frame_mm=2.5, classic=True)
+    settings = ln.recipe(body)
+    assert settings['frame'] == frame and settings['classic'] is True
+    svg = ef.layout('JAM', 'graduate', 250, frame=frame, classic=True)
+    assert 'label="frame"' in svg or "label='frame'" in svg or 'frame' in svg
+    with tempfile.TemporaryDirectory() as folder:
+        result = ln.build(Path(folder), settings)
+    assert result['checks_passed'], result.get('issues')
+    # The frame surrounds the letters: the design is wider than the letters alone.
+    with tempfile.TemporaryDirectory() as folder:
+        plain = ln.build(Path(folder), ln.recipe(dict(body, frame='none')))
+    assert result['reports']['dst']['width_mm'] > plain['reports']['dst']['width_mm']+4
+
+
+def test_classic_monogram_makes_the_middle_initial_bigger():
+    heights = {}
+    for classic in (False, True):
+        svg = ef.layout('JAM', 'graduate', 250, classic=classic)
+        heights[classic] = max(y for _, y in coords(svg))-min(y for _, y in coords(svg))
+    assert heights[True] > heights[False]*1.2
+    for bad in ('JAMES', 'J\nM'):
+        with pytest.raises(ValueError, match='classic monogram'):
+            ef.layout(bad, 'graduate', 250, classic=True)
+    with pytest.raises(ValueError, match='3D puff'):
+        ef.layout('JAM', 'graduate', 250, frame='circle', puff=True)

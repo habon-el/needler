@@ -52,7 +52,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Cross-stitch fill | cross | ✅ | |
 | Stipple run / backstitch / stemstitch fill | stipple run | ◐ run only | P3 |
 | Maze, star fill, elastic embossed, sculptured fancy | embossed (diamond overlay) | ◐ | P3 |
-| Florentine effect, colour blending | — | ✗ | P3 |
+| Florentine effect, colour blending | area style Shaded: a darker shade fades across the fill | ◐ no florentine | P3 |
 | 3D puff | puff | ✅ | |
 
 ## 4. Stitch types — outlines
@@ -120,7 +120,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Letter sequence (centre-out for caps, line by line) | left to right, centre out | ✅ 2026-10-24 | |
 | Baselines: arc, circle, custom line, fixed length | Shape buttons Straight / Arch / Smile and a Curve slider in degrees (the circle follows the words' length); letters stay rigid | ◐ no full circle, custom line or fixed length | P3 |
 | Lettering envelopes, elastic lettering | — | ✗ | P3 |
-| Monogramming (templates, ornaments, borders) | — | ✗ | P3 |
+| Monogramming (templates, ornaments, borders) | Text page "Monogram & frame": classic layout (middle initial bigger) and satin frames: circle, oval, square, diamond, hexagon, shield, heart | ◐ no ornaments (crowns, laurels, swirls) | P3 |
 | Team names | — | ✗ | P3 |
 
 ## 9. Auto-digitizing
@@ -162,6 +162,16 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | 10. Arc size checked against the words | curve in degrees, so the circle always fits the words; exact width from the laid-out letters | ✅ 2026-10-25 | |
 | 11. Clearer section names | "About the height", "About these stitches" | ✅ 2026-10-25 | |
 | 12. Thread names for the text colour | closest three machine threads under the colour; click one to use it | ✅ 2026-10-25 | |
+
+## 8c. Lessons from professional designs (2026-10-25)
+Studied the bundled sample designs: a bird picture and 96 monogram templates (previews and design summaries).
+| Lesson | Needler | Status | P |
+|---|---|---|---|
+| 1. Thin parts as satin that follows and tapers | thin limbs of thick areas split off as satin (overlap 0.4 mm); long bands up to 6.5 mm wide are satin; the Satin style follows any shape up to 8 mm wide | ✅ 2026-10-25 | |
+| 2. Sewn back to front in layers | Sewing order: Fewest colour changes / Best look (back to front, a thread may repeat) | ✅ 2026-10-25 | |
+| 3. Dark details and two-shade depth | Outline colour Auto (a darker shade of each part's thread, on the part on top); area style Shaded | ✅ 2026-10-25 | |
+| 4. Decorative line inside borders | border "Line inside": triple stitch, 1.2 mm inside the border | ✅ 2026-10-25 | |
+| 5. Monograms with frames | classic monogram + 7 satin frames on the Text page | ◐ no ornaments | P3 |
 
 ## Build order
 

@@ -29,6 +29,9 @@
    for(let y=12;y<=52;y+=2.5){path(`M28 ${y} L92 ${y-3}`,4,.4);path(`M28 ${y-2} L92 ${y-5}`,2)}
   }else if(kind==='step'){
    for(let y=10,i=0;y<58;y+=4,i++){path('M12 '+y+'H108',2);const o=[0,4,8,12,8,4][i%6];for(let x=20+o;x<108;x+=24)path('M'+x+' '+(y-1)+'v2',1.2,.5)}
+  }else if(kind==='shaded'){
+   for(let y=10;y<58;y+=4)path('M12 '+y+'H108',2,.45);
+   for(let x=14,g=2;x<108;x+=g,g*=1.2)path('M'+x.toFixed(1)+' 8V56',2.2);
   }else if(kind==='gradient'){
    for(let y=8,g=2;y<60;y+=g,g*=1.18)path('M12 '+y.toFixed(1)+'H108',2);
   }else if(kind==='radial'){

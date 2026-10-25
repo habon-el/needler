@@ -102,8 +102,17 @@ def test_outline_and_detail_choices_reach_the_engine(tmp_path):
     assert job['state'] == 'done', job
     saved = json.loads((tmp_path/'work/decisions/badge.png.preparation.json').read_text())
     assert saved['outlines'] is True and saved['floor_mm2'] == .25
-    svgs = list((tmp_path/'work/inkstitch-preview').glob('*/design.svg'))
-    assert any('stroke:#202020' in p.read_text(encoding='utf-8') for p in svgs)
+    # Outlines default to a darker shade of each part's own thread (engine.darker).
+    assert saved['outline_colour'] == 'auto'
+    import re
+    from embroiderly.engine import darker
+    for svg in (p.read_text(encoding='utf-8') for p in (tmp_path/'work/inkstitch-preview').glob('*/design.svg')):
+        fills = set(re.findall(r'fill:(#[0-9a-f]{6})', svg))
+        strokes = set(re.findall(r'stroke:(#[0-9a-f]{6})', svg))
+        if strokes & {darker(f) for f in fills}:
+            break
+    else:
+        raise AssertionError('no outline in a darker shade of its part')
 
 
 def test_request_words_turn_outlines_on():

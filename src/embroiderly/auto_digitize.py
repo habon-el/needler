@@ -137,7 +137,7 @@ def plan(kind, facts, wish, image_size, saved):
         options['fabric_preset'] = wish['fabric']
     if wish.get('outlines') and kind == 'logo':
         # Add outlines: one dark running line around every colour, sewn last.
-        options.update(outlines=True, outline_colour=wish.get('outline_colour', '#202020'))
+        options.update(outlines=True, outline_colour=wish.get('outline_colour', 'auto'))
     if wish.get('floor_mm2') and kind in ('logo', 'photo'):
         # The Detail slider: the smallest colour area kept (a details slider).
         options['floor_mm2'] = wish['floor_mm2']

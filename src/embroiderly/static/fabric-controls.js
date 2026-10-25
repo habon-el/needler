@@ -13,7 +13,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   <select id="fabricPreset">${data.fabrics.map(f=>`<option value="${f.id}">${f.label}</option>`).join('')}</select>
   <p class="muted" id="fabricAdvice"></p>
   <label for="stitchDensity">Density</label>
-  <select id="stitchDensity"><option value="lighter">Lighter</option><option value="normal">Normal</option><option value="denser">Denser</option></select>`;
+  <select id="stitchDensity"><option value="lighter">Lighter</option><option value="normal">Normal</option><option value="denser">Denser</option></select>
+  <label for="sewOrder">Sewing order</label>
+  <select id="sewOrder" title="Best look sews back to front: a part lying on another is sewn after it, even if that thread was used before. It can add colour changes."><option value="colours">Fewest colour changes</option><option value="layers">Best look (back to front)</option></select>`;
  anchor.after(box);
  const select=$('fabricPreset'),advice=$('fabricAdvice');
  // Short hint; the full advice is on hover.
@@ -21,7 +23,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   advice.textContent=!f?'':f.backing?'Backing: '+f.backing+(f.topping?' · Topping: '+f.topping:''):'Stabilizer: '+f.stabilizer.split(/[;.]/)[0].trim();
   advice.title=f?f.stabilizer:''};
  const density=$('stitchDensity');
- const sync=()=>{select.value=studio.snapshot().fabric_preset||data.default;density.value=studio.snapshot().density||'normal';describe()};
+ const order=$('sewOrder');
+ const sync=()=>{select.value=studio.snapshot().fabric_preset||data.default;density.value=studio.snapshot().density||'normal';order.value=studio.snapshot().sew_order||'colours';describe()};
+ order.addEventListener('change',()=>{try{studio.apply({sew_order:order.value})}catch(error){sync();(window.studioStatus||console.warn)(error.message)}});
  // Adjust stitch spacing for the whole design (generation_policy.DENSITY).
  density.addEventListener('change',()=>{try{studio.apply({density:density.value})}catch(error){sync();(window.studioStatus||console.warn)(error.message)}});
  select.addEventListener('change',()=>{describe();try{studio.apply({fabric_preset:select.value})}catch(error){sync();(window.studioStatus||console.warn)(error.message)}});

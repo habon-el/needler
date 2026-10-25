@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 NS='http://inkstitch.org/namespace'
 # Running-line borders with a decorative stitch (stitch_engine.OUTLINE_STYLES); width is the band they cover.
 OUTLINES=('backstitch','stemstitch','blanket','zigzag')
+INNER_GAP_MM=1.2   # space between a border and the decorative line inside it
 
 def border_plan(mask,height_mm,options):
     kind=options.get('border_style','off')
@@ -23,10 +24,14 @@ def border_plan(mask,height_mm,options):
     if not isinstance(colour,str) or len(colour)!=7 or colour[0]!='#' or any(c not in '0123456789abcdefABCDEF' for c in colour[1:]):raise ValueError('Invalid border colour.')
     placement=options.get('border_placement','center')
     if placement not in ('inside','center','outside'):raise ValueError('Invalid border placement.')
+    inner_kind=options.get('border_inner','off')
+    if inner_kind not in ('off','triple'):raise ValueError('Choose a listed line inside the border.')
     scale=height_mm/mask.shape[0]
     offset={'inside':-width/2,'center':0,'outside':width/2}[placement]/scale if kind=='satin' else 0
     contours,_=cv2.findContours(mask.astype(np.uint8),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    paths=[];warnings=[]
+    paths=[];inner=[];warnings=[]
+    # Line inside: a triple-stitch line this far inside the border's inner edge, as on badges and frames.
+    gap=(band_mm(kind,width)/2 if kind!='running' else .3)+INNER_GAP_MM
     for contour in contours:
         if cv2.contourArea(contour)<4:continue
         points=cv2.approxPolyDP(contour,.1/scale,True)[:,0,:]
@@ -39,13 +44,18 @@ def border_plan(mask,height_mm,options):
         coords=[[float(x),float(y)] for x,y in line.exterior.coords]
         if kind=='satin':satin_rails(coords,width/(2*scale))
         paths.append(coords)
+        if inner_kind=='triple':
+            ring=line.buffer(-gap/scale,join_style='round')
+            if not ring.is_empty and ring.geom_type=='Polygon' and ring.area*scale*scale>=20:
+                inner.append([[float(x),float(y)] for x,y in ring.exterior.coords])
+            else:warnings.append('The line inside the border does not fit a part of this outline; that part has none.')
         extent=line.buffer(band_mm(kind,width)/(2*scale)) if kind!='running' else line
         x,y,r,b=extent.bounds
         if x<0 or y<0 or r>=mask.shape[1] or b>=mask.shape[0]:warnings.append('Border extends beyond the artwork canvas. Check hoop clearance and use Fit stitches.')
     if not paths:raise ValueError('No outer boundary available for a border.')
     if len(paths)>100:raise ValueError('Too many disconnected border outlines. Refine the subject selection.')
     warnings.append('Tight corners, tiny islands and narrow gaps require a physical sew-out. Internal holes are not bordered.')
-    return dict(style=kind,width_mm=width,spacing_mm=spacing,colour=colour,placement=placement,paths=paths,warnings=list(dict.fromkeys(warnings)),scale=scale)
+    return dict(style=kind,width_mm=width,spacing_mm=spacing,colour=colour,placement=placement,paths=paths,inner=inner,warnings=list(dict.fromkeys(warnings)),scale=scale)
 
 def satin_rails(points,radius):
     """Matched offset rails; reject collapsed or sharply spiked outlines."""
@@ -94,6 +104,8 @@ def coverage(plan,shape):
         else:
             wide=band_mm(plan['style'],plan['width_mm']) if plan['style'] in OUTLINES else .6
             cv2.polylines(band,[np.rint(np.asarray(points)).astype(np.int32)],True,1,thickness=max(3,int(math.ceil(wide/plan['scale']))+2))
+    for points in plan.get('inner',[]):
+        cv2.polylines(band,[np.rint(np.asarray(points)).astype(np.int32)],True,1,thickness=3)
     return band.astype(bool)
 
 def add_border(document,plan):
@@ -116,4 +128,10 @@ def add_border(document,plan):
                           f'{{{NS}}}running_stitch_length_mm':'2.5' if plan['style']=='backstitch' else '3'})
         attrs[f'{{{NS}}}trim_after']='true'
         ET.SubElement(document,'path',attrs)
-    return len(columns)
+    for i,points in enumerate(plan.get('inner',[])):
+        # Triple stitch (each stitch sewn three times): a bold, even line that reads well beside satin.
+        d='M '+' L '.join(f'{x:.6f},{y:.6f}' for x,y in points)+' Z'
+        ET.SubElement(document,'path',{'id':f'border-inner{i}','d':d,'style':f"fill:none;stroke:{plan['colour']};stroke-width:{.2/plan['scale']}",
+                      f'{{{NS}}}stroke_method':'running_stitch',f'{{{NS}}}running_stitch_length_mm':'2.2',
+                      f'{{{NS}}}bean_stitch_repeats':'1',f'{{{NS}}}trim_after':'true'})
+    return len(columns)+len(plan.get('inner',[]))

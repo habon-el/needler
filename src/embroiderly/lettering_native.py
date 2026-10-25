@@ -40,7 +40,8 @@ def recipe(body):
                     align=align, available_width_mm=width, colour=colour.lower())
     # Layout (spacing, baseline, letter order): only what differs from the plain line,
     # so earlier saved lettering keeps its cache key.
-    plain = dict(letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', sequence='left')
+    plain = dict(letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', sequence='left',
+                 frame='none', frame_mm=2.5, classic=False)
     names = {'line_spacing': 'line_spacing_percent', 'radius_mm': 'arc_radius_mm'}
     for name, value in small_lettering.layout_options(body).items():
         if plain.get(name) != value:

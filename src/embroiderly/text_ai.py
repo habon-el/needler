@@ -25,6 +25,8 @@ again. As soon as a check is clean, call finish with those settings; one to thre
 smile (the middle is lower, like the bottom of a badge). "Curve down" or "curve at the bottom" means \
 arc_under. curve_degrees is how far round a circle the words reach: 60 is gentle, 120 is strong, 180 is a half circle.
 - Curved text must be one line.
+- Monograms: initials as the words (e.g. "JAM"), classic true for the bigger middle initial, and a frame \
+(circle, oval, square, diamond, hexagon, shield, heart) if asked. The frame makes the design bigger than the letters.
 - 3D puff needs a bold font with even strokes; the check lists which fonts can puff. Puff ignores fabric.
 - Products: a cap front is usually 45-55 mm tall and at most about 110 mm wide; a left chest about 80-90 mm \
 wide; a sleeve about 60-75 mm wide; a jacket back up to about 280 mm wide. Set max_width_mm to the space on \
@@ -36,7 +38,7 @@ FIELDS = dict(  # tool name -> the screen's value name
     text='text', font='font', height_mm='height_mm', max_width_mm='available_width_mm', align='align',
     colour='colour', shape='baseline', curve_degrees='arc_degrees', letter_spacing_mm='letter_spacing_mm',
     line_spacing_percent='line_spacing_percent', sequence='sequence', puff='puff', foam_mm='puff_foam_mm',
-    fabric='fabric_preset')
+    fabric='fabric_preset', frame='frame', frame_mm='frame_mm', classic='classic')
 
 
 def tools(fonts, fabrics):
@@ -54,7 +56,12 @@ def tools(fonts, fabrics):
         sequence=dict(type='string', enum=['left', 'centre'], description='centre: sew from the middle letter out (caps).'),
         puff=dict(type='boolean', description='3D puff: satin over foam.'),
         foam_mm=dict(type='number', enum=[2, 3]),
-        fabric=dict(type='string', enum=sorted(fabrics))))
+        fabric=dict(type='string', enum=sorted(fabrics)),
+        frame=dict(type='string', enum=['none', 'circle', 'oval', 'square', 'diamond', 'hexagon', 'shield', 'heart'],
+                   description='A satin frame around the words (not with 3D puff).'),
+        frame_mm=dict(type='number', minimum=1.6, maximum=5, description='Frame satin width (default 2.5).'),
+        classic=dict(type='boolean',
+                     description='Classic monogram: two or three initials, the middle one bigger, straight line.')))
     return [
         dict(name='check_text', description='Lay the letters out with these settings (no stitches) and list every '
              'problem with a suggested fix, the measured width and the heights allowed.',

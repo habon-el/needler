@@ -89,6 +89,12 @@ def layout_options(body):
                  baseline=body.get('baseline','straight'),sequence=body.get('sequence','left'))
     if options['baseline'] not in embroidery_fonts.BASELINES:raise ValueError('Choose a straight or arc baseline.')
     if options['sequence'] not in embroidery_fonts.SEQUENCES:raise ValueError('Choose left to right or centre out.')
+    # Monogram: a satin frame around the words, and the classic three-initial layout.
+    options['frame']=body.get('frame','none')
+    if options['frame'] not in embroidery_fonts.FRAMES:raise ValueError('Choose a listed frame.')
+    options['frame_mm']=number('frame_mm',2.5,1.6,5,'Enter a frame width from 1.6 to 5 mm.')
+    if body.get('classic',False) not in (True,False):raise ValueError('Classic monogram must be on or off.')
+    options['classic']=body.get('classic',False)
     if options['baseline']!='straight':
         # Curve: how far round the circle the words reach; the radius then follows the words' length.
         if body.get('arc_degrees') is not None:
@@ -178,7 +184,13 @@ def advice(body):
     available=float(body.get('available_width_mm') or 0)
     if span and height>0 and available>0:
         try:widest=laid_out_width(dict(body,height_mm=height))+.5   # the stitched edge lands within ~0.5 mm
-        except ValueError:widest=0
+        except ValueError as error:
+            widest=0;problem=dict(message=str(error))
+            if 'classic monogram' in str(error) and layout['baseline']!='straight':problem['fix']=fix('Use a straight line',baseline='straight')
+            elif 'classic monogram' in str(error):problem['fix']=fix('Turn off classic monogram',classic=False)
+            elif 'frame' in str(error).lower() and puff:problem['fix']=fix('No frame',frame='none')
+            elif 'frame' in str(error).lower():problem['fix']=fix('Thinner frame',frame_mm=1.8)
+            problems.append(problem)
         if widest>available:
             need=min(400,math.ceil(widest+2));smaller=math.floor(height*available/widest*10)/10
             problem=dict(message=f'About {widest:.0f} mm wide: more than your max width of {available:g} mm.',

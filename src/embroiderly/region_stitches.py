@@ -16,9 +16,10 @@ CATALOG=[
     ('tatami','Tatami','Rows of fill stitches'),
     ('step','Step fill','Tatami with stepped needle holes'),
     ('gradient','Gradient','Dense to open across the area'),
+    ('shaded','Shaded','Tatami with a darker shade fading across it · one more thread'),
     ('radial','Radial','Rays from the centre'),
     ('applique','Appliqué','Fabric piece, satin edge · 2 stops'),
-    ('satin','Satin','Narrow, convex areas only'),
+    ('satin','Satin','Follows the shape · parts up to 8 mm wide'),
     ('raised_satin','3D satin','Three satin layers · experimental, no foam'),
     ('puff','3D puff','Satin over foam · parts 3–6 mm wide (2 mm foam: 2–6)'),
     ('motif','Motif','Clipped diamond repeats · open fill'),
@@ -83,6 +84,26 @@ def polygon(rings,scale):
                    [np.asarray(r).reshape(-1,2)*scale for r in rings[1:] if len(r)>=3])
 
 
+TURNING_SATIN_MM=8.0  # widest part the shape-following satin accepts (wider columns are split)
+
+
+def satin_reason(rings,scale):
+    """Why this area cannot be Satin ('' when it can): straight satin for simple convex areas,
+    otherwise satin that follows the shape's centre line, for parts up to TURNING_SATIN_MM wide."""
+    try:
+        satin_rails(rings,scale);return ''
+    except ValueError:pass
+    from shapely.ops import polylabel
+    p=polygon(rings,scale)
+    if not p.is_valid:p=p.buffer(0)
+    if p.is_empty:return 'This area is too small for satin.'
+    p=max(getattr(p,'geoms',[p]),key=lambda g:g.area)
+    width=2*polylabel(p,.05).distance(p.boundary)
+    if width>TURNING_SATIN_MM:
+        return f'Satin is for parts up to {TURNING_SATIN_MM:g} mm wide; this one is {width:.1f} mm. Use Tatami, or split the area.'
+    return ''
+
+
 def satin_rails(rings,scale):
     p=polygon(rings,scale)
     if not p.is_valid or p.is_empty or p.interiors or p.convex_hull.area-p.area>max(.02,p.area*.015):
@@ -110,9 +131,9 @@ def inventory(rgb,alpha,scale,options):
         return dict(areas=[],stale=list(chosen),catalog=CATALOG,unavailable='Area fills require colour artwork mode. Black lines keep Running/Reinforced; portrait stitching has its own planner.')
     for key,colour,rings in regions(rgb,alpha):
         if len(items)>=500:break
-        reason=''
-        try:satin_rails(rings,scale)
-        except ValueError as error:reason=str(error)
+        reason=satin_reason(rings,scale)
+        try:satin_rails(rings,scale);raised=''
+        except ValueError as error:raised=str(error)   # 3D satin still needs a simple straight band
         x,y,w,h=cv2.boundingRect(rings[0])
         notice=''
         if chosen.get(key)=='embossed':
@@ -120,7 +141,7 @@ def inventory(rgb,alpha,scale,options):
                 if not decorative_paths(rings,scale,'embossed'):
                     notice='Embossed: this area is too small for a texture repeat; its base fill is preserved.'
             except ValueError as error:notice=str(error)
-        items.append(dict(id=key,colour=colour,bounds=[x,y,w,h],rings=[r.reshape(-1,2).tolist() for r in rings],style_notice=notice,style=chosen.get(key,'tatami'),satin_reason=reason,
+        items.append(dict(id=key,colour=colour,bounds=[x,y,w,h],rings=[r.reshape(-1,2).tolist() for r in rings],style_notice=notice,style=chosen.get(key,'tatami'),satin_reason=reason,raised_reason=raised,
                           holes=len(rings)-1,holes_filled=hole_choices(options).get(key)=='fill',
                           angle=angle_choices(options).get(key)))
     # Styles of duplicated pieces belong to the copies, not to stale picture areas.
@@ -169,6 +190,17 @@ def apply_style(document,node,rings,scale,kind):
         # Placement, stop, tack-down, stop, satin cover (stitch_engine._applique).
         node.set(NS+'fill_method','applique');node.set(NS+'applique_cover_mm','3')
         return
+    if kind=='shaded':
+        # Depth from two shades: the area's own tatami, then a darker shade on top, dense on one
+        # side and fading out (stitch_fills.gradient), as a digitizer layers feather tips.
+        from .fill_shaping import angle as fill_angle
+        from .engine import darker
+        colour=node.get('style').split(';')[0].split(':')[1]
+        shade=ET.SubElement(document,'path',dict(node.attrib));shade.set('id',node.get('id')+'-shade')
+        shade.set('style',f'fill:{darker(colour,.7)};fill-rule:evenodd;stroke:none')
+        shade.set(NS+'fill_method','gradient_fill');shade.set(NS+'angle',f'{fill_angle(rings)+90:.1f}')
+        shade.set(NS+'fill_underlay','false');shade.set(NS+'gradient_open_spacing_mm','2.4')
+        return
     if kind in ('step','gradient','radial'):
         # Specialty fills (stitch_fills); rows run along the area's long side.
         from .fill_shaping import angle as fill_angle
@@ -191,6 +223,14 @@ def apply_style(document,node,rings,scale,kind):
             node.set(NS+'clip','true');node.set(NS+'running_stitch_length_mm','1')
             node.set(NS+'running_stitch_tolerance_mm','.15')
         return
+    if kind=='satin':
+        try:satin_rails(rings,scale)
+        except ValueError:
+            # Not a simple straight band: satin columns that follow the shape and taper with it.
+            reason=satin_reason(rings,scale)
+            if reason:raise ValueError(reason)
+            node.set(NS+'fill_method','auto_satin');node.set(NS+'zigzag_spacing_mm','.4')
+            return
     if kind in ('satin','raised_satin'):
         a,b=satin_rails(rings,scale)
         colour=node.get('style').split(';')[0].split(':')[1]

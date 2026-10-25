@@ -182,7 +182,10 @@ def _satin_area(shape, spacing, pull, min_len, walk=True, columns=None, puff=Fal
             continue
         if len(points) >= 2:
             runs.append(points)
-    return (join_runs(runs, shape, 1.5) if join else runs) if runs else []
+    # Column ends are pulled a little past the outline (pull compensation): travel between
+    # columns may start there, so its zone allows that pull (still inside the sewn band).
+    zone = shape.buffer(max(0.0, float(pull) if not isinstance(pull, (list, tuple)) else max(pull))+.1) if join else shape
+    return (join_runs(runs, zone, 1.5) if join else runs) if runs else []
 
 
 # 3D puff: satin over foam. Columns must be about as wide as the foam is thick,

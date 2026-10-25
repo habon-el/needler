@@ -138,10 +138,14 @@ document.addEventListener('DOMContentLoaded', () => {
  hint.after(list);
  const targets={text:'letteringWords',font:'nativeFont',height_mm:'nativeHeight',available_width_mm:'nativeWidth',align:'letteringAlign',
   colour:'letteringColour',baseline:'nativeBaseline',arc_degrees:'nativeCurve',letter_spacing_mm:'nativeLetterSpacing',
-  line_spacing_percent:'nativeLineSpacing',sequence:'nativeSequence',fabric_preset:'nativeFabric',puff_foam_mm:'puffFoam'};
+  line_spacing_percent:'nativeLineSpacing',sequence:'nativeSequence',fabric_preset:'nativeFabric',puff_foam_mm:'puffFoam',
+  frame:'nativeFrame',frame_mm:'nativeFrameWidth'};
  function apply(values){
   if('puff' in values&&window.NativePuff&&window.NativePuff.get()!==!!values.puff){
    window.NativePuff.set(!!values.puff,values.puff_foam_mm);$('puffOn').dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  if('classic' in values&&$('nativeClassic').checked!==!!values.classic){
+   $('nativeClassic').checked=!!values.classic;$('nativeClassic').dispatchEvent(new Event('input',{bubbles:true}));$('nativeClassic').dispatchEvent(new Event('change',{bubbles:true}));
   }
   for(const [key,value] of Object.entries(values)){
    const el=$(targets[key]);if(!el||value===undefined||String(el.value)===String(value))continue;el.value=String(value);
@@ -169,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  const later=()=>{clearTimeout(timer);timer=setTimeout(check,350)};
  // Delegated: the puff controls are added by another script, possibly after this one.
- const watched=new Set(['letteringWords','nativeFont','nativeHeight','nativeWidth','nativeBaseline','nativeCurve','nativeLetterSpacing','nativeLineSpacing','puffOn','puffFoam','nativeFabric']);
+ const watched=new Set(['letteringWords','nativeFont','nativeHeight','nativeWidth','nativeBaseline','nativeCurve','nativeLetterSpacing','nativeLineSpacing','puffOn','puffFoam','nativeFabric','nativeFrame','nativeFrameWidth','nativeClassic']);
  for(const type of ['input','change'])document.addEventListener(type,e=>{if(watched.has(e.target?.id))later()});
  document.addEventListener('lettering:layout',later);document.addEventListener('lettering:result',later);
  setTimeout(check,800);

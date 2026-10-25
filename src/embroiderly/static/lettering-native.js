@@ -3,19 +3,24 @@
  'use strict';
  const $=id=>document.getElementById(id), dialog=$('letteringDialog');
  const fields=['letteringWords','letteringAlign','letteringColour','nativeFont','nativeHeight','nativeWidth','nativeFabric',
-  'nativeBaseline','nativeCurve','nativeLetterSpacing','nativeLineSpacing','nativeSequence'];
+  'nativeBaseline','nativeCurve','nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeFrame','nativeFrameWidth','nativeClassic'];
  // Layout controls and the recipe keys they set; a control left at its default sends nothing.
  const layoutFields=[['nativeBaseline','baseline','straight'],['nativeLetterSpacing','letter_spacing_mm','0'],
-  ['nativeLineSpacing','line_spacing_percent','100'],['nativeSequence','sequence','left']];
+  ['nativeLineSpacing','line_spacing_percent','100'],['nativeSequence','sequence','left'],['nativeFrame','frame','none'],
+  ['nativeFrameWidth','frame_mm','2.5']];
  function layout(){const out={};
   for(const [id,key,plain] of layoutFields){const v=$(id).value;if(v!==plain)out[key]=$(id).type==='number'?Number(v):v;}
   // Curve in degrees (the circle follows the words' length). Lettering saved with a radius
   // keeps it until the Curve slider is moved.
+  if($('nativeClassic').checked)out.classic=true;
+  if(!out.frame)delete out.frame_mm;
   if(out.baseline){if(savedRadius)out.arc_radius_mm=savedRadius;else out.arc_degrees=Number($('nativeCurve').value);}return out;}
  let savedRadius=null;
  const showRadius=()=>{$('nativeCurveField').hidden=$('nativeBaseline').value==='straight';$('nativeCurveValue').textContent=$('nativeCurve').value+'°';};
  $('nativeBaseline').addEventListener('input',showRadius);$('nativeBaseline').addEventListener('change',showRadius);
  $('nativeCurve').addEventListener('input',()=>{savedRadius=null;showRadius();});
+ const showFrame=()=>{$('nativeFrameWidthField').hidden=$('nativeFrame').value==='none';};
+ $('nativeFrame').addEventListener('input',showFrame);$('nativeFrame').addEventListener('change',showFrame);
  // Fabric preset: the satin edge follows the fabric, as in the main studio.
  // A saved recipe can arrive before the list; keep its fabric until the options exist.
  let fabricWanted=null;const setFabric=value=>{fabricWanted=value;$('nativeFabric').value=value;};
@@ -27,9 +32,10 @@
  function applyLayout(recipe){
   setFabric(recipe.fabric_preset||'');
   for(const [id,key,plain] of layoutFields)$(id).value=recipe[key]??plain;
+  $('nativeClassic').checked=recipe.classic===true;
   savedRadius=recipe.arc_degrees?null:recipe.arc_radius_mm||null;
   $('nativeCurve').value=recipe.arc_degrees||90;
-  showRadius();$('nativeLayout').open=layoutFields.some(([,key])=>key in recipe);
+  showRadius();showFrame();$('nativeLayout').open=layoutFields.some(([,key])=>key in recipe);
   emit('layout',recipe);
  }
  window.nativeLettering={values:()=>values(),load:data=>render(data),applyLayout};

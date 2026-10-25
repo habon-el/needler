@@ -236,3 +236,25 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   stitches) and `finish`; at most 8 turns, the last one asks it to finish; whatever is left is fixed
   with the check's own fixes. Shares auto-digitize's spending limits. About $0.10 per request.
 
+## Lessons from professional designs (added 2026-10-25)
+
+- Smart satin (`engine.thin_limbs`, `stroke_like`): a plain area thicker than 4.5 mm is opened with a
+  4.5 mm disc; what the opening removes, in parts of at least 1.5 mm² that are at least twice as long
+  as wide, is a limb. The body keeps its tatami and each limb becomes `auto_satin` (columns along the
+  centre line, rails from the true outline, so the satin tapers with the shape), grown 0.4 mm into the
+  body. A body that would fall apart keeps the area whole. Long bands (length >= 4 x width) up to 6.5 mm
+  wide are satin. `smart_satin: false` turns limbs off. Satin column joins may travel within the
+  pulled edge (pull + 0.1 mm), which removed cuts between columns.
+- The Satin style tries the straight converter first, then the shape-following satin for any area up
+  to 8 mm wide (`region_stitches.satin_reason`); 3D satin still needs a straight band (`raised_reason`).
+- `sew_order: 'layers'` (`engine.layer_passes`): each part's depth is how many parts of other threads
+  enclose it; parts are sewn by depth, then colour order; fills still grow under later parts.
+- `outline_colour: 'auto'`: each boundary pixel belongs to the part on top (the later one), outlined in
+  a darker shade of its thread (`engine.darker`). Auto-digitize outlines default to auto.
+- Area style `shaded`: the area's tatami plus a gradient in a 30% darker shade across it.
+- Border `border_inner: 'triple'`: a triple-stitch ring 1.2 mm inside the border band.
+- Lettering `frame` (circle, oval, square, diamond, hexagon, shield, heart), `frame_mm` 1.6-5 and
+  `classic` (2-3 initials, middle x1.35): the frame is a satin column (`borders.satin_rails`) around
+  the letters with corners rounded by 2.5 x its half width, sewn last; it counts as sewn area in the
+  release gate like the letters. Not with 3D puff yet.
+

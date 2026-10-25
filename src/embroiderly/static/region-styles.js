@@ -37,12 +37,12 @@
  function sync(){
   const options=studio.snapshot(),areas=targets(),area=areas[0],busy=$('save').disabled;
   const styles=new Set(areas.map(a=>options.region_styles?.[a.id]||'tatami'));
-  const incompatible=areas.filter(a=>a.satin_reason).length;
+  const incompatible=areas.filter(a=>a.satin_reason).length,flat=areas.filter(a=>a.raised_reason??a.satin_reason).length;
   const blocked=!ready||!!report.unavailable||busy;
   $('stitchRegion').disabled=blocked||!report.areas.length;
   $('clearRegionStyles').disabled=busy||!Object.keys(options.region_styles||{}).length;
   for(const input of grid.querySelectorAll('input')){
-   const limited=['satin','raised_satin'].includes(input.value)&&incompatible>0;
+   const limited=input.value==='satin'&&incompatible>0||input.value==='raised_satin'&&flat>0;
    input.checked=styles.size===1&&styles.has(input.value);
    input.disabled=blocked||!area||limited||areas.some(a=>a.locked);
    input.closest('label').dataset.selected=String(input.checked);

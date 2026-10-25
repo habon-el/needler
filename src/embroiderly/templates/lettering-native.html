@@ -19,6 +19,11 @@
 <span id="nativeCurveField" hidden><label for="nativeCurve">Curve <output id="nativeCurveValue" for="nativeCurve">90°</output></label>
 <input id="nativeCurve" type="range" min="20" max="240" step="5" value="90" title="How far round a circle the words reach. The size of the circle follows the length of your words."></span>
 <input id="nativeRadius" type="hidden" value="60">
+<label for="nativeFrame">Frame</label>
+<select id="nativeFrame"><option value="none">No frame</option><option value="circle">Circle</option><option value="oval">Oval</option><option value="square">Square</option><option value="diamond">Diamond</option><option value="hexagon">Hexagon</option><option value="shield">Shield</option><option value="heart">Heart</option></select>
+<span id="nativeFrameWidthField" hidden><label for="nativeFrameWidth">Frame width (mm)</label>
+<input id="nativeFrameWidth" type="number" min="1.6" max="5" step=".1" value="2.5"></span>
+<label id="nativeClassicField"><input id="nativeClassic" type="checkbox"> Classic monogram · middle initial bigger</label>
 <label for="nativeLetterSpacing">Letter spacing (mm)</label>
 <input id="nativeLetterSpacing" type="number" min="-2" max="10" step=".1" value="0">
 <label for="nativeLineSpacing">Line spacing (%)</label>
