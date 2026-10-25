@@ -437,3 +437,22 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   piece exactly that width and height. A straight line is refused when it has no width or height to match.
 - Locked pieces refuse all three, like other edits. Pieces panel: a "Line up" row, enabled with
   two or more pieces selected (three for Space across / Space down).
+
+## Mirror copy, circle layout and array (added 2026-10-25)
+
+- Piece commands `mirror_copy` ('x' or 'y'), `circle` ({count, radius_mm, turn}) and `array`
+  ({rows, columns, gap_mm}); the geometry is in `piece_patterns.py`, called from
+  `piece_layout.change()`. Each copy is a Duplicate copy ({source, matrix, rotation, name}, plus a
+  cut part's outline and the original's stitch type), so it moves, restyles and deletes on its own.
+- The selection repeats as one group, measured by its outline bounding box. Mirror copy reflects
+  across its right (x) or bottom (y) edge, so the copy touches it (half a drawing becomes whole).
+  Circle: the selection stays at the top, `count` 2–36 includes it, the centre is `radius_mm`
+  (1–500) below; with `turn` each copy rotates with the circle (a wreath) and its fill angle with it,
+  without it the copies stay upright. Array: rows go down and columns right, one size plus `gap_mm`
+  (0–100) apart, up to 20 × 20, the selection at the top left.
+- Limits: the copies are counted before any is made against `MAX_COPIES` (100 per design) with a
+  message naming how many are left; locked pieces refuse every repeat. Copies outside the hoop get the
+  usual red audit and block generation until moved. The three commands rebuild stitches
+  (preparation.py and `pieceEdit` lists); copies share their original's thread, so no colour change.
+- Pieces panel: a Repeat group under Transform with Mirror copy ⇋ ⇅, Around / Radius mm / Turn /
+  Circle and Rows / Columns / Gap mm / Array.

@@ -251,6 +251,12 @@ def change(options, report, command, image=None):
                 updated.setdefault('region_styles', {})[key] = style
         edits(updated)
         return updated
+    if field in ('mirror_copy', 'circle', 'array'):
+        # Repeat: a mirrored copy, copies around a circle, or rows and columns (piece_patterns).
+        from .piece_patterns import repeat
+        repeat(updated, selected, field, value, len(copies))
+        edits(updated)
+        return updated
     if field in ('knife', 'split_satin'):
         if any(p.get('line') for p in selected):
             raise ValueError('A stitched line cannot be cut. Delete it and draw it again.')

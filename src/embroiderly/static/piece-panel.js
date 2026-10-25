@@ -99,6 +99,7 @@
   $('pieceOutline').querySelectorAll('select,input').forEach(c=>{c.disabled=disabled||items.some(p=>p.line)});
   $('pieceOutline').querySelector('.piece-outline-satin').hidden=$('pieceOutlineStitch').value!=='satin';
   $('pieceDelete').hidden=!items.length||!items.every(p=>p.copy);
+ $('pieceRepeat').disabled=disabled;
   properties.querySelectorAll('[data-field]').forEach(input=>{input.setAttribute('aria-describedby','pieceFeedback');input.disabled=disabled;input.value=box?format(box[input.dataset.field],input.dataset.field==='rotation'):'';input.removeAttribute('aria-invalid')});
   properties.querySelectorAll('.piece-unit').forEach(node=>node.textContent=units());
   $('pieceLink').disabled=disabled||!advanced;$('pieceLink').setAttribute('aria-pressed',String(!advanced||linked));
@@ -175,6 +176,17 @@
  $('pieceEye').onclick=()=>commit('visible',!targets().every(p=>p.visible));$('pieceLock').onclick=()=>commit('locked',!targets().some(p=>p.locked));
  $('pieceLink').onclick=()=>{linked=!linked;sync()};$('pieceSimple').onclick=()=>{advanced=false;sync()};$('pieceAdvanced').onclick=()=>{advanced=true;sync()};
  $('pieceMove').onclick=()=>{rotate=false;$('pieceMove').setAttribute('aria-pressed','true');$('pieceRotate').setAttribute('aria-pressed','false')};$('pieceRotate').onclick=()=>{rotate=true;$('pieceMove').setAttribute('aria-pressed','false');$('pieceRotate').setAttribute('aria-pressed','true')};
+ // Repeat: a mirrored copy touching the selection, copies around a circle, or rows and columns (piece_patterns.py).
+ const repeatSet=document.createElement('fieldset');repeatSet.id='pieceRepeat';
+ repeatSet.innerHTML=`<legend>Repeat</legend><div class="piece-arrange" role="group" aria-label="Mirror copy">
+ <button type="button" data-repeat="x" title="Add a mirrored copy on the right, touching this one">⇋ Mirror copy</button><button type="button" data-repeat="y" title="Add a mirrored copy below, touching this one">⇅ Mirror copy</button></div>
+ <div class="piece-repeat-row" role="group" aria-label="Circle"><label title="How many around the circle, this one included">Around<input id="pieceCircleCount" type="number" min="2" max="36" step="1" value="6"></label><label title="From the circle's centre to this piece">Radius mm<input id="pieceCircleRadius" type="number" min="1" max="500" step="1" value="30"></label><label class="piece-repeat-check" title="Turn each copy to follow the circle, like a wreath"><input id="pieceCircleTurn" type="checkbox" checked> Turn</label><button type="button" id="pieceCircle" title="Place copies around a circle; this piece stays at the top">◌ Circle</button></div>
+ <div class="piece-repeat-row" role="group" aria-label="Array"><label title="Rows going down">Rows<input id="pieceArrayRows" type="number" min="1" max="20" step="1" value="2"></label><label title="Columns going right">Columns<input id="pieceArrayColumns" type="number" min="1" max="20" step="1" value="2"></label><label title="Space between the copies">Gap mm<input id="pieceArrayGap" type="number" min="0" max="100" step=".5" value="2"></label><button type="button" id="pieceArray" title="Make rows and columns of copies; this piece stays at the top left">▦ Array</button></div>`;
+ $('pieceTransform').after(repeatSet);
+ repeatSet.querySelectorAll('[data-repeat]').forEach(b=>b.onclick=()=>commit('mirror_copy',b.dataset.repeat));
+ const whole=id=>Math.round(Number($(id).value)),measure=id=>Number($(id).value);
+ $('pieceCircle').onclick=()=>commit('circle',{count:whole('pieceCircleCount'),radius_mm:measure('pieceCircleRadius'),turn:$('pieceCircleTurn').checked});
+ $('pieceArray').onclick=()=>commit('array',{rows:whole('pieceArrayRows'),columns:whole('pieceArrayColumns'),gap_mm:measure('pieceArrayGap')});
  const canvas=$('prepared');
  // Knife: drag a straight line across the one selected piece; release cuts it.
  // Satin here: the same drag; the narrow side becomes satin over the rest's fill.

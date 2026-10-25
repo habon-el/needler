@@ -26,6 +26,12 @@
 .piece-properties[data-mode=simple] .piece-advanced { display:none; }
 #pieceAudit,#pieceFeedback { font-size:12px; min-height:36px; }
 #pieceAudit[data-level=red] { color:var(--ui-danger); }
+/* Repeat: small number boxes in a row with their button. */
+.piece-repeat-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px;margin-top:8px}
+.piece-repeat-row label{flex:1 1 52px;min-width:0}
+.piece-repeat-row button{flex:1 1 auto;padding:4px 6px;font-size:12px}
+.piece-properties .piece-repeat-check{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;min-height:34px}
+#pieceCircleTurn{width:auto;min-height:0;margin:0}
 .piece-properties input:disabled { opacity:.55; cursor:not-allowed; }
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 @media(max-width:1100px) { .workbench.with-pieces { grid-template-columns:68px 170px minmax(0,1fr) 290px; } }
