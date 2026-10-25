@@ -198,6 +198,56 @@ def build(folder, settings):
     return result
 
 
+def _move(draft, target):
+    """Rename a finished draft folder into place. On Windows a virus scanner may
+    still hold a file just written; wait briefly and retry (team names make many)."""
+    for attempt in range(6):
+        try:
+            draft.rename(target)
+            return
+        except PermissionError:
+            if attempt == 5:
+                raise
+            time.sleep(.1*(attempt+1))
+
+
+def make(store, settings):
+    """Build, or reuse, the checked files for one recipe (the caller holds BUSY).
+    Returns the key, its folder and whether the stitches were already made."""
+    store = Path(store)
+    key = identity(settings)
+    folder = store/key
+    store.mkdir(parents=True, exist_ok=True)
+    cached = (folder/'result.json').is_file()
+    if not cached:
+        # Available width is a fit constraint, not a generation input.
+        # Keep one checked geometry pair when only that space changes.
+        geometry_settings = {**settings, 'available_width_mm': 400.0}
+        geometry = store/'geometry'/identity(geometry_settings)
+        geometry.parent.mkdir(exist_ok=True)
+        geometry_cached = (geometry/'result.json').is_file()
+        if not geometry_cached:
+            with TemporaryDirectory(prefix='draft-', dir=store) as temporary:
+                build(Path(temporary), geometry_settings)
+                _move(Path(temporary), geometry)
+        with TemporaryDirectory(prefix='draft-', dir=store) as temporary:
+            draft = Path(temporary)
+            for filename in ('source.svg', 'plan.json', 'design.pes', 'design.dst', 'release-context.json'):
+                shutil.copyfile(geometry/filename, draft/filename)
+            result = json.loads((geometry/'result.json').read_text())
+            result['recipe'] = settings
+            result['fit'] = width_fit(result['reports']['dst']['width_mm'], settings['available_width_mm'])
+            result['checks_passed'] = not any(result['issues'].values()) and result['fit']['fits']
+            if not result['fit']['fits']:
+                fit = result['fit']
+                result['message'] = (f"The words are {fit['actual_width_mm']:g} mm wide, more than your max width of "
+                                     f"{fit['available_width_mm']:g} mm. Make Max width larger or the text smaller. Nothing was resized.")
+            (draft/'result.json').write_text(json.dumps(result, sort_keys=True))
+            _move(Path(temporary), folder)
+        cached = geometry_cached
+    return key, folder, cached
+
+
 def load(folder, key):
     result = json.loads((folder/'result.json').read_text())
     if identity(result['recipe']) != key:
@@ -269,36 +319,7 @@ def register(app, root):
         if not BUSY.acquire(blocking=False):
             return jsonify(error='Another lettering check is running. Please retry shortly.'), 409
         try:
-            key = identity(settings)
-            folder = folder_for(key)
-            store.mkdir(parents=True, exist_ok=True)
-            cached = (folder/'result.json').is_file()
-            if not cached:
-                # Available width is a fit constraint, not a generation input.
-                # Keep one checked geometry pair when only that space changes.
-                geometry_settings = {**settings, 'available_width_mm': 400.0}
-                geometry = store/'geometry'/identity(geometry_settings)
-                geometry.parent.mkdir(exist_ok=True)
-                geometry_cached = (geometry/'result.json').is_file()
-                if not geometry_cached:
-                    with TemporaryDirectory(prefix='draft-', dir=store) as temporary:
-                        build(Path(temporary), geometry_settings)
-                        Path(temporary).rename(geometry)
-                with TemporaryDirectory(prefix='draft-', dir=store) as temporary:
-                    draft = Path(temporary)
-                    for filename in ('source.svg', 'plan.json', 'design.pes', 'design.dst', 'release-context.json'):
-                        shutil.copyfile(geometry/filename, draft/filename)
-                    result = json.loads((geometry/'result.json').read_text())
-                    result['recipe'] = settings
-                    result['fit'] = width_fit(result['reports']['dst']['width_mm'], settings['available_width_mm'])
-                    result['checks_passed'] = not any(result['issues'].values()) and result['fit']['fits']
-                    if not result['fit']['fits']:
-                        fit = result['fit']
-                        result['message'] = (f"The words are {fit['actual_width_mm']:g} mm wide, more than your max width of "
-                                             f"{fit['available_width_mm']:g} mm. Make Max width larger or the text smaller. Nothing was resized.")
-                    (draft/'result.json').write_text(json.dumps(result, sort_keys=True))
-                    Path(temporary).rename(folder)
-                cached = geometry_cached
+            key, folder, cached = make(store, settings)
             result = load(folder, key)
             # Detect corrupt/stale files even when returning a cached preview.
             if result['checks_passed']:

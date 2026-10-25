@@ -121,7 +121,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Baselines: arc, circle, custom line, fixed length | Shape buttons Straight / Arch / Smile and a Curve slider in degrees (the circle follows the words' length); letters stay rigid | ◐ no full circle, custom line or fixed length | P3 |
 | Lettering envelopes, elastic lettering | — | ✗ | P3 |
 | Monogramming (templates, ornaments, borders) | Text page "Monogram & frame": classic layout (middle initial bigger) and satin frames: circle, oval, square, diamond, hexagon, shield, heart | ◐ no ornaments (crowns, laurels, swirls) | P3 |
-| Team names | — | ✗ | P3 |
+| Team names | Text page "Team names": one name per line (up to 50, 40 letters each), the same font, height, shape and colour for all; Make all names builds and checks one file per name in turn, lists each width and stitches, and names any too wide or failing a check with the reason (too wide: offers one smaller height for all, never resizes); Download all (zip) in the chosen machine format | ✅ 2026-10-25 | |
 
 ## 9. Auto-digitizing
 | Tool | Needler | Status | P |

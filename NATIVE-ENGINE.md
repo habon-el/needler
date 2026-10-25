@@ -483,3 +483,25 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   this stitch, Move this stitch (then click the new place), at the last stitch playback has reached;
   a list of the edits (click to show it in playback, × to remove) and any left-out notes. Stitch
   edits move no piece, so the lock guard ignores them.
+
+## Team names (added 2026-10-25)
+
+- `team_names.py`: routes `/lettering/native/team/list` (check the list: one name per line, blank
+  lines skipped, spaces collapsed, at most `MAX_NAMES` 50 names of `MAX_CHARS` 40 characters, and
+  the file name each gets), `/team/name` (one name) and `/team/zip` (the files).
+- Each name is `lettering_native.recipe()` of the Text page's settings with only `text` changed, built
+  or reused by `lettering_native.make()`, the same cache, build and checks as Make stitches (`/check`
+  now calls it too), under the same `BUSY` lock. The page asks for the names one after another, so it
+  shows progress and only one name is built at a time.
+- Every name keeps the one height chosen. A name wider than Max width is reported with its width and
+  `fit_height_mm` (that height scaled by max width / width); the page offers the smallest of these as
+  "Use … mm for all names". Nothing is resized automatically. A name the font cannot sew (missing
+  letters, a height out of its range) or whose files fail a check is listed with the reason.
+- The zip holds only names that passed, all with one identical recipe apart from the words, each bound
+  to its own name (`recipe.text`); every file goes through `release_gate.converted_bytes` (the checked
+  bytes for PES and DST, a re-checked readback for the other formats) as it is added. Any refusal
+  blocks the whole zip with the name and reason. The format is the one chosen in Save and download.
+- File names: accents dropped (NFKD), anything but letters, digits, `-` and `_` becomes `-`, Windows
+  device names get `_`, an empty result is `name`, repeats get `-2`, `-3` (case-insensitive).
+- `lettering_native.make()` renames a finished draft folder with a short retry: on Windows a virus
+  scanner can briefly hold a file just written.

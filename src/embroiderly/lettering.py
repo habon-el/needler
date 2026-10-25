@@ -146,6 +146,8 @@ def register_lettering(app, root):
     register(app)
     from .lettering_native import register as register_native
     register_native(app, root)
+    from .team_names import register as register_team
+    register_team(app, root)
     from .lettering_workspace import register as register_workspace
     register_workspace(app, root)
     @app.get('/lettering/fonts')

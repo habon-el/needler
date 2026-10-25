@@ -162,3 +162,13 @@ body.ai-draft-visible #knockoutWipeBar,body.ai-draft-visible #toolHint,body.ai-d
 #textThreads{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px;grid-column:1/-1}
 #textThreads .text-thread{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 8px}
 #textThreads .text-thread span{width:12px;height:12px;border-radius:50%;border:1px solid var(--ui-muted)}
+/* Team names on the Text page: a list of names, one checked file each. */
+#textTeamNames{margin-top:10px}
+#textTeamNames summary{font-size:13px;font-weight:600}
+#textTeamNames textarea{width:100%;box-sizing:border-box;margin:4px 0}
+#teamNamesSummary{list-style:none;padding:0;margin:6px 0;max-height:220px;overflow:auto;font-size:12px}
+#teamNamesSummary li{padding:2px 0}
+#teamNamesSummary .team-bad{color:var(--ui-danger)}
+#teamNamesStatus.text-make-error{color:var(--ui-danger);font-weight:600}
+#teamNamesFix{font-size:12px}
+#teamNamesFix button{margin-left:4px}
