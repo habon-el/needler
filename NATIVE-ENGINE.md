@@ -371,3 +371,16 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   - Same, outline colour Auto: 22 before, 13 after.
   - Outlines per part on all 7 parts, running or triple, one thread: 14 before, 12 after.
   - Colour outlines on ten 10 mm stripes (50 mm high): 14 before, 7 after.
+
+## Satin here: satin / fill split by hand (added 2026-10-25)
+
+- Piece command `split_satin` with a line (two points, mm on the hoop), drawn like the knife.
+  `piece_layout.knife(..., satin=True)` cuts the piece along it, then picks the smallest side that
+  `region_stitches.satin_reason` accepts (up to `TURNING_SATIN_MM` wide); when neither side can be
+  satin it refuses and asks for a cut closer to the thin part.
+- The satin side is grown by `engine.LIMB_OVERLAP_MM` (0.4 mm, scaled by the piece's transform)
+  into the other side, so the two overlap and no gap opens at the cut, as in the automatic
+  thin-limb split. The rest keeps its style (Tatami if the piece was Satin) and is stored first,
+  so the fill is sewn before the satin, which lies on top. Both stay one thread: no colour change.
+- Pieces panel: "Satin here" next to Knife, for one selected filled piece.
+

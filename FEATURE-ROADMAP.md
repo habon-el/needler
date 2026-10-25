@@ -129,7 +129,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Auto-digitize instant | Digitize for me | ✅ | |
 | Prepare artwork: colour reduction, merge, details slider | `preparation.py`; Detail slider in Digitize for me (smallest area kept 8 to 0.25 mm²) | ✅ 2026-10-24 | |
 | Colour roles fill / detail / omit, omit background | plain background left out automatically ("keep the background" sews it); details get satin or run by width and sew last (largest colour first) | ✅ 2026-10-24 | |
-| Fill vs satin vs run by width | run under 0.45 mm and for pixel-thin lines ≥ 1 mm long; satin ≤ 4.5 mm; else tatami | ◐ one area is still one type (no satin/fill split) | P2 |
+| Fill vs satin vs run by width | run under 0.45 mm and for pixel-thin lines ≥ 1 mm long; satin ≤ 4.5 mm; else tatami; thin limbs split off as satin automatically; Pieces panel "Satin here": drag a line where a thin part starts, that side becomes satin over the rest's fill | ✅ 2026-10-25 | |
 | Add outlines | `engine.colour_outlines`: one branched run on every colour edge, sewn last; checkbox or "outline" in the request | ✅ 2026-10-24 | |
 | Multi-colour photo stitch, open photo stitch | photo stitch (experimental) | ◐ | P3 |
 | One-colour photo stitch | photo lines | ✅ | |

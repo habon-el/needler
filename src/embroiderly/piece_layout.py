@@ -251,10 +251,10 @@ def change(options, report, command, image=None):
                 updated.setdefault('region_styles', {})[key] = style
         edits(updated)
         return updated
-    if field == 'knife':
+    if field in ('knife', 'split_satin'):
         if any(p.get('line') for p in selected):
             raise ValueError('A stitched line cannot be cut. Delete it and draw it again.')
-        return knife(updated, report, selected, value)
+        return knife(updated, report, selected, value, satin=field == 'split_satin')
     if field == 'delete':
         if not set(ids) <= copies:
             raise ValueError('Only copied pieces and drawn shapes can be deleted. Hide an original piece instead.')
@@ -489,9 +489,11 @@ def click_fill(updated, report, image, value):
     return updated
 
 
-def knife(updated, report, selected, value):
+def knife(updated, report, selected, value, satin=False):
     """Cut one piece along a straight line (two points in mm, as drawn on the hoop).
-    Each part becomes its own piece in the same place, with the piece's style."""
+    Each part becomes its own piece in the same place, with the piece's style.
+    satin (Satin here): the narrow side becomes satin, reaching LIMB_OVERLAP_MM under the rest,
+    which keeps its fill and is sewn first, as the automatic thin-limb split does."""
     import hashlib
     from shapely.geometry import Polygon
     if len(selected) != 1:
@@ -527,7 +529,31 @@ def knife(updated, report, selected, value):
         raise ValueError('The cut line must cross the piece from one side to the other.')
     source = item.get('source', p['id'])
     style = updated.get('region_styles', {}).get(p['id'])
-    for index, part in enumerate(sorted(parts, key=lambda g: -g.area)):
+    parts = sorted(parts, key=lambda g: -g.area)
+    styles = [style]*len(parts)
+    if satin:
+        from .engine import LIMB_OVERLAP_MM
+        from .region_stitches import satin_reason
+        forward = matrix(item.get('matrix', IDENTITY))
+        def to_mm(ring):
+            points = np.asarray(ring.coords[:-1])*scale-origin
+            return (np.c_[points, np.ones(len(points))] @ forward.T)[:, :2]
+        narrow = [i for i, g in enumerate(parts) if not satin_reason([to_mm(r) for r in (g.exterior, *g.interiors)], 1)]
+        if not narrow:
+            from .region_stitches import TURNING_SATIN_MM
+            raise ValueError(f'Neither side is narrow enough for satin (up to {TURNING_SATIN_MM:g} mm wide). Cut closer to the thin part.')
+        # The smallest side that can be satin; it reaches under the rest so no gap opens at the cut.
+        chosen = narrow[-1]
+        reach = LIMB_OVERLAP_MM/scale/np.sqrt(abs(np.linalg.det(forward[:2, :2])))
+        grown = shape.intersection(parts[chosen].buffer(reach))
+        parts[chosen] = max(getattr(grown, 'geoms', [grown]), key=lambda g: g.area if g.geom_type == 'Polygon' else 0)
+        styles = ['tatami' if style == 'satin' else style]*len(parts)
+        styles[chosen] = 'satin'
+        # The fill first, the satin last: it lies on top.
+        order = [i for i in range(len(parts)) if i != chosen]+[chosen]
+        parts, styles = [parts[i] for i in order], [styles[i] for i in order]
+    for index, part in enumerate(parts):
+        style = styles[index]
         part = part.simplify(.3)
         key = hashlib.sha256(f"{p['id']}:{a.tolist()}:{b.tolist()}:{index}".encode()).hexdigest()[:20]
         stored[key] = {'source': source, 'rings': [[[round(x, 2), round(y, 2)] for x, y in r.coords[:-1]]

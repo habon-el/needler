@@ -23,7 +23,7 @@
  <div class="piece-arrange" role="group" aria-label="Arrange">
  <button type="button" data-arrange="mirror:x" title="Mirror left–right">⇋ Mirror</button><button type="button" data-arrange="mirror:y" title="Mirror top–bottom">⇅ Mirror</button>
  <button type="button" data-arrange="rotate_by:-15" title="Rotate 15° to the left">↺ 15°</button><button type="button" data-arrange="rotate_by:15" title="Rotate 15° to the right">↻ 15°</button><button type="button" data-arrange="rotate_by:45" title="Rotate 45° to the right">↻ 45°</button>
- <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
+ <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceSatinHere" aria-pressed="false" title="Drag a line where a thin part starts: that side becomes satin, the rest keeps its fill">〰 Satin here</button><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
  </div>
  </fieldset>
  <fieldset id="pieceOutline"><legend>Outline</legend><div class="piece-fields">
@@ -84,8 +84,8 @@
   $('pieceTransform').title=(window.hoopLabel||'Reference hoop '+(report.hoop_mm||[]).join(' × ')+' mm')+'. Positions are measured from the hoop centre.';
   $('pieceAudit').textContent=items.length?`${items.some(p=>p.audit.level==='red')?'RED — check size':items.some(p=>p.audit.level==='yellow')?'YELLOW — check thin span':'GREEN — area check'} · ${[...new Set(items.flatMap(p=>p.audit.messages))].join(' ')}`:'';
   $('pieceAudit').dataset.level=items.some(p=>p.audit.level==='red')?'red':items.some(p=>p.audit.level==='yellow')?'yellow':'green';
-  properties.querySelectorAll('[data-arrange],#pieceDuplicate,#pieceDelete,#pieceSkew,#pieceKnife').forEach(control=>{control.disabled=disabled;});
-  $('pieceKnife').disabled=disabled||items.length!==1;
+  properties.querySelectorAll('[data-arrange],#pieceDuplicate,#pieceDelete,#pieceSkew,#pieceKnife,#pieceSatinHere').forEach(control=>{control.disabled=disabled;});
+  $('pieceKnife').disabled=$('pieceSatinHere').disabled=disabled||items.length!==1||items.some(p=>p.line);
   const outline=items.length&&items.every(p=>JSON.stringify(p.outline)===JSON.stringify(items[0].outline))?items[0].outline:null;
   if(!properties.contains(document.activeElement)||!document.activeElement.id.startsWith('pieceOutline')){
    $('pieceOutlineStitch').value=outline?.stitch||'';if(outline){$('pieceOutlineGap').value=outline.offset_mm;$('pieceOutlineWidth').value=outline.width_mm;$('pieceOutlineColour').value=outline.colour}}
@@ -168,8 +168,10 @@
  $('pieceMove').onclick=()=>{rotate=false;$('pieceMove').setAttribute('aria-pressed','true');$('pieceRotate').setAttribute('aria-pressed','false')};$('pieceRotate').onclick=()=>{rotate=true;$('pieceMove').setAttribute('aria-pressed','false');$('pieceRotate').setAttribute('aria-pressed','true')};
  const canvas=$('prepared');
  // Knife: drag a straight line across the one selected piece; release cuts it.
- const knifeOn=on=>{knife=on?{}:null;$('pieceKnife').setAttribute('aria-pressed',String(on));if(on)feedback('Drag a line across the piece to cut it.');};
- $('pieceKnife').onclick=()=>knifeOn(!knife);
+ // Satin here: the same drag; the narrow side becomes satin over the rest's fill.
+ const knifeOn=(on,satin=false)=>{knife=on?{satin}:null;$('pieceKnife').setAttribute('aria-pressed',String(on&&!satin));$('pieceSatinHere').setAttribute('aria-pressed',String(on&&satin));if(on)feedback(satin?'Drag a line across the piece where the thin part starts.':'Drag a line across the piece to cut it.');};
+ $('pieceKnife').onclick=()=>knifeOn(!knife||knife.satin);
+ $('pieceSatinHere').onclick=()=>knifeOn(!knife||!knife.satin,true);
  const toMm=([x,y])=>[x*report.scale-report.origin_mm[0],y*report.scale-report.origin_mm[1]];
  canvas.addEventListener('pointerdown',e=>{
   if(!knife||!active||e.button!==0||pending||studio.isBusy())return;
@@ -182,9 +184,9 @@
  },true);
  canvas.addEventListener('pointerup',e=>{
   if(!knife||!knife.from)return;e.stopImmediatePropagation();
-  const line=[knife.from,knife.to||knife.from].map(toMm);knifeOn(false);
+  const line=[knife.from,knife.to||knife.from].map(toMm),field=knife.satin?'split_satin':'knife';knifeOn(false);
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
-  commit('knife',line);
+  commit(field,line);
  },true);
  // Draw a shape: rectangle / ellipse by dragging corners, freehand by dragging, polygon by clicking corners.
  const drawOn=shape=>{drawing=shape&&drawing?.shape!==shape?{shape,points:[]}:null;if(drawing){knifeOn(false);studio.pieceView();feedback($('pieceDraw').querySelector(`[data-draw="${shape}"]`).title+'.')}window.stitchRegionSelection=null;sync()};
