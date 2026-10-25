@@ -3,15 +3,19 @@
  'use strict';
  const $=id=>document.getElementById(id), dialog=$('letteringDialog');
  const fields=['letteringWords','letteringAlign','letteringColour','nativeFont','nativeHeight','nativeWidth','nativeFabric',
-  'nativeBaseline','nativeRadius','nativeLetterSpacing','nativeLineSpacing','nativeSequence'];
+  'nativeBaseline','nativeCurve','nativeLetterSpacing','nativeLineSpacing','nativeSequence'];
  // Layout controls and the recipe keys they set; a control left at its default sends nothing.
  const layoutFields=[['nativeBaseline','baseline','straight'],['nativeLetterSpacing','letter_spacing_mm','0'],
   ['nativeLineSpacing','line_spacing_percent','100'],['nativeSequence','sequence','left']];
  function layout(){const out={};
   for(const [id,key,plain] of layoutFields){const v=$(id).value;if(v!==plain)out[key]=$(id).type==='number'?Number(v):v;}
-  if(out.baseline)out.arc_radius_mm=Number($('nativeRadius').value);return out;}
- const showRadius=()=>{$('nativeRadiusField').hidden=$('nativeBaseline').value==='straight';};
- $('nativeBaseline').addEventListener('input',showRadius);
+  // Curve in degrees (the circle follows the words' length). Lettering saved with a radius
+  // keeps it until the Curve slider is moved.
+  if(out.baseline){if(savedRadius)out.arc_radius_mm=savedRadius;else out.arc_degrees=Number($('nativeCurve').value);}return out;}
+ let savedRadius=null;
+ const showRadius=()=>{$('nativeCurveField').hidden=$('nativeBaseline').value==='straight';$('nativeCurveValue').textContent=$('nativeCurve').value+'°';};
+ $('nativeBaseline').addEventListener('input',showRadius);$('nativeBaseline').addEventListener('change',showRadius);
+ $('nativeCurve').addEventListener('input',()=>{savedRadius=null;showRadius();});
  // Fabric preset: the satin edge follows the fabric, as in the main studio.
  // A saved recipe can arrive before the list; keep its fabric until the options exist.
  let fabricWanted=null;const setFabric=value=>{fabricWanted=value;$('nativeFabric').value=value;};
@@ -19,7 +23,16 @@
   select.replaceChildren(...data.fabrics.map(f=>new Option(f.label,f.id===data.default?'':f.id)));select.value=kept;}).catch(()=>{});
  const active=()=>!!window.nativeTextConfig||dialog.open;
  const emit=(name,data)=>document.dispatchEvent(new CustomEvent('lettering:'+name,{detail:data}));
- window.nativeLettering={values:()=>values(),load:data=>render(data)};
+ // Fabric, shape, curve and spacing of a saved recipe (the words, font and size are set by the caller).
+ function applyLayout(recipe){
+  setFabric(recipe.fabric_preset||'');
+  for(const [id,key,plain] of layoutFields)$(id).value=recipe[key]??plain;
+  savedRadius=recipe.arc_degrees?null:recipe.arc_radius_mm||null;
+  $('nativeCurve').value=recipe.arc_degrees||90;
+  showRadius();$('nativeLayout').open=layoutFields.some(([,key])=>key in recipe);
+  emit('layout',recipe);
+ }
+ window.nativeLettering={values:()=>values(),load:data=>render(data),applyLayout};
  let revision=0, controller, result=null, busy=false;
  const status=text=>{$('nativeStatus').textContent=text;emit('status',text);};
  function invalidate(){
@@ -41,7 +54,7 @@
    `Stitch lengths: DST ${r.minimum_mm}–${r.maximum_mm} mm; PES ${p.minimum_mm}–${p.maximum_mm} mm.`;
   if(data.lock_adjustment)$('nativeResult').textContent+=` Adjusted the securing stitches: ${data.lock_adjustment.before_short} too-short stitches → 0. Words, font and size are unchanged; review before saving.`;
   $('nativeFit').textContent=data.fit.fits?`Width fits: ${r.width_mm} mm within your ${data.fit.available_width_mm} mm space. No resizing.`:
-   `Too wide: ${r.width_mm} mm for ${data.fit.available_width_mm} mm. Add line breaks, change the font or use a wider space. No automatic shrinking.`;
+   `Too wide: ${r.width_mm} mm, but Max width is ${data.fit.available_width_mm} mm. Use the fix under Make stitches, or add a line break. Nothing is shrunk automatically.`;
   $('nativeChanges').textContent=`Kept ${data.source_glyphs} letters and punctuation marks. Added ${data.extra_component_cuts} cuts between separate font pieces, including dots. Tie-off stitches (stop the thread coming loose) are 0.6 mm; spacing and supporting stitches follow the font. ${data.cached?'Reused the checked files.':`Built in ${data.seconds} seconds.`}`;
   $('nativeProblemList').replaceChildren();
   for(const fmt of ['dst','pes'])for(const issue of data.issues[fmt]){const li=document.createElement('li'),p=issue.location;
@@ -140,10 +153,7 @@
    if(version!==revision||!active())return;
    window.NativePuff?.set(data.recipe.puff,data.recipe.puff_foam_mm);
    for(const [field,key] of [['letteringWords','text'],['letteringAlign','align'],['letteringColour','colour'],['nativeFont','font'],['nativeHeight','height_mm'],['nativeWidth','available_width_mm']])$(field).value=data.recipe[key];
-   setFabric(data.recipe.fabric_preset||'');
-   for(const [id,key,plain] of layoutFields)$(id).value=data.recipe[key]??plain;
-   if(data.recipe.arc_radius_mm)$('nativeRadius').value=data.recipe.arc_radius_mm;
-   showRadius();$('nativeLayout').open=layoutFields.some(([,key])=>key in data.recipe);
+   applyLayout(data.recipe);
    render(data);
   }catch(e){status('Saved lettering could not be loaded. '+e.message);}
  });

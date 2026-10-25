@@ -42,7 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
  let current=null,version=0,loading=false,checking=false,dirty=false,history=[],future=[],snapshot;
  const values=()=>window.nativeLettering.values();
  function assign(recipe){
-  for(const [id,key] of Object.entries(fields))$(id).value=recipe[key];snapshot=JSON.stringify(values());
+  for(const [id,key] of Object.entries(fields))$(id).value=recipe[key];
+  window.nativeLettering.applyLayout(recipe);snapshot=JSON.stringify(values());
   // 3D puff lives in puff-controls.js, which may start after this file.
   // No input event, so the loaded check stays valid. The height range depends on the words: the server checks it (small_lettering.scale_for).
   const puff=()=>{window.NativePuff.set(recipe.puff,recipe.puff_foam_mm);snapshot=JSON.stringify(values());};

@@ -25,20 +25,45 @@ document.addEventListener('DOMContentLoaded', () => {
   edit.append(node('h1','Your text'));
   const wordsLabel=document.querySelector('label[for=letteringWords]');edit.append(wordsLabel,$('letteringWords'));
   edit.append(document.querySelector('label[for=nativeFont]'),$('nativeFont'));
+  // Shape of the line: straight, arch (curves up) or smile (curves down), and how much it curves.
+  const shape=node('fieldset','','workflowTextShape');shape.append(node('legend','Shape'));
+  const shapes=node('div','','workflowShapeButtons');shapes.setAttribute('role','group');
+  const pick=value=>{const b=$('nativeBaseline');if(b.value===value)return;b.value=value;
+   b.dispatchEvent(new Event('input',{bubbles:true}));b.dispatchEvent(new Event('change',{bubbles:true}));};
+  for(const [value,label,title] of [['straight','▬ Straight','Words on a straight line'],['arc_over','⌒ Arch','Words curve up, like the top of a badge'],['arc_under','⌣ Smile','Words curve down, like the bottom of a badge']]){
+   const b=button(label,'',()=>pick(value));b.dataset.baseline=value;b.title=title;shapes.append(b);
+  }
+  const pressed=()=>shapes.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.baseline===$('nativeBaseline').value)));
+  $('nativeBaseline').addEventListener('input',pressed);$('nativeBaseline').addEventListener('change',pressed);
+  document.addEventListener('lettering:layout',pressed);pressed();
+  shape.append(shapes,$('nativeCurveField'));edit.append(shape);
   const row=node('div','','workflowSizeFields');
   for(const id of ['nativeHeight','nativeWidth']){
    const field=node('div');field.append(document.querySelector('label[for='+id+']'),$(id));row.append(field);
   }
+  // What it is for: sets the space on the item (and the cap fabric and centre-out order for caps).
+  const product=node('label','','workflowTextProduct');product.append('For ');
+  const item=node('select');item.id='workflowTextItem';
+  for(const [value,label] of [['','Choose an item…'],['cap','Cap front · up to 110 mm wide'],['chest','Left chest · up to 90 mm wide'],
+   ['sleeve','Sleeve · up to 70 mm wide'],['back','Jacket back · up to 280 mm wide']])item.append(new Option(label,value));
+  item.onchange=()=>{const set={cap:{available_width_mm:110,fabric_preset:'cap',sequence:'centre'},chest:{available_width_mm:90},
+   sleeve:{available_width_mm:70},back:{available_width_mm:280}}[item.value];if(set)window.NeedlerTextApply?.(set);};
+  product.append(item);edit.append(product);
   edit.append(row,$('nativeResize'));
-  document.querySelector('label[for=nativeWidth]').textContent='Space available (mm)';
+  document.querySelector('label[for=nativeWidth]').textContent='Max width (mm)';
   // The height entered is the stitched height of the words (small_lettering.scale_for).
   document.querySelector('label[for=nativeHeight]').textContent='Height (mm)';
   $('nativeHeight').title='Height of your stitched words, top of the tallest letter to the bottom of the lowest, all lines.';
-  $('nativeWidth').title='Maximum width available on your item. This does not shrink the text automatically.';
+  $('nativeWidth').title='The widest your words may be on your item. Too-wide words are shown, never shrunk automatically.';
   const size=node('p','Check stitches to measure the finished width × height.','workflowMeasuredSize');edit.append(size);
   const hint=node('p','','workflowLetterTip');edit.append(hint);
   const extras=node('div','','workflowTextExtras');extras.append($('letteringAlign').closest('label'),$('letteringColour').closest('label'));edit.append(extras);
-  const help=details('Details','workflowTextDetails');help.append($('nativeHelp'));edit.append(help);
+  const fabric=node('div','','workflowTextFabric');fabric.append(document.querySelector('label[for=nativeFabric]'),$('nativeFabric'));edit.append(fabric);
+  const spacing=details('Spacing & letter order','workflowTextSpacing');
+  for(const id of ['nativeLetterSpacing','nativeLineSpacing','nativeSequence'])spacing.append(document.querySelector('label[for='+id+']'),$(id));
+  edit.append(spacing);
+  const help=details('About the height','workflowTextDetails');help.append($('nativeHelp'));edit.append(help);
+  expert.querySelector('summary').textContent='About these stitches';
   expert.append(node('p','Stitch settings come from the selected embroidery font. They are not editable here.'));
   expert.append($('nativeChanges'));
   const fontLink=$('nativeLettering').querySelector('a[href^="https:"]');if(fontLink)expert.append(fontLink.closest('p'));

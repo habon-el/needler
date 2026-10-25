@@ -217,3 +217,22 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - A self-crossing freehand line keeps its largest enclosed part; shapes under 1 mm² are refused.
 - Only shapes found in the picture set the hoop origin, so drawing never moves other pieces.
 - Deleting a drawn shape also removes its copies and cut parts.
+
+## Text page ease of use (added 2026-10-25)
+
+- Shape row (Straight / Arch / Smile) and a Curve slider in degrees under the font. `arc_degrees`
+  replaces the radius: the circle follows the words' length (`radius = width / angle`), so the curve
+  looks the same for any words and always fits. Lettering saved with `arc_radius_mm` keeps it until
+  the slider moves. Reopening saved text now restores its shape, curve, spacing and fabric.
+- The instant preview draws the curve with the same placement as the stitches.
+- `/lettering/native/advice` (`small_lettering.advice`): every problem at once, each with a fix the
+  screen applies in one click: a puff-ready font, the allowed height, one line for curves, max width.
+  The width is measured from the laid-out letters (`laid_out_width`, ~0.05 s, within 0.5 mm of the
+  stitched width), not estimated.
+- "Max width (mm)" (was "Space available"), default 100 mm; "For" item presets; Fabric and
+  "Spacing & letter order" on the visible panel; thread names under the colour
+  (`/lettering/native/thread`).
+- Ask AI (`text_ai.py`, `/lettering/native/ask`): Claude calls `check_text` (the advice check, no
+  stitches) and `finish`; at most 8 turns, the last one asks it to finish; whatever is left is fixed
+  with the check's own fixes. Shares auto-digitize's spending limits. About $0.10 per request.
+

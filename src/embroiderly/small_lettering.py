@@ -90,7 +90,11 @@ def layout_options(body):
     if options['baseline'] not in embroidery_fonts.BASELINES:raise ValueError('Choose a straight or arc baseline.')
     if options['sequence'] not in embroidery_fonts.SEQUENCES:raise ValueError('Choose left to right or centre out.')
     if options['baseline']!='straight':
-        options['radius_mm']=number('arc_radius_mm',60,5,1000,'Enter an arc radius from 5 to 1000 mm.')
+        # Curve: how far round the circle the words reach; the radius then follows the words' length.
+        if body.get('arc_degrees') is not None:
+            options['arc_degrees']=number('arc_degrees',90,10,300,'Choose a curve from 10 to 300 degrees.')
+        else:
+            options['radius_mm']=number('arc_radius_mm',60,5,1000,'Enter an arc radius from 5 to 1000 mm.')
     return options
 
 
@@ -108,6 +112,80 @@ def puff_foam(body):
     foam=body.get('puff_foam_mm',3)
     if foam not in (2,3,2.0,3.0):raise ValueError('Choose 2 mm or 3 mm puff foam.')
     return float(foam)
+
+
+# Bold fonts tried first when the chosen font cannot be 3D puff.
+PUFF_FIRST=('russo_one','bungee','archivo_black','anton','bowlby_one','alfa_slab_one')
+
+
+def laid_out_width(body):
+    """Width (mm) of the words as the letters are placed, before any stitches are made
+    (a few hundredths of a second): the letter outlines plus the satin edge each side."""
+    import re
+    text,font,scale,align=validate(body)
+    puff=body.get('puff') is True
+    svg=embroidery_fonts.layout(text,font['key'],scale,align,puff=puff,foam_mm=puff_foam(body),
+                                fill=not puff and scale>font['max_scale']*100+1e-6,pull_mm=font['pull_mm'],**font['layout'])
+    xs=[float(x) for d in re.findall(r' d="([^"]+)"',svg) for x,_ in re.findall(r'(-?[\d.]+)[ ,](-?[\d.]+)',d)]
+    return (max(xs)-min(xs))*embroidery_fonts.PX_MM
+
+
+def advice(body):
+    """Every problem with these text settings at once, each with a fix the screen can
+    apply in one click (instead of one refusal per press of Make stitches). Nothing is
+    built; the width is an estimate from the font's letter widths."""
+    if not isinstance(body,dict):raise ValueError('Expected lettering settings.')
+    text=body.get('text')
+    if not isinstance(text,str) or not text.strip():
+        return dict(problems=[],height_range=None,puff_fonts=[])
+    text=unicodedata.normalize('NFC',text).replace('\r\n','\n')[:200]
+    catalogue=fonts();font=catalogue.get(body.get('font'))
+    if font is None:raise ValueError('Select an installed small embroidery font.')
+    puff=body.get('puff') is True;foam=puff_foam(body) if puff else 3.0
+    try:layout=layout_options(body)
+    except ValueError as error:return dict(problems=[dict(message=str(error))],height_range=None,puff_fonts=[])
+    font=dict(font,layout=layout)
+    problems=[]
+    fix=lambda label,**values:dict(label=label,set=values)
+    lines=text.split('\n')
+    missing=sorted(set(text)-set(font['glyphs'])-{' ','\n'})
+    if missing:
+        problems.append(dict(message=f'{font["name"]} has no '+' '.join(missing)+'. Remove those letters or choose another font.'))
+        return dict(problems=problems,height_range=None,puff_fonts=[])
+    if len(lines)>1 and layout['baseline']!='straight':
+        problems.append(dict(message='A curved line takes one line of words. Remove the line break or use a straight line.',
+                             fix=fix('Use a straight line',baseline='straight')))
+    def workable(key):
+        other=catalogue[key]
+        if set(text)-set(other['glyphs'])-{' ','\n'}:return False
+        try:return height_range(text,dict(other,layout=layout),True,foam) is not None
+        except ValueError:return False
+    puff_fonts=[key for key in catalogue if workable(key)] if puff else []
+    span=height_range(text,font,puff,foam)
+    if puff and span is None:
+        better=sorted(puff_fonts,key=lambda k:PUFF_FIRST.index(k) if k in PUFF_FIRST else len(PUFF_FIRST))
+        problem=dict(message=f'{font["name"]} cannot be 3D puff: its thin strokes are too thin for {foam:g} mm foam.')
+        if better:problem['fix']=fix(f'Use {catalogue[better[0]]["name"]}',font=better[0])
+        elif foam>2:problem['fix']=fix('Use 2 mm foam',puff_foam_mm=2)
+        problems.append(problem)
+    height=float(body.get('height_mm') or 0)
+    if span and not span[0]<=height<=span[1]:
+        best=min(max(height,span[0]),span[1]);best=math.floor(best*10)/10 if best>span[0] else math.ceil(best*10)/10
+        problems.append(dict(message=f'Height must be {span[0]:g}–{span[1]:g} mm for these words in {font["name"]}'
+                             +(f' with 3D puff on {foam:g} mm foam' if puff else '')+'.',
+                             fix=fix(f'Set height to {best:g} mm',height_mm=best)))
+        height=best
+    available=float(body.get('available_width_mm') or 0)
+    if span and height>0 and available>0:
+        try:widest=laid_out_width(dict(body,height_mm=height))+.5   # the stitched edge lands within ~0.5 mm
+        except ValueError:widest=0
+        if widest>available:
+            need=min(400,math.ceil(widest+2));smaller=math.floor(height*available/widest*10)/10
+            problem=dict(message=f'About {widest:.0f} mm wide: more than your max width of {available:g} mm.',
+                         fix=fix(f'Set max width to {need} mm',available_width_mm=need))
+            if smaller>=span[0]:problem['also']=fix(f'Make it smaller ({smaller:g} mm tall)',height_mm=smaller)
+            problems.append(problem)
+    return dict(problems=problems,height_range=list(span) if span else None,puff_fonts=puff_fonts)
 
 
 def validate(body):

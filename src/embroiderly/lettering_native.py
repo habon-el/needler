@@ -211,6 +211,37 @@ def register(app, root):
         message = str(error) if isinstance(error, ValueError) else 'Lettering could not finish. Your open design is unchanged. Please retry.'
         return jsonify(error=message), status
 
+    @app.post('/lettering/native/advice')
+    def advice():
+        # Every problem at once, with one-click fixes; nothing is built or saved.
+        try:
+            return jsonify(small_lettering.advice(request.get_json(silent=True)))
+        except (ValueError, TypeError, KeyError, OverflowError) as error:
+            return problem(error, 400)
+
+    @app.get('/lettering/native/thread')
+    def thread_names():
+        # Closest machine threads for the text colour (approximate; RGB charts are not measured thread).
+        from .thread_matching import rank_threads
+        try:
+            return jsonify(threads=rank_threads(request.args.get('hex', ''), limit=3))
+        except ValueError as error:
+            return problem(error, 400)
+
+    @app.post('/lettering/native/ask')
+    def ask_ai():
+        # Claude chooses the text settings; the screen applies them and makes the stitches.
+        from . import text_ai
+        body = request.get_json(silent=True) or {}
+        try:
+            values, note, left, usd = text_ai.ask(body.get('request'), body.get('values'), Path(root)/'work'/'decisions')
+        except ValueError as error:
+            return problem(error, 400)
+        except Exception as error:
+            app.logger.exception('Text AI failed')
+            return jsonify(error='AI help could not finish: '+type(error).__name__+'. Your settings are unchanged.'), 502
+        return jsonify(values=values, note=note, problems=left, claude_usd=usd)
+
     @app.post('/lettering/native/check')
     def check():
         try:
@@ -244,7 +275,9 @@ def register(app, root):
                     result['fit'] = width_fit(result['reports']['dst']['width_mm'], settings['available_width_mm'])
                     result['checks_passed'] = not any(result['issues'].values()) and result['fit']['fits']
                     if not result['fit']['fits']:
-                        result['message'] = 'The words are too wide. Add line breaks, choose another font or use a wider space. Nothing was resized.'
+                        fit = result['fit']
+                        result['message'] = (f"The words are {fit['actual_width_mm']:g} mm wide, more than your max width of "
+                                             f"{fit['available_width_mm']:g} mm. Make Max width larger or the text smaller. Nothing was resized.")
                     (draft/'result.json').write_text(json.dumps(result, sort_keys=True))
                     Path(temporary).rename(folder)
                 cached = geometry_cached

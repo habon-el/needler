@@ -9,15 +9,16 @@
 <div id="nativeResize"><button id="nativeSmaller" type="button">10% smaller</button> <button id="nativeLarger" type="button">10% larger</button></div>
 <p id="nativeHelp">Font size changes rebuild the letters. This is not the whole design height. The actual stitched width and height appear after checking.</p>
 <label for="nativeWidth">Available width on your item (mm)</label>
-<input id="nativeWidth" type="number" min="5" max="400" step=".1" value="50" aria-describedby="nativeFit nativeStatus">
+<input id="nativeWidth" type="number" min="5" max="400" step=".1" value="100" aria-describedby="nativeFit nativeStatus">
 <p id="nativeFit">We check the fit without shrinking or cutting off words. Add line breaks in Your words when needed.</p>
 <label for="nativeFabric">Fabric</label>
 <select id="nativeFabric"><option value="">Twill / canvas (default)</option></select>
 <details id="nativeLayout"><summary>Layout</summary>
 <label for="nativeBaseline">Baseline</label>
-<select id="nativeBaseline"><option value="straight">Straight</option><option value="arc_over">Arc over</option><option value="arc_under">Arc under</option></select>
-<span id="nativeRadiusField" hidden><label for="nativeRadius">Arc radius (mm)</label>
-<input id="nativeRadius" type="number" min="5" max="1000" step="1" value="60"></span>
+<select id="nativeBaseline"><option value="straight">Straight</option><option value="arc_over">Arch (curves up)</option><option value="arc_under">Smile (curves down)</option></select>
+<span id="nativeCurveField" hidden><label for="nativeCurve">Curve <output id="nativeCurveValue" for="nativeCurve">90°</output></label>
+<input id="nativeCurve" type="range" min="20" max="240" step="5" value="90" title="How far round a circle the words reach. The size of the circle follows the length of your words."></span>
+<input id="nativeRadius" type="hidden" value="60">
 <label for="nativeLetterSpacing">Letter spacing (mm)</label>
 <input id="nativeLetterSpacing" type="number" min="-2" max="10" step=".1" value="0">
 <label for="nativeLineSpacing">Line spacing (%)</label>

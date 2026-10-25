@@ -75,3 +75,22 @@ def test_arc_lettering_passes_the_release_gate():
 def test_plain_recipes_keep_their_old_cache_keys():
     body = dict(text='Hi', font='graduate', height_mm=10, available_width_mm=50, colour='#202020')
     assert set(ln.recipe(body)) == {'text', 'font', 'height_mm', 'align', 'available_width_mm', 'colour'}
+
+
+def test_curve_in_degrees_follows_the_length_of_the_words():
+    """Curve: how far round the circle the words reach; the radius follows the words' length."""
+    short, long_ = (ef.layout(text, 'graduate', 250, baseline='arc_over', arc_degrees=120) for text in ('TEAM', 'CHAMPIONS'))
+    for svg in (short, long_):
+        points = coords(svg)
+        assert min(x for x, _ in points) >= 0 and min(y for _, y in points) >= 0
+    # More curve bends the same words further: the line gets taller and narrower.
+    flat, bent = (coords(ef.layout('CHAMPIONS', 'graduate', 250, baseline='arc_under', arc_degrees=d)) for d in (30, 180))
+    span = lambda pts, i: max(p[i] for p in pts)-min(p[i] for p in pts)
+    assert span(bent, 1) > span(flat, 1) and span(bent, 0) < span(flat, 0)
+    with pytest.raises(ValueError):
+        sl.layout_options(dict(baseline='arc_over', arc_degrees=400))
+    settings = ln.recipe(dict(text='CHAMPIONS', font='graduate', height_mm=10, available_width_mm=300,
+                              colour='#202020', baseline='arc_under', arc_degrees=90))
+    assert settings['arc_degrees'] == 90 and 'arc_radius_mm' not in settings
+    with tempfile.TemporaryDirectory() as folder:
+        assert ln.build(Path(folder), settings)['checks_passed']

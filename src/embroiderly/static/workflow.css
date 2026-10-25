@@ -137,3 +137,28 @@ body.ai-draft-visible #knockoutWipeBar,body.ai-draft-visible #toolHint,body.ai-d
 #workflowResult span{min-width:0;overflow-wrap:anywhere}
 #workflowResult[data-state=error],#workflowResult[data-state=blocked]{border-left-color:var(--ui-danger)}
 .clear-workflow .health p{color:var(--ui-ink)}
+/* Text shape: straight / arch / smile, then the Curve slider. */
+#workflowTextShape{border:0;padding:0;margin:12px 0 4px}
+#workflowTextShape legend{padding:0;margin-bottom:6px}
+#workflowShapeButtons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#workflowShapeButtons button[aria-pressed=true]{border-color:var(--ui-primary);color:var(--ui-primary);font-weight:600}
+#nativeCurveField{display:block;margin-top:8px}
+#nativeCurveField[hidden]{display:none}
+#nativeCurveField input{width:100%}
+#workflowTextFabric,#workflowTextSpacing{margin-top:10px}
+#workflowTextFabric select,#workflowTextSpacing input,#workflowTextSpacing select{width:100%}
+/* Problems under Make stitches, each with a one-click fix. */
+#textAdvice{list-style:none;padding:0;margin:8px 0;display:grid;gap:8px}
+#textAdvice li{border-left:3px solid var(--ui-warning,#d9a441);padding:6px 10px;background:color-mix(in srgb,var(--ui-warning,#d9a441) 10%,transparent);border-radius:4px}
+#textAdvice button{margin-top:6px;margin-right:6px}
+.font-row-nopuff{opacity:.55}
+/* Ask AI on the Text page. */
+#textAsk{margin:4px 0 14px;padding:10px;border:1px solid var(--ui-primary);border-radius:8px}
+#textAsk .text-ask-row{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:4px}
+#textAsk p:empty{display:none}
+/* Item preset and thread names on the Text page. */
+#workflowTextProduct{display:block;margin:10px 0 2px}
+#workflowTextProduct select{width:100%}
+#textThreads{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px;grid-column:1/-1}
+#textThreads .text-thread{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:3px 8px}
+#textThreads .text-thread span{width:12px;height:12px;border-radius:50%;border:1px solid var(--ui-muted)}

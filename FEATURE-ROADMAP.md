@@ -118,7 +118,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Letter / line spacing, kerning | GPOS kerning + letter spacing (mm) and line spacing (%) in Layout | ✅ 2026-10-24 | |
 | Joins: closest / bottom / as digitized | letters that touch are joined inside both (script fonts); separate letters keep their cut, since an uncut thread over fabric fails the file checks | ◐ no bottom join | P3 |
 | Letter sequence (centre-out for caps, line by line) | left to right, centre out | ✅ 2026-10-24 | |
-| Baselines: arc, circle, custom line, fixed length | straight, arc over, arc under (radius); letters stay rigid | ◐ no full circle, custom line or fixed length | P3 |
+| Baselines: arc, circle, custom line, fixed length | Shape buttons Straight / Arch / Smile and a Curve slider in degrees (the circle follows the words' length); letters stay rigid | ◐ no full circle, custom line or fixed length | P3 |
 | Lettering envelopes, elastic lettering | — | ✗ | P3 |
 | Monogramming (templates, ornaments, borders) | — | ✗ | P3 |
 | Team names | — | ✗ | P3 |
@@ -146,6 +146,22 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Templates, save as template | — | ✗ | P3 |
 | Send to machine (wireless / USB) | — | — | |
 | Cross Stitch, Quilter, cutwork, trapunto, stumpwork, bling, sequins | — | — (separate products) | |
+
+## 8b. Text page — ease of use (found while making a curved 3D puff design, 2026-10-25)
+| Item | Needler | Status | P |
+|---|---|---|---|
+| 1. Curving text reachable | Shape row under the font: Straight / Arch / Smile, Curve slider | ✅ 2026-10-25 | |
+| 2. AI help on the Text page | "Ask AI" box: Claude sets the text settings, checking each try with the advice check, then the stitches are made (`text_ai.py`) | ✅ 2026-10-25 | |
+| 3. Spacing and letter order visible | "Spacing & letter order" section; Fabric choice shown too | ✅ 2026-10-25 | |
+| 4. Puff-ready helper | with 3D puff on, the font list marks which fonts can puff; height fix button | ✅ 2026-10-25 | |
+| 5. Clear width box | "Max width (mm)", default 100 mm, fix buttons to widen or shrink | ✅ 2026-10-25 | |
+| 6. Product presets on the Text page | "For": cap front, left chest, sleeve, jacket back (max width; caps also get cap fabric and centre-out order) | ✅ 2026-10-25 | |
+| 7. Preview shows the curve | instant preview draws the arch or smile before stitching | ✅ 2026-10-25 | |
+| 8. All problems at once | live list under Make stitches (`/lettering/native/advice`) | ✅ 2026-10-25 | |
+| 9. Messages say what to change | every problem has a one-click fix; too-wide message names Max width | ✅ 2026-10-25 | |
+| 10. Arc size checked against the words | curve in degrees, so the circle always fits the words; exact width from the laid-out letters | ✅ 2026-10-25 | |
+| 11. Clearer section names | "About the height", "About these stitches" | ✅ 2026-10-25 | |
+| 12. Thread names for the text colour | closest three machine threads under the colour; click one to use it | ✅ 2026-10-25 | |
 
 ## Build order
 

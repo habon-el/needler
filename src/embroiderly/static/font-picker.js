@@ -33,6 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
    big.style.fontFamily=`"needler-${o.value}", sans-serif`;
    const small=document.createElement('span');small.className='font-name';
    small.textContent=name(o)+(style(o)?' · '+style(o):'');
+   // With 3D puff on: fonts whose strokes are too thin for the foam are marked (text-make.js advice).
+   const puff=window.NeedlerPuffFonts;
+   if(puff){const ok=puff.has(o.value);row.classList.toggle('font-row-nopuff',!ok);small.textContent+=ok?' · ✓ 3D puff':' · not for 3D puff';}
    row.append(big,small);face(o.value);return row;
   }));
  }

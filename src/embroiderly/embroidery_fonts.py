@@ -166,6 +166,23 @@ def text_metrics(text, key, line_spacing=1.0):
     return dict(height=(max(bottoms)-min(tops))/cap, thin=min(strokes)/cap, wide=max(strokes)/cap)
 
 
+def line_widths(text, key):
+    """Each line's width in capital heights, as layout() places the letters (without
+    extra letter spacing). A capital height in mm times these gives millimetres."""
+    data, font = FONTS[key], _font(font_path(key))
+    em, cmap = font['head'].unitsPerEm, font.getBestCmap()
+    space = font['hmtx'][cmap[32]][0]/em if 32 in cmap else .3
+    widths = []
+    for line in text.split('\n'):
+        x = 0.0
+        for i, char in enumerate(line):
+            x += (space if char == ' ' else glyph_columns(font_path(key), char)[1])+data['tracking']
+            if i+1 < len(line):
+                x += kerning(key, char, line[i+1])
+        widths.append(max(0.0, x-data['tracking'])/cap_height(key))
+    return widths
+
+
 @lru_cache(maxsize=None)
 def _kerning(key):
     """Pair kerning from GPOS (format 1 and 2) or the legacy kern table, in em."""
@@ -284,14 +301,15 @@ def _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, r
 
 def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0, fill=False,
            pull_mm=None, letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', radius_mm=None,
-           sequence='left'):
+           sequence='left', arc_degrees=None):
     """SVG of satin-column lettering; user units are CSS px (96 per inch).
     puff: letters over foam (see stitch_satin._puff_satin). Each letter has a
     placement line sewn before the stop for the foam, then a perforation line
     just inside it that tacks the foam down, then its columns. pull_mm replaces
     the font's own pull compensation (fabric preset). letter_spacing_mm is added
     between letters, line_spacing scales the line height; baseline/radius_mm bend
-    a single line on an arc; sequence='centre' sews from the middle letter out
+    a single line on an arc (arc_degrees instead of radius_mm: how far round the
+    circle the words reach, so the curve looks the same for any length); sequence='centre' sews from the middle letter out
     (centre-out, for caps). Letters that touch are joined by travel
     inside both instead of a cut."""
     if baseline not in BASELINES or sequence not in SEQUENCES:
@@ -332,9 +350,15 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
     if baseline != 'straight':
         if len(lines) > 1:
             raise ValueError('Arc lettering takes one line. Remove the line breaks or use a straight baseline.')
-        if not radius_mm or not 5 <= float(radius_mm) <= 1000:
+        if arc_degrees is not None:
+            if not 10 <= float(arc_degrees) <= 300:
+                raise ValueError('Choose a curve from 10 to 300 degrees.')
+            radius_px = max(widest, em_px)/math.radians(float(arc_degrees))
+        elif not radius_mm or not 5 <= float(radius_mm) <= 1000:
             raise ValueError('Enter an arc radius from 5 to 1000 mm.')
-        matrices = _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, float(radius_mm)/PX_MM)
+        else:
+            radius_px = float(radius_mm)/PX_MM
+        matrices = _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, radius_px)
         # Keep the bent words on the page: measure them and move them in by half an em.
         from shapely.affinity import affine_transform
         from shapely.ops import unary_union
