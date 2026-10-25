@@ -25,7 +25,11 @@ def append(document, layout, scale, settings, colours=None):
     points = np.concatenate([np.asarray(r) for p in selected for r in p['rings']])
     low, high = points.min(axis=0), points.max(axis=0)
     # An appliqué cover (and its mitred corners) sews up to ~4.5 mm past the outline: keep it on the canvas.
-    pad = 2+(int(np.ceil(5/scale)) if any(p['style'] == 'applique' for p in selected) else 0)
+    from .part_outlines import choices as outline_choices, add as add_part_outline, reach_mm
+    outlines = outline_choices(settings)
+    reach = max([reach_mm(outlines[p['id']]) for p in selected if p['id'] in outlines] or [0])
+    pad = 2+max(int(np.ceil(5/scale)) if any(p['style'] == 'applique' for p in selected) else 0,
+                int(np.ceil((reach+1)/scale)))
     start = np.floor(low)-pad
     size = np.ceil(high-start).astype(int)+pad+1
     if size.max() > 10000 or int(size[0])*int(size[1]) > 16000000:
@@ -37,7 +41,10 @@ def append(document, layout, scale, settings, colours=None):
     from .region_stitches import angle_choices, hole_choices
     filled_holes = hole_choices(settings)
     chosen_angles = angle_choices(settings)
+    pending = []
     for p in selected:
+        if p['id'] in outlines and not p.get('line'):
+            pending.append(([np.asarray(r, float)-start for r in p['rings']], outlines[p['id']]))
         if p.get('line'):
             # An open stitched line: running or triple stitch along it (the band it sews is sewn area).
             thread = (colours or {}).get(p['colour'], {}).get('thread', p['colour'])
@@ -72,6 +79,9 @@ def append(document, layout, scale, settings, colours=None):
         if p['id'] in chosen_angles:
             # A chosen stitch direction is absolute on the hoop, whatever the piece's rotation.
             node.set(NS+'angle', f"{float(chosen_angles[p['id']]):g}")
+    for index, (rings, spec) in enumerate(pending):
+        # Outlines per part, sewn after all the pieces so they lie on top.
+        add_part_outline(document, rings, spec, scale, mask, f'p{index}')
     display_origin = ((low+high)*scale/2).tolist()
     mask_origin = ((low+high-2*start)*scale/2).tolist()
     return len(selected), mask.astype(bool), display_origin, mask_origin

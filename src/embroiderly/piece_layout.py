@@ -181,7 +181,7 @@ def inventory(region_report, options, width, height, scale):
         result.append(dict(id=area['id'], order=index+1, name=item.get('name') or f'Part {index+1}',
                            group=item.get('group', ''), colour=area['colour'], style=area['style'],
                            visible=item.get('visible', True), locked=item.get('locked', False), copy='source' in item or 'drawn' in item,
-                           under=bool(area.get('under')),
+                           under=bool(area.get('under')), outline=(options.get('area_outlines') or {}).get(area['id']),
                            rings_mm=rings, rings=pixel_rings, x_mm=(left+right)/2, y_mm=(top+bottom)/2,
                            width_mm=right-left, height_mm=bottom-top, rotation=item.get('rotation', 0),
                            nodes=sum(len(r) for r in rings), area_mm2=area_mm2, satin_reason=reason,
@@ -248,7 +248,21 @@ def change(options, report, command, image=None):
             updated.get('region_styles', {}).pop(key, None)
             updated.get('area_holes', {}).pop(key, None)
             updated.get('area_angles', {}).pop(key, None)
+            updated.get('area_outlines', {}).pop(key, None)
         edits(updated)
+        return updated
+    if field == 'outline':
+        # Outline per part: {stitch, offset_mm, width_mm, colour}, or None to remove it.
+        from .part_outlines import choices
+        outlines = updated.setdefault('area_outlines', {})
+        for p in selected:
+            if p.get('line'):
+                raise ValueError('A stitched line has no outline. Choose a filled part.')
+            if value is None:
+                outlines.pop(p['id'], None)
+            else:
+                outlines[p['id']] = value
+        choices(updated)
         return updated
     if field in ('name', 'group', 'visible', 'locked'):
         for p in selected:
@@ -523,12 +537,13 @@ def guard(previous, proposed):
     locked = {key: item for key, item in edits(previous).items() if item.get('locked')}
     if not locked:
         return
-    ignore = {'piece_edits', 'region_styles', 'interactions'}
+    ignore = {'piece_edits', 'region_styles', 'interactions', 'area_outlines'}
     if {k:v for k,v in previous.items() if k not in ignore} != {k:v for k,v in proposed.items() if k not in ignore}:
         raise ValueError('A piece is locked. Unlock it before changing artwork, colours or design-wide settings.')
     new = edits(proposed)
     for key, item in locked.items():
-        if new.get(key) != item or previous.get('region_styles', {}).get(key, 'tatami') != proposed.get('region_styles', {}).get(key, 'tatami'):
+        if new.get(key) != item or previous.get('region_styles', {}).get(key, 'tatami') != proposed.get('region_styles', {}).get(key, 'tatami') \
+                or previous.get('area_outlines', {}).get(key) != proposed.get('area_outlines', {}).get(key):
             raise ValueError('This piece is locked. Unlock it before changing it.')
 
 

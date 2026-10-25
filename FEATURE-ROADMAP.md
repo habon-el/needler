@@ -92,7 +92,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Mirror X/Y, rotate (15°/45°), skew, resize ±10% | Mirror ⇋ ⇅, rotate ↺15° ↻15° ↻45° or any angle, Skew °, size ±10% | ✅ 2026-10-24 | |
 | Align / space evenly / same size | — | ✗ | P3 |
 | Mirror-copy, wreath, circle layout, array, reflect | — | ✗ | P3 |
-| Create outlines and offsets, outline design, create border | Outer-silhouette border (`borders.py`) | ◐ no offsets per object | P2 |
+| Create outlines and offsets, outline design, create border | Outer-silhouette border (`borders.py`); Pieces panel Outline per part: Running, Triple or Satin, on the edge or a gap up to 6 mm outward, own thread colour, sewn after all fills | ✅ 2026-10-25 | |
 | Smooth shapes, weld | — | ✗ | P3 |
 | Remove overlaps | Colour knockout; areas never stack | ✅ | |
 | Stitch edit, insert stop/trim, convert to manual | Remove stitches by area | ◐ | P3 |

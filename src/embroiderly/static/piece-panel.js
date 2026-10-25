@@ -26,6 +26,11 @@
  <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
  </div>
  </fieldset>
+ <fieldset id="pieceOutline"><legend>Outline</legend><div class="piece-fields">
+ <label>Stitch<select id="pieceOutlineStitch"><option value="">None</option><option value="running">Running</option><option value="triple">Triple</option><option value="satin">Satin</option></select></label>
+ <label title="0 sews on the edge; more moves the outline outward">Gap mm<input id="pieceOutlineGap" type="number" min="0" max="6" step=".5" value="0"></label>
+ <label class="piece-outline-satin">Satin width mm<input id="pieceOutlineWidth" type="number" min="1.2" max="5" step=".1" value="2"></label>
+ <label>Thread<input id="pieceOutlineColour" type="color" value="#202020"></label></div></fieldset>
  <fieldset id="pieceDraw"><legend>Draw a shape</legend><div class="piece-arrange" role="group" aria-label="Draw">
  <button type="button" data-draw="rectangle" aria-pressed="false" title="Drag from one corner to the opposite corner">▭ Rectangle</button><button type="button" data-draw="ellipse" aria-pressed="false" title="Drag from one corner to the opposite corner">◯ Ellipse</button>
  <button type="button" data-draw="polygon" aria-pressed="false" title="Click each corner; double-click, Enter or click the first point to finish. Esc cancels.">⬠ Polygon</button><button type="button" data-draw="freehand" aria-pressed="false" title="Hold and draw the outline; release to close it">✎ Freehand</button>
@@ -77,6 +82,11 @@
   $('pieceAudit').dataset.level=items.some(p=>p.audit.level==='red')?'red':items.some(p=>p.audit.level==='yellow')?'yellow':'green';
   properties.querySelectorAll('[data-arrange],#pieceDuplicate,#pieceDelete,#pieceSkew,#pieceKnife').forEach(control=>{control.disabled=disabled;});
   $('pieceKnife').disabled=disabled||items.length!==1;
+  const outline=items.length&&items.every(p=>JSON.stringify(p.outline)===JSON.stringify(items[0].outline))?items[0].outline:null;
+  if(!properties.contains(document.activeElement)||!document.activeElement.id.startsWith('pieceOutline')){
+   $('pieceOutlineStitch').value=outline?.stitch||'';if(outline){$('pieceOutlineGap').value=outline.offset_mm;$('pieceOutlineWidth').value=outline.width_mm;$('pieceOutlineColour').value=outline.colour}}
+  $('pieceOutline').querySelectorAll('select,input').forEach(c=>{c.disabled=disabled||items.some(p=>p.line)});
+  $('pieceOutline').querySelector('.piece-outline-satin').hidden=$('pieceOutlineStitch').value!=='satin';
   $('pieceDelete').hidden=!items.length||!items.every(p=>p.copy);
   properties.querySelectorAll('[data-field]').forEach(input=>{input.setAttribute('aria-describedby','pieceFeedback');input.disabled=disabled;input.value=box?format(box[input.dataset.field],input.dataset.field==='rotation'):'';input.removeAttribute('aria-invalid')});
   properties.querySelectorAll('.piece-unit').forEach(node=>node.textContent=units());
@@ -125,6 +135,11 @@
  properties.querySelectorAll('[data-arrange]').forEach(button=>button.onclick=()=>{
   const [field,value]=button.dataset.arrange.split(':');commit(field,field==='mirror'?value:Number(value));});
  $('pieceDuplicate').onclick=()=>commit('duplicate',[5,5]);
+ // Outline per part: any change applies to the selected parts; None removes it.
+ const outlineSpec=()=>$('pieceOutlineStitch').value?{stitch:$('pieceOutlineStitch').value,offset_mm:Number($('pieceOutlineGap').value)||0,
+  width_mm:Number($('pieceOutlineWidth').value)||2,colour:$('pieceOutlineColour').value}:null;
+ for(const id of ['pieceOutlineStitch','pieceOutlineGap','pieceOutlineWidth','pieceOutlineColour'])
+  $(id).addEventListener('change',()=>{if(targets().length)commit('outline',outlineSpec())});
  $('pieceDelete').onclick=()=>commit('delete',true);
  $('pieceSkew').addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();
   const v=Number($('pieceSkew').value);if(Number.isFinite(v)&&v){commit('skew',v);$('pieceSkew').value='';}});

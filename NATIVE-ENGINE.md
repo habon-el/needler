@@ -287,3 +287,15 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   difference over the design's colours. Puff and appliqué stops are noted on their thread.
 - The picture is an SVG in millimetres, so printing at 100% gives an actual-size placement template.
 
+## Outlines per part (added 2026-10-25)
+
+- `area_outlines: {part id: {stitch: running|triple|satin, offset_mm 0-6, width_mm 1.2-5, colour}}`,
+  set with the piece command `outline` (None removes it); checked by `part_outlines.choices`.
+- `part_outlines.add` draws the part's rings (offset outward with round joins when a gap is set):
+  running 2.5 mm, triple 2.2 mm with `bean_stitch_repeats` 1, or satin halves (`borders.satin_rails`).
+  For satin each edge line is smoothed on its own (simplify 0.15 mm, then closing and opening by
+  2.5 x the half width) and points closer than 0.15 mm are dropped, so pixel-traced edges and hole
+  edges do not fold. The band it sews is added to the release mask.
+- Engine and piece path both collect outlines with their parts and sew them after all fills; the
+  piece path widens its canvas by the outline's reach. Locked parts keep their outline.
+

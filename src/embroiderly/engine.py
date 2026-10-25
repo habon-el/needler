@@ -394,6 +394,9 @@ def digitize(source, directory, height_mm=100, colours=None):
         # Best look: back to front. A part lying inside another part (a cheek in a head) is sewn
         # after it, even when its thread was used before; the colour order decides otherwise.
         passes=layer_passes(passes)
+    # Outlines per part (part_outlines.py): collected with their parts, sewn after all fills.
+    from .part_outlines import choices as outline_choices, add as add_part_outline
+    part_outlines=outline_choices(settings);pending_outlines=[]
     for colour,choice,mask in passes:
         later&=~mask.astype(bool)
         release_mask |= mask.astype(bool)
@@ -410,6 +413,7 @@ def digitize(source, directory, height_mm=100, colours=None):
             while child!=-1:
                 rings.append(contours[child]);child=hierarchy[0,child,0]
             identity=region_id(rings)
+            if identity in part_outlines:pending_outlines.append(([r[:,0,:] for r in rings],part_outlines[identity]))
             style=region_styles.get(identity)
             if filled_holes.get(identity)=='fill' and len(rings)>1:
                 # Remove / fill holes: stitches run straight across them, so no gap opens at
@@ -483,6 +487,8 @@ def digitize(source, directory, height_mm=100, colours=None):
                 band=np.zeros_like(mask);cv2.drawContours(band,limb,-1,1,-1)
                 grow=max(1,int(math.ceil(satin_pull/scale)))
                 release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
+    for rings_px,spec in pending_outlines:
+        objects+=add_part_outline(document,rings_px,spec,scale,release_mask,objects)
     outline_thread=settings.get('outline_colour','#202020')
     if settings.get('outlines') is True and not line_art and not piece_layout and settings.get('ink_only') is not True and objects:
         if outline_thread!='auto' and not (isinstance(outline_thread,str) and len(outline_thread)==7 and outline_thread[0]=='#'
