@@ -348,3 +348,26 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   the verified routing is reused (`thread_recolour.reuse`), and a colourway generated before is
   found again by `matching_plan`. Machine files are those of the colourway in use.
 - Not kept per colourway: part outline colours (`area_outlines`) and the fabric colour.
+
+## Fewer cuts between outlines (added 2026-10-25)
+
+- `engine.colour_outlines` finds colour edges with eight neighbours. With four, a slanted or round
+  edge was a chain of pixels touching only at corners; the line tracer broke it into pieces (a cut
+  each) and lost the slanted stretches.
+- `part_outlines.in_order`: outlines per part are sewn thread by thread (first-seen order), each
+  thread nearest first, in both the colour generator and the piece path.
+- With branching on (`generation_policy`, the default), plain running and triple lines keep their
+  centre line on the block (`Block.line`, `Block.restitch`). `stitch_engine._begin_near` sews an
+  element's lines nearest first and begins a ring at its point nearest the needle.
+- `_branch` for two lines of one thread: a ring sewn after a cut begins where it comes nearest the
+  next line (`_line_toward`); then `_Lines` (the thread's lines, a point every 0.5 mm, joined where
+  they come within 0.35 mm) finds the shortest way, at most `LINE_BRANCH_MM` 12 mm, from the needle
+  onto the next line: anywhere on a ring (chosen also near the line after it), else one of its ends
+  (reversed if needed). The travel is sewn as 2 mm running stitches on lines sewn before or sewn
+  over next, never across fabric, and the cut goes. Lines farther apart still cut.
+- Measured (80 mm test designs, trims in the whole design):
+  - Colour outlines, one thread (overlapping squares, a ring in a ring, a triangle, two circles):
+    18 before, 12 after (outline thread 12 to 6, one per separate outline).
+  - Same, outline colour Auto: 22 before, 13 after.
+  - Outlines per part on all 7 parts, running or triple, one thread: 14 before, 12 after.
+  - Colour outlines on ten 10 mm stripes (50 mm high): 14 before, 7 after.

@@ -202,8 +202,11 @@ def colour_outlines(document,exact,alpha,masks,scale,thread,retrace_mm):
     a boundary between two parts takes the shade of the part sewn later (it lies on top)."""
     label=np.full(alpha.shape,-1,np.int32)
     for k,m in enumerate(masks):label[m]=k
+    # Eight neighbours: on a slanted or round edge a four-neighbour edge is a chain of pixels
+    # touching only at corners, which the line tracer breaks into pieces (each one a cut).
+    around=[np.roll(np.roll(label,dy,0),dx,1) for dy in (-1,0,1) for dx in (-1,0,1) if dy or dx]
     edge=np.zeros(alpha.shape,bool)
-    for shifted in (np.roll(label,1,0),np.roll(label,-1,0),np.roll(label,1,1),np.roll(label,-1,1)):
+    for shifted in around:
         edge|=label!=shifted
     edge[[0,-1],:]|=label[[0,-1],:]>=0;edge[:,[0,-1]]|=label[:,[0,-1]]>=0
     edge&=label>=0
@@ -211,7 +214,7 @@ def colour_outlines(document,exact,alpha,masks,scale,thread,retrace_mm):
     if isinstance(thread,str):
         return add_line_art(document,exact,alpha,scale,None,retrace_mm,layers=[(thread,edge)])
     # Each edge pixel belongs to the part on top: one with a lower (earlier) or empty neighbour.
-    lowest=np.minimum.reduce([np.roll(label,1,0),np.roll(label,-1,0),np.roll(label,1,1),np.roll(label,-1,1)])
+    lowest=np.minimum.reduce(around)
     lowest[[0,-1],:]=-1;lowest[:,[0,-1]]=-1
     owned=edge&(lowest<label)
     shades={}
@@ -424,7 +427,7 @@ def digitize(source, directory, height_mm=100, colours=None):
         passes=hand_passes(passes,sequence)
     sewn_parts=[]
     # Outlines per part (part_outlines.py): collected with their parts, sewn after all fills.
-    from .part_outlines import choices as outline_choices, add as add_part_outline
+    from .part_outlines import choices as outline_choices, add as add_part_outline, in_order as outlines_in_order
     part_outlines=outline_choices(settings);pending_outlines=[]
     for colour,choice,mask in passes:
         later&=~mask.astype(bool)
@@ -516,7 +519,7 @@ def digitize(source, directory, height_mm=100, colours=None):
                 band=np.zeros_like(mask);cv2.drawContours(band,limb,-1,1,-1)
                 grow=max(1,int(math.ceil(satin_pull/scale)))
                 release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
-    for rings_px,spec in pending_outlines:
+    for rings_px,spec in outlines_in_order(pending_outlines):
         objects+=add_part_outline(document,rings_px,spec,scale,release_mask,objects)
     outline_thread=settings.get('outline_colour','#202020')
     if settings.get('outlines') is True and not line_art and not piece_layout and settings.get('ink_only') is not True and objects:

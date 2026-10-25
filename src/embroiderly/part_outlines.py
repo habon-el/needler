@@ -36,6 +36,29 @@ def reach_mm(spec):
     return spec['offset_mm']+(spec['width_mm']/2 if spec['stitch'] == 'satin' else .3)
 
 
+def in_order(pending):
+    """[(rings, spec)] in sewing order: each thread's outlines together (threads in first-seen
+    order), and within a thread the nearest outline next, so touching outlines follow each
+    other and the generator can travel along them instead of cutting (stitch_engine._branch)."""
+    from scipy.spatial import cKDTree
+    threads = {}
+    for item in pending:
+        threads.setdefault(item[1]['colour'].lower(), []).append(item)
+    ordered = []
+    for group in threads.values():
+        points = [np.vstack([np.asarray(r, float).reshape(-1, 2) for r in rings]) for rings, _ in group]
+        trees = [cKDTree(p) for p in points]
+        left = list(range(1, len(group)))
+        here = 0
+        ordered.append(group[0])
+        while left:
+            probe = points[here][::max(1, len(points[here])//64)]
+            here = min(left, key=lambda k: float(trees[k].query(probe)[0].min()))
+            left.remove(here)
+            ordered.append(group[here])
+    return ordered
+
+
 def _path(points):
     return 'M '+' L '.join(f'{x:.3f},{y:.3f}' for x, y in points)
 

@@ -12,8 +12,8 @@ import math
 from pathlib import Path
 from . import svg_geometry as sg
 from .stitch_fills import contour, fill_shape, gradient, join_runs, meander, radial, spiral, step_fill, tatami
-from .stitch_paths import (backstitch, bean, blanket, chain, enforce_min, inward_side, order_runs, path_length, polygons,
-                           running, split_long, stemstitch, zigzag_outline)
+from .stitch_paths import (backstitch, bean, blanket, chain, dedupe, enforce_min, inward_side, order_runs, path_length,
+                           polygons, running, split_long, stemstitch, zigzag_outline)
 from .stitch_satin import SPLIT_MM, satin
 from shapely.geometry import LineString
 
@@ -154,6 +154,9 @@ class Block:
 
     def __init__(self, colour, points, node, trim_after, lockable=True, puff=False, placement=False):
         self.colour, self.points, self.node = colour, points, node
+        # A plain running (or triple) line: its centre line, and how to stitch it again
+        # from another start (branching travels along such lines and turns rings).
+        self.line, self.restitch = None, None
         self.trim_after, self.lockable, self.puff = trim_after, lockable, puff
         # Placement: the outline sewn on the fabric just before the stop for foam.
         self.placement = placement
@@ -230,8 +233,9 @@ def _puff_area(shape, spacing, pull, min_len, foam_mm=3.0):
     return join_runs(rings + runs, shape, 1.5)
 
 
-def _element_blocks(node, paths, style, scale, index, min_len, start=None):
-    """start: where the needle is (the last stitch so far); fills begin at their nearest corner."""
+def _element_blocks(node, paths, style, scale, index, min_len, start=None, lines_from=None):
+    """start: where the needle is (the last stitch so far); fills begin at their nearest corner.
+    lines_from: the same, for running lines (with branching): nearest first, rings begin nearest."""
     stroke = sg.colour(style.get('stroke'))
     fill = sg.colour(style.get('fill', '#000000')) if 'fill' in style or sg.local(node.tag) != 'line' else None
     mm = [([(x*scale, y*scale) for x, y in pts], closed) for pts, closed in paths]
@@ -337,7 +341,8 @@ def _element_blocks(node, paths, style, scale, index, min_len, start=None):
             tolerance = max(0.0, _float(node, 'running_stitch_tolerance_mm', .2))
             repeats = int(_float(node, 'bean_stitch_repeats', 0))
             # Fragments that meet become one line; then sew nearest-first.
-            runs = order_runs(chain([pts for pts, _ in mm]))
+            runs = order_runs(chain([pts for pts, _ in mm])) if lines_from is None else \
+                _begin_near(chain([pts for pts, _ in mm]), lines_from)
             area = _attr(node, 'travel_area')
             if area:
                 region = fill_shape([([(x*scale, y*scale) for x, y in pts], True)
@@ -347,10 +352,16 @@ def _element_blocks(node, paths, style, scale, index, min_len, start=None):
             outline = _attr(node, 'outline_style')
             if outline in OUTLINE_STYLES:
                 runs = [_outline(run, outline, node, length) for run in runs if len(run) >= 2]
+                emit(stroke, runs, puff=_bool(node, 'puff'), placement=_bool(node, 'puff_placement'))
             else:
-                runs = [bean(running(run, length, tolerance), repeats) for run in runs]
-            emit(stroke, [run for run in runs if len(run) >= 2], puff=_bool(node, 'puff'),
-                 placement=_bool(node, 'puff_placement'))
+                def restitch(run):
+                    return bean(running(run, length, tolerance), repeats)
+                lines = [(run, sewn) for run, sewn in ((run, restitch(run)) for run in runs) if len(sewn) >= 2]
+                first = len(blocks)
+                emit(stroke, [sewn for _, sewn in lines], puff=_bool(node, 'puff'),
+                     placement=_bool(node, 'puff_placement'))
+                for block, (run, _) in zip(blocks[first:], lines):
+                    block.line, block.restitch = run, restitch
     return blocks
 
 
@@ -418,6 +429,123 @@ def _outline(run, style, node, length):
 
 
 BRANCH_MAX_MM = 25.0   # longest travel run that replaces a cut
+LINE_BRANCH_MM = 12.0  # longest travel along sewn lines (outlines) that replaces a cut
+LINE_TOUCH_MM = .35    # lines this close touch: travel may step from one to the other
+
+
+def _closed(run):
+    return len(run) > 3 and math.dist(run[0], run[-1]) < 1e-6
+
+
+def _ring_from(run, point):
+    """A closed line turned to begin (and end) at its point nearest `point`."""
+    from shapely.geometry import Point
+    from shapely.ops import substring
+    ring = LineString(run)
+    at = ring.project(Point(point))
+    if not 1e-6 < at < ring.length-1e-6:
+        return run
+    head, tail = substring(ring, at, ring.length).coords, substring(ring, 0, at).coords
+    return [tuple(p) for p in head]+[tuple(p) for p in tail][1:]
+
+
+def _begin_near(runs, position):
+    """Running lines of one element, nearest first from the needle; a closed line (an
+    outline ring) begins at its point nearest the needle."""
+    out = []
+    for run in order_runs(runs, position):
+        if position is not None and _closed(run):
+            run = _ring_from(run, position)
+        out.append(run)
+        position = run[-1]
+    return out
+
+
+class _Lines:
+    """The running lines of one thread as a graph (a point every 0.5 mm, joined where
+    lines touch or cross), for travel that only goes over lines of that thread."""
+
+    def __init__(self, blocks):
+        from scipy.spatial import cKDTree
+        self.points, self.owner, self.graph = [], [], {}
+        for block in blocks:
+            dense = split_long(dedupe(block.line), .5)
+            base = len(self.points)
+            self.points.extend(dense)
+            self.owner.extend([id(block)]*len(dense))
+            for k in range(base, base+len(dense)-1):
+                self._edge(k, k+1)
+        self.tree = cKDTree(self.points) if self.points else None
+        if self.tree is not None:
+            for i, j in self.tree.query_pairs(LINE_TOUCH_MM):
+                self._edge(i, j)
+
+    def _edge(self, i, j):
+        d = math.dist(self.points[i], self.points[j])
+        self.graph.setdefault(i, []).append((j, d))
+        self.graph.setdefault(j, []).append((i, d))
+
+    def route(self, a, block, limit, following=None):
+        """Shortest way from a along the lines onto `block`'s line (anywhere on a ring,
+        else one of its ends), at most `limit` long: [a, ..., entry point], or None.
+        A ring ends where it begins: with a `following` line, its entry is also chosen
+        near that line, so the thread can travel on to it afterwards."""
+        import heapq
+        from shapely.geometry import Point
+        if self.tree is None:
+            return None
+        da, i = self.tree.query(a)
+        if da > LINE_TOUCH_MM:
+            return None
+        closed = _closed(block.line)
+        ends = None if closed else {tuple(block.line[0]), tuple(block.line[-1])}
+        def entry(k):
+            return self.owner[k] == id(block) and \
+                (ends is None or min(math.dist(self.points[k], e) for e in ends) < 1e-6)
+        best, previous, queue = {i: 0.0}, {}, [(0.0, i)]
+        while queue:
+            cost, k = heapq.heappop(queue)
+            if cost > best[k]:
+                continue
+            if entry(k) and (not closed or following is None):
+                break
+            for other, d in self.graph.get(k, ()):
+                total = cost+d
+                if total <= limit and total < best.get(other, math.inf):
+                    best[other] = total; previous[other] = k
+                    heapq.heappush(queue, (total, other))
+        reached = [k for k in best if entry(k)]
+        if not reached:
+            return None
+        if closed and following is not None:
+            onward = LineString(following.line)
+            k = min(reached, key=lambda n: best[n]+2*onward.distance(Point(self.points[n])))
+        else:
+            k = min(reached, key=best.get)
+        path = [k]
+        while path[-1] != i:
+            path.append(previous[path[-1]])
+        return [a, *(self.points[n] for n in reversed(path))]
+
+
+def _line_toward(block, following):
+    """A ring sewn after a cut begins where it comes nearest the next line of its thread,
+    so the thread can travel straight on from where the ring ends."""
+    from shapely.ops import nearest_points
+    point, _ = nearest_points(LineString(block.line), LineString(following.line))
+    block.line = _ring_from(block.line, (point.x, point.y))
+    block.points = block.restitch(block.line)
+
+
+def _line_entry(block, point):
+    """Begin `block`'s line at `point` (turning a ring, or reversing an open line)."""
+    if _closed(block.line):
+        block.line = _ring_from(block.line, point)
+    elif math.dist(block.line[-1], point) < math.dist(block.line[0], point):
+        block.line = block.line[::-1]
+    else:
+        return
+    block.points = block.restitch(block.line)
 
 
 def _branch(blocks):
@@ -425,7 +553,9 @@ def _branch(blocks):
     thread, travel with short running stitches inside the area just sewn or under
     areas sewn later, instead of cutting the thread. Same-colour travel on its own
     fill barely shows; travel under later areas is covered. Travel never leaves
-    sewn areas, so the release gate still sees no stitch over empty fabric."""
+    sewn areas, so the release gate still sees no stitch over empty fabric.
+    Running lines (outlines, line art) travel along the lines of their own thread
+    instead: back over lines just sewn or along lines sewn over next."""
     from shapely.geometry import LineString
     from shapely.prepared import prep
     from shapely.ops import unary_union
@@ -436,14 +566,43 @@ def _branch(blocks):
         if key not in prepared:
             prepared[key] = prep(region)
         return prepared[key]
+    networks = {}
+    def lines(i):
+        # The lines of the run of same-thread blocks around block i.
+        def same(k):
+            return blocks[k].colour == blocks[i].colour and blocks[k].puff == blocks[i].puff \
+                and blocks[k].placement == blocks[i].placement
+        first = i
+        while first > 0 and same(first-1):
+            first -= 1
+        if first not in networks:
+            last = i
+            while last+1 < len(blocks) and same(last+1):
+                last += 1
+            networks[first] = _Lines([k for k in blocks[first:last+1] if k.line])
+        return networks[first]
+    def thread(k):
+        return blocks[k].colour == blocks[k+1].colour and blocks[k].puff == blocks[k+1].puff \
+            and blocks[k].placement == blocks[k+1].placement and not blocks[k+1].stop_before
     for i in range(len(blocks)-1):
         prev, nxt = blocks[i], blocks[i+1]
-        if not prev.trim_after or prev.region is None or nxt.region is None or prev.open or nxt.open \
-                or nxt.stop_before:
+        if prev.line and nxt.line and thread(i):
+            if _closed(prev.line) and (i == 0 or blocks[i-1].trim_after or not thread(i-1)):
+                # A ring sewn after a cut may begin anywhere: next to the next line.
+                _line_toward(prev, nxt)
+            if prev.trim_after:
+                after = blocks[i+2] if i+2 < len(blocks) and blocks[i+2].line and thread(i+1) else None
+                route = lines(i).route(tuple(prev.points[-1]), nxt, LINE_BRANCH_MM, after)
+                if route is not None:
+                    _line_entry(nxt, route[-1])
+                    nxt.points = [*running(route, 2.0, 0)[:-1], *nxt.points]
+                    prev.trim_after = False
             continue
-        if prev.colour != nxt.colour or prev.puff != nxt.puff or prev.placement != nxt.placement:
+        if not prev.trim_after or not thread(i):
             continue
         a, b = tuple(prev.points[-1]), tuple(nxt.points[0])
+        if prev.region is None or nxt.region is None or prev.open or nxt.open:
+            continue
         if math.dist(a, b) > BRANCH_MAX_MM:
             continue
         route = None
@@ -495,8 +654,9 @@ def generate(source):
     for index, (node, paths, style, _) in enumerate(sg.elements(root, tolerance=.02/scale)):
         min_len = _float(node, 'min_stitch_length_mm', document_min if document_min is not None else .45)
         # Auto start: each fill begins near where the previous part ended (shorter travel).
-        made = _element_blocks(node, paths, style, scale, index, min_len,
-                               tuple(blocks[-1].points[-1]) if blocks else None)
+        needle = tuple(blocks[-1].points[-1]) if blocks else None
+        made = _element_blocks(node, paths, style, scale, index, min_len, needle,
+                               needle if branching else None)
         for block in made:
             block.min_len = min_len
             # Over foam, tie-offs are six 1 mm stitches: short locks pull out of the foam.

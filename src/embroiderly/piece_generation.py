@@ -30,7 +30,7 @@ def append(document, layout, scale, settings, colours=None):
     points = np.concatenate([np.asarray(r) for p in selected for r in p['rings']])
     low, high = points.min(axis=0), points.max(axis=0)
     # An appliqué cover (and its mitred corners) sews up to ~4.5 mm past the outline: keep it on the canvas.
-    from .part_outlines import choices as outline_choices, add as add_part_outline, reach_mm
+    from .part_outlines import choices as outline_choices, add as add_part_outline, in_order as outlines_in_order, reach_mm
     outlines = outline_choices(settings)
     reach = max([reach_mm(outlines[p['id']]) for p in selected if p['id'] in outlines] or [0])
     pad = 2+max(int(np.ceil(5/scale)) if any(p['style'] == 'applique' for p in selected) else 0,
@@ -84,7 +84,7 @@ def append(document, layout, scale, settings, colours=None):
         if p['id'] in chosen_angles:
             # A chosen stitch direction is absolute on the hoop, whatever the piece's rotation.
             node.set(NS+'angle', f"{float(chosen_angles[p['id']]):g}")
-    for index, (rings, spec) in enumerate(pending):
+    for index, (rings, spec) in enumerate(outlines_in_order(pending)):
         # Outlines per part, sewn after all the pieces so they lie on top.
         add_part_outline(document, rings, spec, scale, mask, f'p{index}')
     display_origin = ((low+high)*scale/2).tolist()

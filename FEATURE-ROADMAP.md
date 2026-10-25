@@ -105,7 +105,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Sequence by colour / by selection / move up-down | Pieces panel "Sewing order": Sew earlier / Sew later, Sew in the order I picked (Ctrl-click order), Automatic order; both stitch paths follow it | ✅ 2026-10-25 | |
 | Apply closest join | `engine.closest_join` | ✅ 2026-10-24 | |
 | Optimize colour changes | one block per colour, also for edited pieces, copies and cut parts | ✅ 2026-10-24 | |
-| Branching, auto-sequence outlines | `_branch`, line-art Euler routes | ◐ | P2 |
+| Branching, auto-sequence outlines | Outlines of one thread sewn together, nearest first; a ring begins where it meets the next line, and the thread travels up to 12 mm along its own sewn lines instead of cutting; round and slanted colour outlines no longer break into pieces (`_branch`, line-art Euler routes) | ✅ 2026-10-25 | |
 | Travel by stitch / colour / object (Stitch Player) | Playback | ✅ | |
 
 ## 8. Lettering and monograms
