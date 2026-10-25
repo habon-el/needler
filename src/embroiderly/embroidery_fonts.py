@@ -130,7 +130,7 @@ def catalogue():
 def fingerprint(key):
     h = hashlib.sha256(repr(sorted(FONTS[key].items())).encode())
     h.update((FONT_DIR/FONTS[key]['file']).read_bytes())
-    for name in ('satin_font.py', 'embroidery_fonts.py'):
+    for name in ('satin_font.py', 'embroidery_fonts.py', 'monogram_ornaments.py'):
         h.update(Path(__file__).with_name(name).read_bytes())
     return h.hexdigest()
 
@@ -351,7 +351,7 @@ def _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, r
 
 def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0, fill=False,
            pull_mm=None, letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', radius_mm=None,
-           sequence='left', arc_degrees=None, frame='none', frame_mm=2.5, classic=False):
+           sequence='left', arc_degrees=None, frame='none', frame_mm=2.5, classic=False, ornament='none'):
     """SVG of satin-column lettering; user units are CSS px (96 per inch).
     puff: letters over foam (see stitch_satin._puff_satin). Each letter has a
     placement line sewn before the stop for the foam, then a perforation line
@@ -361,13 +361,19 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
     a single line on an arc (arc_degrees instead of radius_mm: how far round the
     circle the words reach, so the curve looks the same for any length); sequence='centre' sews from the middle letter out
     (centre-out, for caps). Letters that touch are joined by travel
-    inside both instead of a cut."""
+    inside both instead of a cut. ornament: a crown, laurel, swirls or divider
+    (monogram_ornaments) around the words and frame, sewn last."""
     if baseline not in BASELINES or sequence not in SEQUENCES:
         raise ValueError('Choose a listed baseline and letter order.')
     if frame not in FRAMES:
         raise ValueError('Choose a listed frame.')
     if frame != 'none' and puff:
         raise ValueError('A frame cannot be 3D puff yet. Turn off 3D puff or choose no frame.')
+    from .monogram_ornaments import ORNAMENTS
+    if ornament not in ORNAMENTS:
+        raise ValueError('Choose a listed ornament.')
+    if ornament != 'none' and puff:
+        raise ValueError('An ornament cannot be 3D puff yet. Turn off 3D puff or choose no ornament.')
     from .stitch_engine import PUFF_MAX_MM, puff_min_mm
     puff_columns = (puff_min_mm(foam_mm), PUFF_MAX_MM)
     puff_pull = '.35' if foam_mm < 2.5 else '.45'  # outer edge; sewn 0.05 mm inside
@@ -414,7 +420,7 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
             scale_px = em_px*(MONOGRAM_MIDDLE if index == middle else 1)
             matrices[0, index] = [scale_px, 0, 0, scale_px, x-l*scale_px, -(t+b)/2*scale_px]
             x += (r-l)*scale_px+.12*em_px
-    frame_columns = []
+    frame_columns, ornament_pieces = [], []
     if baseline != 'straight':
         if len(lines) > 1:
             raise ValueError('Arc lettering takes one line. Remove the line breaks or use a straight baseline.')
@@ -427,8 +433,8 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
         else:
             radius_px = float(radius_mm)/PX_MM
         matrices = _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, radius_px)
-    if baseline != 'straight' or classic or frame != 'none':
-        # Keep the bent words (and the frame) on the page: measure them and move them in by half an em.
+    if baseline != 'straight' or classic or frame != 'none' or ornament != 'none':
+        # Keep the bent words (and the frame and ornament) on the page: measure them and move them in by half an em.
         from shapely.affinity import affine_transform
         from shapely.ops import unary_union
         outline = unary_union([affine_transform(glyph_columns(font_path(key), char)[2], matrices[row, index])
@@ -450,8 +456,19 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                 ys = [p[1] for a, b in frame_columns for p in (*a, *b)]
                 left, top = min(left, min(xs)), min(top, min(ys))
                 right, bottom = max(right, max(xs)), max(bottom, max(ys))
-                frame_columns = [([(x+em_px/2-left, y+em_px/2-top) for x, y in a],
-                                  [(x+em_px/2-left, y+em_px/2-top) for x, y in b]) for a, b in frame_columns]
+            if ornament != 'none':
+                # Around the words and frame, scaled to the capital, clear of both.
+                from shapely.geometry import Polygon
+                from .monogram_ornaments import ornament as ornament_columns
+                avoid = unary_union([outline]+[Polygon(list(a)+list(b)[::-1]).buffer(0) for a, b in frame_columns])
+                ornament_pieces = ornament_columns(ornament, (left, top, right, bottom), cap_height(key)*em_px, avoid)
+                xs = [p[0] for piece in ornament_pieces for a, b in piece for p in (*a, *b)]
+                ys = [p[1] for piece in ornament_pieces for a, b in piece for p in (*a, *b)]
+                left, top = min(left, min(xs)), min(top, min(ys))
+                right, bottom = max(right, max(xs)), max(bottom, max(ys))
+            move = lambda rails: [(x+em_px/2-left, y+em_px/2-top) for x, y in rails]
+            frame_columns = [(move(a), move(b)) for a, b in frame_columns]
+            ornament_pieces = [[(move(a), move(b)) for a, b in piece] for piece in ornament_pieces]
             for m in matrices.values():
                 m[4] += em_px/2-left
                 m[5] += em_px/2-top
@@ -620,7 +637,48 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                 **{f'{{{INK_NS}}}{name}': value
                    for name, value in size_profile(size_mm, float(frame_mm), data['zigzag_mm']).items()}}))
         nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
+    if ornament_pieces:
+        _ornament_group(root, ornament_pieces, colour, pull_mm, size_mm, data['zigzag_mm'], count)
     return ET.tostring(root, encoding='unicode')
+
+
+def _ornament_group(root, pieces, colour, pull_mm, size_mm, zigzag_mm, count):
+    """The ornament, sewn after the words and frame: each piece's columns in order, the
+    needle moved between them inside the piece (as inside a letter), a cut after each piece."""
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    from .stitch_paths import Travel
+    group = ET.SubElement(root, f'{{{SVG_NS}}}g', {f'{{{INK_NS}}}letter-group': 'line',
+                                                   f'{{{LABEL_NS}}}label': 'ornament'})
+    style = f'fill:none;stroke:{colour};stroke-width:{.2/PX_MM:.3f}'
+    for piece in pieces:
+        travel = Travel(unary_union([Polygon(list(a)+list(b)[::-1]).buffer(0) for a, b in piece]),
+                        inset=.15/PX_MM, slack=.05/PX_MM)
+        nodes, previous_end = [], None
+        for a, b in piece:
+            width_mm = max(math.dist(p, q) for p, q in zip(a, b))*PX_MM
+            start = _lerp(a[0], b[0], .5)
+            if previous_end is not None:
+                route = travel.route(previous_end, start, direct_mm=math.inf)
+                if route is None:
+                    nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
+                else:
+                    count += 1
+                    nodes.append(ET.SubElement(group, f'{{{SVG_NS}}}path', {
+                        'id': f'ornament-travel{count}', 'd': _path(route), 'style': style,
+                        f'{{{INK_NS}}}stroke_method': 'running_stitch',
+                        f'{{{INK_NS}}}running_stitch_length_mm': '1.2',
+                        f'{{{INK_NS}}}running_stitch_tolerance_mm': '0'}))
+            profile = size_profile(size_mm, width_mm, zigzag_mm)
+            # Zigzag underlay runs to the far end, so the satin then comes back to the start.
+            previous_end = _lerp(b[0], a[0], .3) if profile['zigzag_underlay'] != 'false' else _lerp(b[-1], a[-1], .3)
+            count += 1
+            nodes.append(ET.SubElement(group, f'{{{SVG_NS}}}path', {
+                'id': f'ornament{count}', 'd': ' '.join([_path(a), _path(b)]), 'style': style,
+                f'{{{INK_NS}}}satin_column': 'true', f'{{{INK_NS}}}satin_pairs': 'indexed',
+                f'{{{INK_NS}}}pull_compensation_mm': f'{pull_mm:g}',
+                **{f'{{{INK_NS}}}{name}': value for name, value in profile.items()}}))
+        nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
 
 
 def _join_touching(letters, colour):

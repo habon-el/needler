@@ -37,9 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
   $('nativeBaseline').addEventListener('input',pressed);$('nativeBaseline').addEventListener('change',pressed);
   document.addEventListener('lettering:layout',pressed);pressed();
   shape.append(shapes,$('nativeCurveField'));edit.append(shape);
-  // Monogram: a satin frame around the words and the classic three-initial layout.
+  // Monogram: a satin frame around the words, an ornament and the classic three-initial layout.
   const monogram=node('fieldset','','workflowTextFrame');monogram.append(node('legend','Monogram & frame'));
-  monogram.append(document.querySelector('label[for=nativeFrame]'),$('nativeFrame'),$('nativeFrameWidthField'),$('nativeClassicField'));
+  monogram.append(document.querySelector('label[for=nativeFrame]'),$('nativeFrame'),$('nativeFrameWidthField'),
+   document.querySelector('label[for=nativeOrnament]'),$('nativeOrnament'),$('nativeClassicField'));
   edit.append(monogram);
   const row=node('div','','workflowSizeFields');
   for(const id of ['nativeHeight','nativeWidth']){

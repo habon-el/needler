@@ -1,4 +1,5 @@
 """Lettering layout: spacing, line spacing, arcs, centre-out order, touching joins."""
+import math
 import re
 import tempfile
 from pathlib import Path
@@ -124,3 +125,86 @@ def test_classic_monogram_makes_the_middle_initial_bigger():
             ef.layout(bad, 'graduate', 250, classic=True)
     with pytest.raises(ValueError, match='3D puff'):
         ef.layout('JAM', 'graduate', 250, frame='circle', puff=True)
+
+
+def ornament_bounds(svg):
+    """Bounds of the ornament's satin rails (px) in a layout SVG."""
+    group = svg[svg.index('label="ornament"'):]
+    points = coords(' '.join(re.findall(r' d="([^"]+)"', group)))
+    xs, ys = [x for x, _ in points], [y for _, y in points]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+@pytest.mark.parametrize('ornament', ['crown', 'laurel', 'swirls', 'divider'])
+def test_monogram_ornaments_pass_the_release_gate(ornament):
+    body = dict(text='JAM', font='graduate', height_mm=14, available_width_mm=300, colour='#202020',
+                classic=True, ornament=ornament)
+    settings = ln.recipe(body)
+    assert settings['ornament'] == ornament
+    with tempfile.TemporaryDirectory() as folder:
+        result = ln.build(Path(folder), settings)
+    assert result['checks_passed'], result.get('issues')
+    # Every letter is still there, and the ornament makes the design bigger than the letters.
+    assert result['source_glyphs'] == 3
+    plain = ef.layout('JAM', 'graduate', 250, classic=True)
+    svg = ef.layout('JAM', 'graduate', 250, classic=True, ornament=ornament)
+    size = lambda s: [float(v) for v in re.search(r'width="([\d.]+)" height="([\d.]+)"', s).groups()]
+    assert sum(size(svg)) > sum(size(plain))+3/ef.PX_MM
+
+
+def test_ornament_with_a_frame_and_small_words_pass_the_release_gate():
+    for body in (dict(text='JAM', height_mm=14, classic=True, frame='circle', ornament='laurel'),
+                 dict(text='Smith', height_mm=5, ornament='swirls')):
+        settings = ln.recipe(dict(body, font='graduate', available_width_mm=300, colour='#202020'))
+        with tempfile.TemporaryDirectory() as folder:
+            result = ln.build(Path(folder), settings)
+        assert result['checks_passed'], (body, result.get('issues'))
+
+
+def test_ornament_is_sewn_last_in_satin_with_a_cut_after_each_piece():
+    svg = ef.layout('JAM', 'graduate', 250, classic=True, frame='circle', ornament='laurel')
+    assert svg.index('label="frame"') < svg.index('label="ornament"')
+    assert svg.rindex('letter-group="glyph"') < svg.index('label="ornament"')
+    group = svg[svg.index('label="ornament"'):]
+    paths = re.findall(r'<path [^>]*>', group)
+    satins = [p for p in paths if 'satin_column="true"' in p]
+    assert satins and all('satin_pairs="indexed"' in p for p in satins)
+    # Everything else is travel inside the piece; two branches, so two cuts at most.
+    assert all('running_stitch' in p for p in paths if p not in satins)
+    assert 1 <= sum('trim_after="true"' in p for p in paths) <= 2
+    # Satin widths stay sewable: no rung wider than 3.5 mm plus rounding.
+    for path in satins:
+        a, b = [coords(part) for part in re.search(r' d="([^"]+)"', path).group(1).split('M ')[1:]]
+        widths = [math.dist(p, q)*ef.PX_MM for p, q in zip(a, b)]
+        assert .79 <= min(widths) and max(widths) <= 3.51
+
+
+@pytest.mark.parametrize('ornament', ['crown', 'laurel', 'swirls', 'divider'])
+def test_ornaments_scale_with_the_text(ornament):
+    small = ornament_bounds(ef.layout('JAM', 'graduate', 250, classic=True, ornament=ornament))
+    big = ornament_bounds(ef.layout('JAM', 'graduate', 500, classic=True, ornament=ornament))
+    for i in (0, 1):
+        ratio = (big[i+2]-big[i])/(small[i+2]-small[i])
+        assert 1.6 < ratio < 2.4, (ornament, i, ratio)
+
+
+def test_ornament_follows_curved_words():
+    svg = ef.layout('MILLER', 'graduate', 250, baseline='arc_over', arc_degrees=90, ornament='crown')
+    assert 'label="ornament"' in svg
+
+
+def test_ornament_values_are_checked():
+    for bad in ('star', '', None, 3):
+        with pytest.raises(ValueError, match='ornament'):
+            sl.layout_options(dict(ornament=bad))
+        with pytest.raises(ValueError, match='ornament'):
+            ln.recipe(dict(text='JAM', font='graduate', height_mm=14, ornament=bad))
+    with pytest.raises(ValueError, match='ornament'):
+        ef.layout('JAM', 'graduate', 250, ornament='star')
+    with pytest.raises(ValueError, match='3D puff'):
+        ef.layout('JAM', 'graduate', 250, ornament='crown', puff=True)
+    # No ornament adds nothing to the recipe, so earlier saved lettering keeps its cache key.
+    assert 'ornament' not in ln.recipe(dict(text='JAM', font='graduate', height_mm=14))
+    problems = sl.advice(dict(text='JAM', font='graduate', height_mm=30, ornament='crown', puff=True,
+                              available_width_mm=300))['problems']
+    assert any(p.get('fix', {}).get('set') == {'ornament': 'none'} for p in problems)

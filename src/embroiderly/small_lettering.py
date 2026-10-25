@@ -9,6 +9,7 @@ import math
 import unicodedata
 
 from . import embroidery_fonts
+from .monogram_ornaments import ORNAMENTS
 
 FONTS = tuple(embroidery_fonts.FONTS)
 
@@ -120,6 +121,9 @@ def layout_options(body):
     options['frame_mm']=number('frame_mm',2.5,1.6,5,'Enter a frame width from 1.6 to 5 mm.')
     if body.get('classic',False) not in (True,False):raise ValueError('Classic monogram must be on or off.')
     options['classic']=body.get('classic',False)
+    # Ornament: a crown, laurel, swirls or divider drawn round the words (monogram_ornaments).
+    options['ornament']=body.get('ornament','none')
+    if options['ornament'] not in ORNAMENTS:raise ValueError('Choose a listed ornament.')
     if options['baseline']!='straight':
         # Curve: how far round the circle the words reach; the radius then follows the words' length.
         if body.get('arc_degrees') is not None:
@@ -213,6 +217,7 @@ def advice(body):
             widest=0;problem=dict(message=str(error))
             if 'classic monogram' in str(error) and layout['baseline']!='straight':problem['fix']=fix('Use a straight line',baseline='straight')
             elif 'classic monogram' in str(error):problem['fix']=fix('Turn off classic monogram',classic=False)
+            elif 'ornament' in str(error).lower():problem['fix']=fix('No ornament',ornament='none')
             elif 'frame' in str(error).lower() and puff:problem['fix']=fix('No frame',frame='none')
             elif 'frame' in str(error).lower():problem['fix']=fix('Thinner frame',frame_mm=1.8)
             problems.append(problem)

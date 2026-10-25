@@ -549,3 +549,33 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   and stitched lines are refused; `MAX_COPIES` and `MAX_PART_POINTS` still apply through `edits()`.
 - Pieces panel, next to Knife and Satin here: ⊕ Weld (2+ selected) and Smooth with a Light / More
   choice.
+
+## Monogram ornaments (added 2026-10-26)
+
+- Lettering setting `ornament`: `none` (default, left out of the recipe so saved lettering keeps
+  its cache key), `crown`, `laurel`, `swirls` or `divider` (`monogram_ornaments.ORNAMENTS`); any
+  other value is refused, and so is an ornament with 3D puff. Any words, classic or not, straight or
+  curved, with or without a frame.
+- `monogram_ornaments` draws them in code as satin columns: matched rails along a centre line with
+  a width profile (`column`, sewn rung i to rung i, `satin_pairs="indexed"`), a point every 0.6 mm.
+  Sizes follow the capital height; widths stay 0.8–3.5 mm (`MIN_WIDTH_MM`, `MAX_WIDTH_MM`).
+  - Crown: five points on a band, each with a bead on top, above the words.
+  - Laurel: two branches (stem, four leaf pairs, a top leaf) on an ellipse round the sides and
+    bottom, drawn in as close as keeps the leaves clear of the letters and frame.
+  - Swirls: one flourish each side, out from the words and curling up (curvature growing along it).
+  - Divider: a pointed line under the words, widest in the middle.
+- Placed round the letters' bounds, or the frame's when there is one, about a third of a capital
+  clear; an ornament that would come within 0.5 mm of a letter or the frame, or whose rails would
+  fold at a tight bend, is refused ("does not fit at this size" / "touches the letters"), and the
+  Text page offers "No ornament".
+- `embroidery_fonts.layout` sews it last (after the words and frame) in the thread colour, in its
+  own `ornament` group: each piece's columns in order, the needle moved between them by travel
+  inside the piece (as inside a letter), a cut after each piece. Columns are ordered so the travel
+  runs where satin is sewn over it afterwards (crown points and laurel leaves before band and stem).
+  A column with zigzag underlay ends back at its start (the satin returns), which the travel follows.
+- Coverage and checks are unchanged: the ornament's satin columns enter the verifier's sewing
+  envelope like letter columns, and the files go through the same release gate.
+- Text page: "Ornament" select under Frame in "Monogram & frame"; the text helper can set it.
+- Measured (Graduate, 14 mm words, classic JAM): every ornament passes all file checks with and
+  without a circle frame, as do 5 mm and 40 mm words; stitches 0.40–3.8 mm (6.9 mm at 40 mm);
+  one cut per ornament piece (two for laurel and swirls), none inside a piece.

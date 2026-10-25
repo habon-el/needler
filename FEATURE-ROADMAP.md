@@ -120,7 +120,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Letter sequence (centre-out for caps, line by line) | left to right, centre out | ✅ 2026-10-24 | |
 | Baselines: arc, circle, custom line, fixed length | Shape buttons Straight / Arch / Smile and a Curve slider in degrees (the circle follows the words' length); letters stay rigid | ◐ no full circle, custom line or fixed length | P3 |
 | Lettering envelopes, elastic lettering | — | ✗ | P3 |
-| Monogramming (templates, ornaments, borders) | Text page "Monogram & frame": classic layout (middle initial bigger) and satin frames: circle, oval, square, diamond, hexagon, shield, heart | ◐ no ornaments (crowns, laurels, swirls) | P3 |
+| Monogramming (templates, ornaments, borders) | Text page "Monogram & frame": classic layout (middle initial bigger), satin frames (circle, oval, square, diamond, hexagon, shield, heart) and an Ornament: crown above, laurel round the sides and bottom, swirls left and right, or a line below; satin drawn in code, scaled to the letters, placed round the words and frame, in the thread colour, sewn last | ✅ 2026-10-26 | |
 | Team names | Text page "Team names": one name per line (up to 50, 40 letters each), the same font, height, shape and colour for all; Make all names builds and checks one file per name in turn, lists each width and stitches, and names any too wide or failing a check with the reason (too wide: offers one smaller height for all, never resizes); Download all (zip) in the chosen machine format | ✅ 2026-10-25 | |
 
 ## 9. Auto-digitizing
@@ -171,7 +171,7 @@ Studied the bundled sample designs: a bird picture and 96 monogram templates (pr
 | 2. Sewn back to front in layers | Sewing order: Fewest colour changes / Best look (back to front, a thread may repeat) | ✅ 2026-10-25 | |
 | 3. Dark details and two-shade depth | Outline colour Auto (a darker shade of each part's thread, on the part on top); area style Shaded | ✅ 2026-10-25 | |
 | 4. Decorative line inside borders | border "Line inside": triple stitch, 1.2 mm inside the border | ✅ 2026-10-25 | |
-| 5. Monograms with frames | classic monogram + 7 satin frames on the Text page | ◐ no ornaments | P3 |
+| 5. Monograms with frames | classic monogram + 7 satin frames + 4 ornaments (crown, laurel, swirls, line below) on the Text page | ✅ 2026-10-26 | |
 
 ## Build order
 
