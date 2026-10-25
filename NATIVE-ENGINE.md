@@ -204,3 +204,16 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   nearest corner.
 - Piece path: pieces are grouped by thread colour (stable, first-seen order), so copies and cut parts do not
   add colour changes.
+
+## Drawing shapes (added 2026-10-24)
+
+- Pieces panel → "Draw a shape": Rectangle and Ellipse (drag corner to corner), Polygon
+  (click each corner; double-click, Enter or clicking the first point closes it; Esc cancels)
+  and Freehand (hold and draw). The Thread colour picker sets the shape's colour.
+- Server command `piece_command = {ids: [], field: 'draw', value: {shape, points, colour}}`;
+  points are millimetres on the hoop. The outline is stored in `piece_edits` as
+  `{drawn: '#rrggbb', rings, name}` in picture pixels, so every piece command (move, size,
+  rotate, mirror, skew, duplicate, knife, style, stitch direction) works on it.
+- A self-crossing freehand line keeps its largest enclosed part; shapes under 1 mm² are refused.
+- Only shapes found in the picture set the hoop origin, so drawing never moves other pieces.
+- Deleting a drawn shape also removes its copies and cut parts.

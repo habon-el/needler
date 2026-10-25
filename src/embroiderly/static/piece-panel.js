@@ -25,14 +25,19 @@
  <button type="button" data-arrange="rotate_by:-15" title="Rotate 15° to the left">↺ 15°</button><button type="button" data-arrange="rotate_by:15" title="Rotate 15° to the right">↻ 15°</button><button type="button" data-arrange="rotate_by:45" title="Rotate 45° to the right">↻ 45°</button>
  <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
  </div>
- </fieldset><div class="piece-modes"><button id="pieceMove" type="button" aria-pressed="true">Drag to move</button><button id="pieceRotate" type="button" aria-pressed="false">Drag to rotate</button></div>
+ </fieldset>
+ <fieldset id="pieceDraw"><legend>Draw a shape</legend><div class="piece-arrange" role="group" aria-label="Draw">
+ <button type="button" data-draw="rectangle" aria-pressed="false" title="Drag from one corner to the opposite corner">▭ Rectangle</button><button type="button" data-draw="ellipse" aria-pressed="false" title="Drag from one corner to the opposite corner">◯ Ellipse</button>
+ <button type="button" data-draw="polygon" aria-pressed="false" title="Click each corner; double-click, Enter or click the first point to finish. Esc cancels.">⬠ Polygon</button><button type="button" data-draw="freehand" aria-pressed="false" title="Hold and draw the outline; release to close it">✎ Freehand</button>
+ <label>Thread <input id="pieceDrawColour" type="color" value="#202020"></label></div></fieldset>
+ <div class="piece-modes"><button id="pieceMove" type="button" aria-pressed="true">Drag to move</button><button id="pieceRotate" type="button" aria-pressed="false">Drag to rotate</button></div>
  <label class="piece-advanced">Group / subgroup<input id="pieceGroup" maxlength="100" placeholder="For example: Head / Eyes"></label>
  <p id="pieceFeedback" role="status" aria-live="polite">Select a piece to edit its measurements.</p>
  <details class="piece-advanced"><summary>Stitch settings and limitations</summary><p>Stitches rebuild from the outline after a transform. Fill angle follows rotation. Density and underlay retain the existing style preset.</p><p>Individual row spacing, stitch length, staggers, underlay, pull compensation, entry/exit and tie-in/tie-off editors are not available here. Sew-order reordering is not yet supported.</p></details>`;
  panel.insertBefore(properties,$('stitchStyles'));$('stitchStyles').querySelector('summary').textContent='Stitch type';
  $('stitchRegion').closest('label').hidden=true;$('regionStyleStatus').hidden=true;
  const total=document.createElement('output');total.id='pieceStitchTotal';total.textContent='0 total stitches';document.querySelector('.thread-info').append(total);
- let report={pieces:[]},selected=new Set(),advanced=false,linked=true,active=false,pending=false,drag=null,rotate=false,knife=null;
+ let report={pieces:[]},selected=new Set(),advanced=false,linked=true,active=false,pending=false,drag=null,rotate=false,knife=null,drawing=null;
  const icon=(kind)=>{const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');svg.classList.add('ui-icon');const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',kind==='lock'?'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0v4':kind==='unlock'?'M6 10h12v11H6zM8 10V6a4 4 0 0 1 8 0':kind==='eye'?'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm10-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6':'M3 3l18 18M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z');svg.append(path);return svg};
  function targets(){return report.pieces.filter(p=>selected.has(p.id))}
  function aggregate(items=targets()){
@@ -44,7 +49,7 @@
  function format(value,angle=false){return value===null?'—':(value/(units()==='in'&&!angle?25.4:1)).toFixed(units()==='in'&&!angle?3:1)}
  function feedback(message){$('pieceFeedback').textContent=message}
  async function commit(field,value,ids=[...selected]){
-  if(pending||!ids.length)return;
+  if(pending||(!ids.length&&field!=='draw'))return;
   pending=true;sync();feedback('Saving piece and rebuilding stitches when needed…');
   try{const ok=await studio.pieceEdit({ids,field,value,linked:advanced?linked:true});feedback(ok?(studio.hasPlayback()?'Saved. Stitches use the updated outline.':'Piece saved. No current stitch plan; review the design before generating.'):'Not applied. See the workspace message; the previous piece is unchanged.')}
   catch(error){feedback(error.message)}finally{pending=false;sync()}
@@ -73,6 +78,8 @@
   properties.querySelectorAll('.piece-unit').forEach(node=>node.textContent=units());
   $('pieceLink').disabled=disabled||!advanced;$('pieceLink').setAttribute('aria-pressed',String(!advanced||linked));
   $('pieceMove').disabled=$('pieceRotate').disabled=disabled;
+  properties.querySelectorAll('[data-draw],#pieceDrawColour').forEach(control=>{control.disabled=pending||studio.isBusy()||!report.pieces.length;});
+  properties.querySelectorAll('[data-draw]').forEach(b=>b.setAttribute('aria-pressed',String(drawing?.shape===b.dataset.draw)));
   window.stitchRegionSelection=active&&items.length?{rings:items.flatMap(p=>p.rings)}:null;
   const target=$('stitchRegion');target.value=items.length===1?items[0].id:'';target.dispatchEvent(new Event('change'));
   studio.redraw();
@@ -140,6 +147,51 @@
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   commit('knife',line);
  },true);
+ // Draw a shape: rectangle / ellipse by dragging corners, freehand by dragging, polygon by clicking corners.
+ const drawOn=shape=>{drawing=shape&&drawing?.shape!==shape?{shape,points:[]}:null;if(drawing){knifeOn(false);feedback($('pieceDraw').querySelector(`[data-draw="${shape}"]`).title+'.')}window.stitchRegionSelection=null;sync()};
+ properties.querySelectorAll('[data-draw]').forEach(b=>b.onclick=()=>drawOn(b.dataset.draw));
+ const outline=(points,hover)=>{
+  const all=hover?[...points,hover]:points;if(all.length<2)return all;
+  if(drawing.shape!=='rectangle'&&drawing.shape!=='ellipse')return all;
+  const [a,b]=[all[0],all[all.length-1]],x0=Math.min(a[0],b[0]),x1=Math.max(a[0],b[0]),y0=Math.min(a[1],b[1]),y1=Math.max(a[1],b[1]);
+  if(drawing.shape==='rectangle')return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
+  return Array.from({length:48},(_,i)=>[(x0+x1)/2+(x1-x0)/2*Math.cos(i*Math.PI/24),(y0+y1)/2+(y1-y0)/2*Math.sin(i*Math.PI/24)]);
+ };
+ const showDrawing=hover=>{const ring=outline(drawing.points,hover);window.stitchRegionSelection=ring.length>1?{rings:[[...ring,ring[0]]]}:null;studio.redraw()};
+ const finishDrawing=()=>{
+  const {shape,points}=drawing,colour=$('pieceDrawColour').value;drawing=null;window.stitchRegionSelection=null;
+  const corners=shape==='rectangle'||shape==='ellipse'?[points[0],points[points.length-1]]:points;
+  if(corners.length<(shape==='polygon'||shape==='freehand'?3:2)){feedback('Shape not drawn. Choose a shape and try again.');sync();return}
+  commit('draw',{shape,points:corners.map(toMm),colour});
+ };
+ canvas.addEventListener('pointerdown',e=>{
+  if(!drawing||!active||e.button!==0||pending||studio.isBusy())return;
+  e.stopImmediatePropagation();e.preventDefault();const at=studio.piecePoint(e,canvas);
+  if(drawing.shape==='polygon'){
+   const first=drawing.points[0],near=first&&Math.hypot(at[0]-first[0],at[1]-first[1])*report.scale<1.5;
+   if(near&&drawing.points.length>=3){finishDrawing();return}
+   drawing.points.push(at);showDrawing();return;
+  }
+  drawing.points=[at];drawing.down=true;canvas.setPointerCapture(e.pointerId);
+ },true);
+ canvas.addEventListener('pointermove',e=>{
+  if(!drawing)return;const at=studio.piecePoint(e,canvas);
+  if(drawing.shape==='polygon'){if(drawing.points.length)showDrawing(at);return}
+  if(!drawing.down)return;e.stopImmediatePropagation();
+  const last=drawing.points[drawing.points.length-1];
+  if(drawing.shape==='freehand'){if(Math.hypot(at[0]-last[0],at[1]-last[1])*report.scale>=.5&&drawing.points.length<1990)drawing.points.push(at);showDrawing()}
+  else{drawing.points=[drawing.points[0],at];showDrawing()}
+ },true);
+ canvas.addEventListener('pointerup',e=>{
+  if(!drawing||!drawing.down)return;e.stopImmediatePropagation();drawing.down=false;
+  if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);finishDrawing();
+ },true);
+ canvas.addEventListener('dblclick',e=>{if(drawing?.shape==='polygon'){e.stopImmediatePropagation();e.preventDefault();drawing.points=drawing.points.filter((p,i,a)=>!i||Math.hypot(p[0]-a[i-1][0],p[1]-a[i-1][1])>0);finishDrawing()}},true);
+ document.addEventListener('keydown',e=>{
+  if(!drawing||e.isComposing)return;
+  if(e.key==='Escape'){e.preventDefault();drawOn(null);feedback('Drawing cancelled.')}
+  else if(e.key==='Enter'&&drawing.shape==='polygon'){e.preventDefault();finishDrawing()}
+ });
  canvas.addEventListener('pointerdown',e=>{
   if(!active||$('tool').value==='measure'||studio.navigationGesture(e)||e.button!==0||pending||studio.isBusy())return;
   e.stopImmediatePropagation();const at=studio.piecePoint(e,canvas),context=canvas.getContext('2d');

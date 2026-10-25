@@ -13,19 +13,21 @@ import cv2
 import numpy as np
 
 IDENTITY = [1., 0., 0., 1., 0., 0.]
-FIELDS = {'name', 'group', 'visible', 'locked', 'matrix', 'rotation', 'source', 'rings', 'cut'}
+FIELDS = {'name', 'group', 'visible', 'locked', 'matrix', 'rotation', 'source', 'rings', 'cut', 'drawn'}
+SHAPES = ('rectangle', 'ellipse', 'polygon', 'freehand')
+MAX_DRAWN_POINTS = 2000
 MAX_COPIES = 100
 MAX_PART_POINTS = 20000
 
 
 def geometry_changed(options):
     return any(item.get('matrix', IDENTITY) != IDENTITY or not item.get('visible', True) or 'source' in item
-               or item.get('cut') for item in edits(options).values())
+               or item.get('cut') or 'drawn' in item for item in edits(options).values())
 
 
 def copy_ids(options):
-    """Pieces that are duplicates of another piece (not shapes found in the picture)."""
-    return {key for key, item in edits(options).items() if 'source' in item}
+    """Pieces that are duplicates of another piece or drawn shapes (not shapes found in the picture)."""
+    return {key for key, item in edits(options).items() if 'source' in item or 'drawn' in item}
 
 
 def bounds(rings):
@@ -72,14 +74,17 @@ def edits(options):
             raise ValueError('A copied piece must point to an original piece.')
         if 'rings' in item:
             rings = item['rings']
-            if 'source' not in item or not isinstance(rings, list) or not rings or any(
+            if not ('source' in item or 'drawn' in item) or not isinstance(rings, list) or not rings or any(
                     not isinstance(r, list) or len(r) < 3 or any(
                         not isinstance(p, list) or len(p) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) for v in p)
                         for p in r) for r in rings):
                 raise ValueError('A cut part has an invalid outline.')
+        if 'drawn' in item and ('source' in item or 'rings' not in item or not isinstance(item['drawn'], str)
+                                or not re.fullmatch('#[0-9a-f]{6}', item['drawn'])):
+            raise ValueError('A drawn shape needs an outline and a thread colour.')
         if 'cut' in item and item['cut'] is not True:
             raise ValueError('Invalid cut piece.')
-    if sum('source' in item for item in value.values()) > MAX_COPIES:
+    if sum('source' in item or 'drawn' in item for item in value.values()) > MAX_COPIES:
         raise ValueError(f'Use at most {MAX_COPIES} copied or cut pieces.')
     if sum(len(r) for item in value.values() for r in item.get('rings', [])) > MAX_PART_POINTS:
         raise ValueError('Cut parts have too many outline points. Simplify the artwork first.')
@@ -89,9 +94,14 @@ def edits(options):
 def inventory(region_report, options, width, height, scale):
     saved = edits(options)
     areas = list(region_report['areas'])
+    picture = list(areas)
+    styles = options.get('region_styles', {}) if isinstance(options.get('region_styles', {}), dict) else {}
+    # Drawn shapes: their own outline (picture pixels) and thread colour; they can be copied and cut too.
+    for key, item in saved.items():
+        if 'drawn' in item:
+            areas.append({'id': key, 'colour': item['drawn'], 'rings': item['rings'], 'style': styles.get(key, 'tatami')})
     # Duplicates reuse their original's outline and colour, with their own transform and style.
     by_id = {a['id']: a for a in areas}
-    styles = options.get('region_styles', {}) if isinstance(options.get('region_styles', {}), dict) else {}
     for key, item in saved.items():
         if 'source' in item and item['source'] in by_id:
             source = by_id[item['source']]
@@ -106,8 +116,9 @@ def inventory(region_report, options, width, height, scale):
     # Match the legacy engine's initial subject-centred hoop origin. Keep this
     # origin fixed as individual pieces move; never recenter after a transform.
     origin = np.array([width*scale/2, height*scale/2])
-    if areas:
-        left,top,right,bottom=bounds([r for area in areas for r in area['rings']])
+    # Only shapes found in the picture set the origin, so drawing a shape never moves the others.
+    if picture:
+        left,top,right,bottom=bounds([r for area in picture for r in area['rings']])
         origin=np.array([(left+right)*scale/2,(top+bottom)*scale/2])
     result = []
     hoop = options.get('piece_hoop_mm', [100, 100])
@@ -148,7 +159,7 @@ def inventory(region_report, options, width, height, scale):
         pixel_rings = [((np.asarray(r)+origin)/scale).tolist() for r in rings]
         result.append(dict(id=area['id'], order=index+1, name=item.get('name') or f'Part {index+1}',
                            group=item.get('group', ''), colour=area['colour'], style=area['style'],
-                           visible=item.get('visible', True), locked=item.get('locked', False), copy='source' in item,
+                           visible=item.get('visible', True), locked=item.get('locked', False), copy='source' in item or 'drawn' in item,
                            rings_mm=rings, rings=pixel_rings, x_mm=(left+right)/2, y_mm=(top+bottom)/2,
                            width_mm=right-left, height_mm=bottom-top, rotation=item.get('rotation', 0),
                            nodes=sum(len(r) for r in rings), area_mm2=area_mm2, satin_reason=reason,
@@ -161,6 +172,8 @@ def change(options, report, command):
     """Apply one atomic command to geometry; callers regenerate before committing."""
     if not isinstance(command, dict) or set(command)-{'ids', 'field', 'value', 'linked'}:
         raise ValueError('Invalid piece edit.')
+    if command.get('field') == 'draw':
+        return draw(deepcopy(options), report, command.get('value'))
     ids = command.get('ids')
     if not isinstance(ids, list) or not ids or len(set(ids)) != len(ids):
         raise ValueError('Select the pieces to edit.')
@@ -199,11 +212,14 @@ def change(options, report, command):
         return knife(updated, report, selected, value)
     if field == 'delete':
         if not set(ids) <= copies:
-            raise ValueError('Only copied pieces can be deleted. Hide an original piece instead.')
+            raise ValueError('Only copied pieces and drawn shapes can be deleted. Hide an original piece instead.')
+        # Copies and cut parts of a deleted drawn shape go with it.
+        ids = ids+[k for k, item in stored.items() if item.get('source') in ids and k not in ids]
         for key in ids:
             stored.pop(key, None)
             updated.get('region_styles', {}).pop(key, None)
             updated.get('area_holes', {}).pop(key, None)
+            updated.get('area_angles', {}).pop(key, None)
         edits(updated)
         return updated
     if field in ('name', 'group', 'visible', 'locked'):
@@ -263,6 +279,54 @@ def change(options, report, command):
             item['rotation'] = (p['rotation']+delta) % 360
         elif field == 'mirror':
             item['rotation'] = (-p['rotation']) % 360
+    edits(updated)
+    return updated
+
+
+def draw(updated, report, value):
+    """Add a drawn shape as a new piece. value: {shape, points (mm on the hoop), colour}.
+    Rectangle and ellipse take two opposite corners; polygon and freehand take the outline points."""
+    import hashlib
+    from shapely.geometry import Polygon
+    if not isinstance(value, dict) or set(value) != {'shape', 'points', 'colour'} or value['shape'] not in SHAPES:
+        raise ValueError('Choose a rectangle, ellipse, polygon or freehand shape.')
+    colour, points = value['colour'], value['points']
+    if not isinstance(colour, str) or not re.fullmatch('#[0-9a-fA-F]{6}', colour):
+        raise ValueError('Choose a thread colour for the shape.')
+    if not isinstance(points, list) or not 2 <= len(points) <= MAX_DRAWN_POINTS or any(
+            not isinstance(p, list) or len(p) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 1000 for v in p)
+            for p in points):
+        raise ValueError('Draw the shape on the hoop.')
+    points = np.asarray(points, float)
+    if value['shape'] in ('rectangle', 'ellipse'):
+        (x0, y0), (x1, y1) = points.min(axis=0), points.max(axis=0)
+        if value['shape'] == 'rectangle':
+            outline = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        else:
+            t = np.linspace(0, 2*math.pi, 72, endpoint=False)
+            outline = np.c_[(x0+x1)/2+(x1-x0)/2*np.cos(t), (y0+y1)/2+(y1-y0)/2*np.sin(t)]
+        shape = Polygon(outline)
+    else:
+        if len(points) < 3:
+            raise ValueError('A polygon needs at least three points.')
+        # A freehand line that crosses itself keeps its largest enclosed part.
+        shape = Polygon(points).buffer(0)
+        if shape.geom_type == 'MultiPolygon':
+            shape = max(shape.geoms, key=lambda g: g.area)
+        shape = shape.simplify(.1 if value['shape'] == 'freehand' else 0)
+    if shape.is_empty or shape.geom_type != 'Polygon' or shape.area < 1.0:
+        raise ValueError('The shape is too small to stitch. Draw at least 1 mm² of area.')
+    origin, scale = np.array(report['origin_mm']), report['scale']
+    ring = [[round(x, 2), round(y, 2)] for x, y in ((np.asarray(shape.exterior.coords[:-1])+origin)/scale).tolist()]
+    stored = updated.setdefault('piece_edits', {})
+    n = 0
+    while True:
+        key = hashlib.sha256(f'drawn:{ring}:{n}'.encode()).hexdigest()[:20]
+        if key not in stored:
+            break
+        n += 1
+    count = sum('drawn' in item for item in stored.values())+1
+    stored[key] = {'drawn': colour.lower(), 'rings': [ring], 'name': f"{value['shape'].capitalize()} {count}"}
     edits(updated)
     return updated
 
