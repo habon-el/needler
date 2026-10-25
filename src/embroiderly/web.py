@@ -146,6 +146,20 @@ def create_app(workspace: Path | None = None) -> Flask:
             abort(404)
         from .release_gate import download
         return download(target,format)
+    @app.get('/worksheet/<name>')
+    def design_worksheet(name):
+        # Printable worksheet (worksheet.py) from the stitch plan the machine files were written from.
+        if Path(name).name != name:
+            abort(404)
+        target=root/'work'/'inkstitch-preview'/Path(name).stem/'playback.json'
+        if not target.is_file():
+            abort(404)
+        from .worksheet import page, fabric_info
+        playback=json.loads(target.read_text())
+        try:
+            return page(playback,'Embroidery design',fabric_info((playback.get('generation_policy') or {}).get('fabric_preset')))
+        except ValueError as error:
+            abort(422,str(error))
     @app.get('/applique-cut/<name>')
     def applique_cut(name):
         # Appliqué fabric shapes at actual size (engine.cutting_svg), written with the stitches.

@@ -66,6 +66,18 @@ def register(app, root):
             raise ValueError('This lettering link is invalid.')
         return workspace_data(store/key, key)
 
+    @app.get('/lettering/native/<key>/worksheet')
+    def worksheet(key):
+        # Printable worksheet for saved lettering (worksheet.py).
+        from .worksheet import page, fabric_info
+        try:
+            data = get(key)
+        except (ValueError, OSError, KeyError):
+            return 'Saved lettering is unavailable. Open Text and rebuild your words.', 404
+        recipe = data['result']['recipe']
+        title = recipe['text'].splitlines()[0][:60] if recipe['text'].strip() else 'Lettering'
+        return page(data['playback'], title, fabric_info(recipe.get('fabric_preset', 'twill')))
+
     @app.get('/lettering/native/<key>/workspace-data')
     def data(key):
         try:

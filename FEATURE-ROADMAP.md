@@ -139,7 +139,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Tool | Needler | Status | P |
 |---|---|---|---|
 | Export machine file (many formats) | DST, PES, JEF, EXP, XXX, U01, PEC | ✅ | |
-| Print / worksheet / PDF | Check stitches report | ◐ no printable worksheet | P2 |
+| Print / worksheet / PDF | "Print worksheet" on Save and download (pictures and text): size, stitches, thread changes, cuts, sewing time, smallest standard hoop, fabric, backing/topping, the sewing sequence with closest threads from one chart, stops, a tick column, and the design at actual size with centre and start marks; the browser prints or saves it as PDF | ✅ 2026-10-25 | |
 | Design information, overview | Design health | ✅ | |
 | Realistic 3D preview | 3D view | ✅ | |
 | Embroidery library, find designs, convert designs | Library | ◐ no batch convert | P3 |

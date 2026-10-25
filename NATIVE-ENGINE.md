@@ -276,3 +276,14 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - `piece_generation` sews a line as a running stitch (2.5 mm) or a triple stitch (2.2 mm,
   `bean_stitch_repeats` 1); a 0.6 mm band along it is sewn area for the release gate.
 
+## Printable worksheet (added 2026-10-25)
+
+- `worksheet.py` builds one self-contained HTML page from the saved stitch plan (`playback.json`
+  for pictures, `workspace_data` for lettering): routes `/worksheet/<prepared name>` and
+  `/lettering/native/<key>/worksheet`; the Save and download step links to it.
+- Sewing time uses the studio's assumptions (600 stitches/min, 2 s per cut, 15 s per thread change).
+  Hoop: the smallest of 100x100, 130x180, 160x260, 200x200, 200x300, 240x350, 360x200 mm that fits
+  with 10 mm to spare, either way round. Threads: the one chart with the lowest total colour
+  difference over the design's colours. Puff and appliqué stops are noted on their thread.
+- The picture is an SVG in millimetres, so printing at 100% gives an actual-size placement template.
+

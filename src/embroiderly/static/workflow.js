@@ -218,6 +218,13 @@ document.addEventListener('DOMContentLoaded', () => {
  window.addEventListener('studio:preview',e=>{
   const source=$('exportDst')?.getAttribute('href')?.match(/\/studio-export\/([^/]+)\//);
   cutting.hidden=!e.detail?.applique||!source;if(source)cutting.href='/applique-cut/'+source[1];});
+ // Printable worksheet: sequence, threads, stops, backing, hoop and the design at actual size.
+ const sheet=node('a','Print worksheet (sequence, threads, backing, actual size)','workflowWorksheet');sheet.target='_blank';sheet.rel='noopener';sheet.hidden=true;download.append(sheet);
+ window.addEventListener('studio:preview',()=>{
+  if(native)return;const source=$('exportDst')?.getAttribute('href')?.match(/\/studio-export\/([^/]+)\//);
+  sheet.hidden=!source;if(source)sheet.href='/worksheet/'+source[1];});
+ document.addEventListener('lettering:result',e=>{if(native&&e.detail?.id){sheet.href='/lettering/native/'+e.detail.id+'/worksheet';sheet.hidden=false}});
+ document.addEventListener('lettering:invalidated',()=>{if(native)sheet.hidden=true});
  download.append(node('p','Always test the file on your own fabric and machine before a production run.'));
  if(native)oldChildren.forEach(child=>{child.hidden=true;});
  inspector.append(edit,check,download);
