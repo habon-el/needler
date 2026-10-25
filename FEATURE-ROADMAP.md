@@ -114,7 +114,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Large embroidery font library | 18 own fonts | ◐ | P3 |
 | TrueType conversion | own satin conversion (`satin_font.py`) | ✅ | |
 | Size-dependent underlay, density and pull | `size_profile` + fabric pull | ✅ 2026-10-24 | |
-| Auto split for wide lettering columns | satin split on all flat columns; fonts still switch to fill above ~15 mm | ◐ | P2 |
+| Auto split for wide lettering columns | big letters stay satin, sewn as split satin (staggered stitches of at most 6.85 mm, double zigzag under strokes from 8 mm) up to 12 mm wide strokes; only wider strokes, words whose satin fails a file check, and the two fonts that trace badly larger, switch to fill | ✅ 2026-10-25 | |
 | Letter / line spacing, kerning | GPOS kerning + letter spacing (mm) and line spacing (%) in Layout | ✅ 2026-10-24 | |
 | Joins: closest / bottom / as digitized | letters that touch are joined inside both (script fonts); separate letters keep their cut, since an uncut thread over fabric fails the file checks | ◐ no bottom join | P3 |
 | Letter sequence (centre-out for caps, line by line) | left to right, centre out | ✅ 2026-10-24 | |
@@ -177,5 +177,5 @@ Studied the bundled sample designs: a bird picture and 96 monogram templates (pr
 
 1. **P1 engine — done 2026-10-24.** Satin auto split with staggered holes; satin spacing by column width; underlay chosen by width; underlay chosen by letter height; percentage pull compensation; closest join between same-colour areas; fabric settings reaching lettering.
 2. **P2 stitch types — done 2026-10-24 (mitre/cap corners still open).** Backstitch, stemstitch, blanket, zigzag outline, step fill, radial fill, gradient fill, smart corners.
-3. **P2 digitizing and layout.** Lettering arcs, spacing, joins and letter order done 2026-10-24. Next: auto-digitize colour roles, outlines and details slider; appliqué; holes; mirror, rotate, align.
+3. **P2 digitizing and layout.** Lettering arcs, spacing, joins and letter order done 2026-10-24; wide letters as split satin 2026-10-25. Next: auto-digitize colour roles, outlines and details slider; appliqué; holes; mirror, rotate, align.
 4. **P3.** Everything else above, as separate rounds.

@@ -37,15 +37,39 @@ def _bounds(text, font, puff, foam):
     return m,pull,low,high
 
 
+# Above the font's own range letters stay satin, sewn as split satin (every stitch
+# over 7 mm is broken at staggered points, stitch_satin.split_rows), while the
+# widest stroke is at most this wide. Wider strokes are tatami fill: rows of short
+# split stitches that wide sew no better than fill and pull the letter in more.
+SPLIT_SATIN_MAX_MM=12.0
 # Above the satin range letters are sewn as tatami fill (embroidery_fonts.layout),
 # up to this capital height; the fill stays inside the letter (no satin edge).
 FILL_MAX_CAP_MM=300.0
+
+
+def satin_top(m, font):
+    """Largest capital height (mm) these words are sewn as satin (split satin above the font's range)."""
+    high=font['size']*font['max_scale']
+    return max(high,SPLIT_SATIN_MAX_MM/m['wide']) if font.get('split_satin',True) else high
+
+
+def uses_fill(text, font, scale, puff=False):
+    """Whether these words at this scale (%) are sewn as tatami fill instead of satin."""
+    if puff or scale<=font['max_scale']*100+1e-6:return False
+    m=embroidery_fonts.text_metrics(text,font['key'],font.get('layout',{}).get('line_spacing',1.0))
+    return font['size']*scale/100>satin_top(m,font)+1e-6
+
+
+def split_satin(text, font, scale, puff=False):
+    """Whether these words are satin above the font's own range (split satin)."""
+    return not puff and scale>font['max_scale']*100+1e-6 and not uses_fill(text,font,scale)
 
 
 def height_range(text, font, puff=False, foam=3.0):
     """Stitched heights (mm) these words can have in this font; None when puff cannot work."""
     m,pull,low,high=_bounds(text,font,puff,foam)
     if low>high:return None
+    if not puff:high=satin_top(m,font)
     top=m['height']*high+2*pull if puff else max(m['height']*high+2*pull,m['height']*FILL_MAX_CAP_MM)
     return math.ceil((m['height']*low+2*pull)*10)/10,math.floor(top*10)/10
 
@@ -60,6 +84,7 @@ def scale_for(text, font, height, puff=False, foam=3.0):
         raise ValueError(f'These words in {font["name"]} cannot be 3D puff on {foam:g} mm foam at any height: '
                          f'the thinnest strokes are too thin next to the widest. Try a bold block font such as '
                          f'Russo One or Bungee{", or 2 mm foam" if foam>2 else ""}.')
+    if not puff:high=satin_top(m,font)
     cap=(height-2*pull)/m['height']
     if not puff and cap>high+1e-9 and height/m['height']<=FILL_MAX_CAP_MM+1e-9:
         # Too wide for satin: tatami fill letters, no satin edge.
@@ -131,7 +156,7 @@ def laid_out_width(body):
     text,font,scale,align=validate(body)
     puff=body.get('puff') is True
     svg=embroidery_fonts.layout(text,font['key'],scale,align,puff=puff,foam_mm=puff_foam(body),
-                                fill=not puff and scale>font['max_scale']*100+1e-6,pull_mm=font['pull_mm'],**font['layout'])
+                                fill=uses_fill(text,font,scale,puff),pull_mm=font['pull_mm'],**font['layout'])
     xs=[float(x) for d in re.findall(r' d="([^"]+)"',svg) for x,_ in re.findall(r'(-?[\d.]+)[ ,](-?[\d.]+)',d)]
     return (max(xs)-min(xs))*embroidery_fonts.PX_MM
 
@@ -222,12 +247,19 @@ def validate(body):
     return text,font,scale,align
 
 
-def generate(body, *, native=False):
+def generate(body, *, native=False, fill=False):
+    """fill=True: split-satin words are sewn as tatami fill instead, at the same
+    stitched height (lettering_native.build's fallback when their satin fails a check)."""
     text,font,scale,align=validate(body)
     puff=body.get('puff') is True
+    if uses_fill(text,font,scale,puff):fill=True
+    elif fill and split_satin(text,font,scale,puff):
+        # Fill has no satin edge outside the letter (as scale_for's fill branch).
+        m=embroidery_fonts.text_metrics(text,font['key'],font['layout']['line_spacing'])
+        scale=float(body.get('height_mm',5))/m['height']/font['size']*100
+    else:fill=False
     vector=embroidery_fonts.layout(text,font['key'],scale,align,puff=puff,foam_mm=puff_foam(body),
-                                   fill=not puff and scale>font['max_scale']*100+1e-6,pull_mm=font['pull_mm'],
-                                   **font['layout'])
+                                   fill=fill,pull_mm=font['pull_mm'],**font['layout'])
     coverage={}
     if native:
         from .lettering_geometry import source_frame

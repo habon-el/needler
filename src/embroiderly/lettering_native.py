@@ -159,6 +159,20 @@ def build(folder, settings):
                     for name in ('source.svg', 'plan.json', 'design.pes', 'design.dst', 'release-context.json'):
                         shutil.copyfile(draft/name, folder/name)
                     reports, issues, bounds, spans = after, remaining, new_bounds, new_spans
+    wide_letters = None
+    if any(issues.values()) and small_lettering.split_satin(*small_lettering.validate(settings)[:3],
+                                                             settings.get('puff') is True):
+        # Big letters are split satin; where the font's traced columns, enlarged, let
+        # stitches cross a letter hole, the same letters at the same height are tatami fill.
+        candidate = small_lettering.generate(settings, native=True, fill=True)
+        with TemporaryDirectory(prefix='wide-fill-', dir=folder) as temporary:
+            draft = Path(temporary)
+            after, remaining, new_bounds, new_spans = write_and_check(draft, settings, candidate)
+            if not any(remaining.values()):
+                for name in ('source.svg', 'plan.json', 'design.pes', 'design.dst', 'release-context.json'):
+                    shutil.copyfile(draft/name, folder/name)
+                reports, issues, bounds, spans = after, remaining, new_bounds, new_spans
+                generated, source, wide_letters = candidate, candidate['rebuild_report'], 'fill'
     fit = width_fit(reports['dst']['width_mm'], settings['available_width_mm'])
     passed = not any(issues.values()) and fit['fits']
     if passed:
@@ -173,7 +187,10 @@ def build(folder, settings):
                   seconds=round(time.monotonic()-started, 2),
                   pending=['Density and repeated-penetration assessment',
                            'Visual readability and a physical sew-out on your fabric'],
-                  message=('File checks passed. Review the lettering before saving.' if passed else
+                  wide_letters=wide_letters,
+                  message=('File checks passed. '+('These big letters are sewn as fill, not satin, so no stitch '
+                                                    'crosses a letter hole. ' if wide_letters else '')+
+                           'Review the lettering before saving.' if passed else
                            'No download yet. '+(summary(issues['dst'])+'. ' if issues['dst'] else '')+
                            ('The words are wider than your chosen space. ' if not fit['fits'] else '')+
                            'Try a different embroidery font, a larger letter size or more lines. Nothing was shrunk or removed.'))

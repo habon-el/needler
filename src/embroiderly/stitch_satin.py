@@ -7,7 +7,7 @@ Units: millimetres. No stitch is placed outside the rails except compensation.
 import math
 from itertools import combinations
 from shapely.geometry import LineString, Point
-from .stitch_paths import dedupe, lerp, path_length, resample, running
+from .stitch_paths import dedupe, lerp, path_length, resample, running, split_long
 
 
 def _closed(points):
@@ -391,9 +391,11 @@ def satin(subpaths, spacing=0.4, pull=0.0, center_walk=False, contour_underlay=F
         final = final[::-1]
     if split:
         points.extend(split_rows(final, split))
-    else:
-        for p, q in final:
-            points.extend((p, q))
+        # Underlay legs across a wide column (big letters) are divided too, with the
+        # same room for the 0.1 mm machine grid: a 6.98 mm zigzag leg rounded to 7.01 mm.
+        return split_long(points, max(.5, split-.15))
+    for p, q in final:
+        points.extend((p, q))
     return points
 
 

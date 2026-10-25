@@ -384,3 +384,22 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   so the fill is sewn before the satin, which lies on top. Both stay one thread: no colour change.
 - Pieces panel: "Satin here" next to Knife, for one selected filled piece.
 
+## Wide lettering columns (added 2026-10-25)
+
+- Above a font's own satin range (`max_scale`, widest stroke about 4.2 mm) letters stay satin while
+  the words' widest stroke is at most `small_lettering.SPLIT_SATIN_MAX_MM` (12 mm); only above that
+  are they tatami fill (`small_lettering.satin_top`, `uses_fill`; `height_range` is unchanged).
+  The limit is per text (`embroidery_fonts.text_metrics`), so a word of thin letters stays satin larger.
+- These columns are sewn as split satin (`stitch_satin.split_rows`, 7 mm, staggered holes). With
+  split on, every leg of the column, underlay included, is also divided at 6.85 mm (`split_long`):
+  a 6.96 mm zigzag leg across an 11.6 mm stroke rounded to 7.01 mm on the machine grid.
+- `embroidery_fonts.size_profile`: strokes from 8 mm wide get the double zigzag underlay.
+- Fallback (`lettering_native.build`): font columns are traced at a fixed tolerance, so at several
+  times the font's range some letters (Anton's O from about 25 mm) send stitches across a letter
+  hole. When split-satin words fail any file check, they are generated again as tatami fill at
+  the same stitched height (`small_lettering.generate(fill=True)`) and that is kept if it passes;
+  the result has `wide_letters: 'fill'` and says so in its message.
+- Fonts with `split_satin: False` (Alfa Slab One, Bowlby One: round letters trace badly larger,
+  the stitches cross their counters) go to fill right above `max_scale` as before.
+- Why 12 mm: wider split rows sew no better than fill and pull the letter in more, and pull
+  compensation stays in mm (the release gate's envelope is the column plus its mm pull).

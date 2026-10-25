@@ -29,7 +29,8 @@ FONTS = {
                        size=4.0, min_scale=1.0, max_scale=3.8, puff_max_scale=6.5, tracking=.07,
                        zigzag_mm=.38, pull_mm=.1),
     # Open-licence (SIL OFL) fonts. Alfa Slab One and Bowlby One stop lower: their
-    # round letters (D, O, 0, q) trace badly larger; Bowlby One's ? never traces cleanly.
+    # round letters (D, O, 0, q) trace badly larger, so they get no split satin above
+    # it either (split_satin=False: fill); Bowlby One's ? never traces cleanly.
     # Size range from stroke widths, as for the two
     # above: the thinnest 10% of strokes at least 0.34 mm, the widest at most
     # 4.2 mm (6 mm for puff). Scripts keep no extra spacing so letters join.
@@ -64,7 +65,7 @@ FONTS = {
     'alfa_slab_one': dict(name='Alfa Slab One', label='Alfa Slab One · slab',
                            file='alfaslabone/AlfaSlabOne-Regular.ttf', package='google-fonts-alfaslabone',
                            size=4.0, min_scale=0.9, max_scale=2.4, puff_max_scale=4, tracking=0.06,
-                           zigzag_mm=.38, pull_mm=.1),
+                           zigzag_mm=.38, pull_mm=.1, split_satin=False),
     'righteous': dict(name='Righteous', label='Righteous · retro',
                        file='righteous/Righteous-Regular.ttf', package='google-fonts-righteous',
                        size=4.0, min_scale=1, max_scale=3.8, puff_max_scale=6.1, tracking=0.06,
@@ -80,7 +81,7 @@ FONTS = {
     'bowlby_one': dict(name='Bowlby One', label='Bowlby One · chunky',
                         file='bowlbyone/BowlbyOne-Regular.ttf', package='google-fonts-bowlbyone',
                         size=4.0, min_scale=0.9, max_scale=1.65, puff_max_scale=3.4, tracking=0.06,
-                        exclude='?', zigzag_mm=.38, pull_mm=.1),
+                        exclude='?', zigzag_mm=.38, pull_mm=.1, split_satin=False),
     'bungee': dict(name='Bungee', label='Bungee · signage',
                     file='bungee/Bungee-Regular.ttf', package='google-fonts-bungee',
                     size=4.0, min_scale=0.9, max_scale=2.7, puff_max_scale=3.9, tracking=0.06,
@@ -268,7 +269,8 @@ def size_profile(cap_mm, width_mm, zigzag_mm):
         'zigzag_spacing_mm': f"{max(zigzag_mm, .42) if cap_mm < 6.0 else zigzag_mm:g}",
         'center_walk_underlay': 'true' if walk or (cap_mm > 10.0 and .9 <= width_mm < 1.5) else 'false',
         'contour_underlay': 'true' if edge else 'false',
-        'zigzag_underlay': 'true' if edge and width_mm > 3.5 else 'false',
+        # Split satin on wide strokes (big letters) gets the criss-cross base of wide columns.
+        'zigzag_underlay': ('double' if width_mm >= 8.0 else 'true') if edge and width_mm > 3.5 else 'false',
     }
 
 

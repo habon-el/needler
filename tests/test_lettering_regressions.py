@@ -31,9 +31,10 @@ def test_lettering_passes_checks(tmp_path, text, font, height, puff):
     assert result['checks_passed']
 
 
-@pytest.mark.parametrize('text,font,height', [('HABONIMANA', 'small_font', 30), ('Team', 'graduate', 50), ('ABC', 'bungee', 60)])
+@pytest.mark.parametrize('text,font,height', [('HAB', 'small_font', 60), ('ABC', 'bungee', 60), ('DOQ', 'alfa_slab_one', 20)])
 def test_big_letters_are_tatami_fill_at_the_height_asked(tmp_path, text, font, height):
-    # Above the satin range letters are sewn as fill, not refused (2026-10-22).
+    # Above the satin range letters are sewn as fill, not refused (2026-10-22). Since
+    # 2026-10-25 that range includes split satin up to 12 mm strokes (test_wide_lettering).
     result = ln.build(tmp_path, ln.recipe(dict(text=text, font=font, height_mm=height, align='center',
                                                available_width_mm=400, colour='#202020')))
     assert result['checks_passed'], result['issues']
