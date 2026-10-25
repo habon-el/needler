@@ -32,10 +32,18 @@ def design(tmp_path, options):
     return payload, (tmp_path/'out'/'design.svg').read_text(encoding='utf-8')
 
 
-@pytest.mark.parametrize('kind', ['step', 'gradient', 'radial'])
+@pytest.mark.parametrize('kind', ['step', 'gradient', 'radial', 'wave'])
 def test_specialty_fills_generate_and_pass_the_release_gate(tmp_path, kind):
     payload, svg = design(tmp_path, {'region_styles': kind})
     assert f'{kind}_fill' in svg
+    assert payload['stitch_count'] > 300
+    assert checked_bytes(tmp_path/'out', 'dst')
+
+
+def test_offset_fill_generates_with_underlay_and_passes_the_release_gate(tmp_path):
+    # The blue disc has the yellow square as a hole: its rings go round it.
+    payload, svg = design(tmp_path, {'region_styles': 'contour'})
+    assert 'contour_fill' in svg and 'fill_underlay="true"' in svg
     assert payload['stitch_count'] > 300
     assert checked_bytes(tmp_path/'out', 'dst')
 

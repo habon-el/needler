@@ -1,9 +1,10 @@
 """Stitch types: decorative outlines, step/gradient/radial fills, shortening."""
 import math
 
-from shapely.geometry import Point, Polygon, box
+from shapely.geometry import LineString, Point, Polygon, box
+from shapely.ops import unary_union
 
-from embroiderly.stitch_fills import STEP_PATTERN, gradient, radial, step_fill
+from embroiderly.stitch_fills import STEP_PATTERN, contour, gradient, radial, step_fill, wave
 from embroiderly.stitch_paths import (backstitch, blanket, inward_side, path_length, stemstitch,
                                       zigzag_outline)
 from embroiderly.stitch_satin import shorten_inner
@@ -108,3 +109,66 @@ def test_sharp_satin_corners_are_capped_not_refused():
     reach = max(float(np.min(np.linalg.norm(np.asarray(r)-np.asarray(tip[:-1])[:, None], axis=2), axis=0).max())
                 for pair in rails for r in pair)
     assert reach <= 2*.8+1e-6
+
+
+# A plate with two round holes: the rows must bend around both.
+HOLED = box(0, 0, 30, 20).difference(Point(10, 10).buffer(4)).difference(Point(22, 10).buffer(3))
+
+
+def stays_inside(runs, shape, slack=.1):
+    """Every stitch lies inside the area (a running stitch may cut a curved edge by its sagitta)."""
+    return all(LineString([p, q]).difference(shape.buffer(slack)).length < 1e-6
+               for r in runs for p, q in zip(r, r[1:]))
+
+
+def covered(runs, shape, reach=.3):
+    return unary_union([LineString(r).buffer(reach) for r in runs]).intersection(shape).area/shape.area
+
+
+def test_wave_rows_rise_and_fall_and_cover_the_area():
+    shape = box(0, 0, 40, 20)
+    runs = wave(shape, 0, .4, underlay=False)
+    assert len(runs) == 1 and stays_inside(runs, shape)
+    assert covered(runs, shape) > .99
+    assert max(legs(runs[0])) <= 3.0+1e-6
+    # Each long row swings up and down by about twice the 1.2 mm amplitude
+    # (straight tatami rows keep one height).
+    rows, row = [], [runs[0][0]]
+    for p, q in zip(runs[0], runs[0][1:]):
+        if (q[0]-p[0])*(row[-1][0]-row[0][0] if len(row) > 1 else 1) < 0:
+            rows.append(row); row = [p]
+        row.append(q)
+    rows.append(row)
+    long_rows = [r for r in rows if abs(r[-1][0]-r[0][0]) > 30]
+    assert len(long_rows) > 20
+    assert all(2.0 < max(y for _, y in r)-min(y for _, y in r) < 2.9 for r in long_rows[5:-5])
+
+
+def test_wave_rows_go_around_holes_with_underlay():
+    runs = wave(HOLED, 30, .4)
+    assert runs and stays_inside(runs, HOLED)
+    assert covered(runs, HOLED) > .99
+    for centre, radius in (((10, 10), 4), ((22, 10), 3)):
+        assert not any(math.dist(p, centre) < radius-.15 for r in runs for p in r)
+    assert len(runs) == 1                                 # one run: travel stays inside
+    assert max(legs(runs[0])) <= 3.0+1e-6
+
+
+def test_offset_fill_rings_are_insets_of_the_outline_around_holes():
+    shape = box(0, 0, 30, 20)
+    runs = contour(shape, .5, 2.0, .45)
+    assert len(runs) == 1 and stays_inside(runs, shape)
+    assert covered(runs, shape, .3) > .99
+    # Rings step inward one row spacing at a time: stitch distances to the edge
+    # cluster on multiples of the spacing.
+    depths = {round(shape.exterior.distance(Point(p))/.5) for p in runs[0][::7]
+              if abs(shape.exterior.distance(Point(p))/.5-round(shape.exterior.distance(Point(p))/.5)) < .1}
+    assert len(depths) >= 15
+    runs = contour(HOLED, .4, 2.0, .45, underlay=True, angle=0)
+    assert len(runs) == 1 and stays_inside(runs, HOLED)
+    assert covered(runs, HOLED) > .99
+    for centre, radius in (((10, 10), 4), ((22, 10), 3)):
+        assert not any(math.dist(p, centre) < radius-.15 for r in runs for p in r)
+    # Rings around each hole: stitches 0.4 mm and 0.8 mm off the hole edge.
+    hole = Point(10, 10).buffer(4).exterior
+    assert any(abs(hole.distance(Point(p))-.8) < .05 for p in runs[0])

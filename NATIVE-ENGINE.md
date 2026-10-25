@@ -505,3 +505,25 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   device names get `_`, an empty result is `name`, repeats get `-2`, `-3` (case-insensitive).
 - `lettering_native.make()` renames a finished draft folder with a short retry: on Windows a virus
   scanner can briefly hold a file just written.
+
+## Wave fill and offset fill (added 2026-10-26)
+
+- Area style Wave (`fill_method="wave_fill"`, `stitch_fills.wave`): tatami rows that follow
+  y + A·sin(2πx/λ) in the row frame, with A = `wave_amplitude_mm` (default 1.2, 0–5) and
+  λ = `wave_length_mm` (default 10, 2–50). The wave uses the global grid, so neighbouring wave areas
+  line up. Like Gradient, the area is bent so the wave becomes straight rows, filled as ordinary
+  tatami (row turns, inside travel, holes), and every stitch is bent back after being cut into
+  0.25 mm pieces; each run is then re-stitched along the curve (at most the max stitch length,
+  within 0.05 mm of it). Rows sit the row spacing apart across the row direction, so they are up to
+  about a fifth closer where the wave is steepest. Tatami underlay first (`fill_underlay`, on by
+  default); rows along the area's long side, and the chosen stitch direction turns them.
+- Area style Offset fill, the old Contour (`contour_fill`, `stitch_fills.contour`), already was a true
+  offset fill: each ring is the area inset by one more row spacing, holes grow outward the same way
+  and get their own rings, rings are sewn nearest-first and joined by inside steps (one run per
+  connected area). New: open underlay rows along the long side first (`fill_underlay="true"` from
+  the style; the engine default stays off), and the plain name and description in the style picker.
+  The style id stays `contour`, so saved designs keep their choice.
+- Style picker: Wave has its own sample (wavy rows); both are in `region_stitches.CATALOG`, so the
+  area styles and Pieces panels list them.
+- Tests: row geometry (inside the area, coverage, rows swing by twice the amplitude, holes kept
+  empty, rings at row-spacing depths and around holes) and both styles through the release gate.

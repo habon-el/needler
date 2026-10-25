@@ -42,11 +42,11 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Turning satin (follows the shape) | `auto_satin` (font machinery) | ✅ | |
 | Step fill (patterned tatami) | `stitch_fills.step_fill`, area style Step fill | ✅ 2026-10-24 | |
 | Raised satin | 3D satin | ✅ | |
-| Contour fill | contour | ✅ | |
+| Contour fill | Offset fill | ✅ | |
 | Radial fill | `stitch_fills.radial`, area style Radial (tatami where rays can't reach) | ✅ 2026-10-24 | |
 | Gradient fill (spacing ramps across the area) | `stitch_fills.gradient`, area style Gradient | ✅ 2026-10-24 | |
-| Wave / Ripple fill | ripple (circular) | ◐ no wave | P3 |
-| Offset fill | contour | ◐ | P3 |
+| Wave / Ripple fill | area style Wave: tatami rows that rise and fall along a smooth wave (10 mm long, 1.2 mm high, lined up across areas), underlay, around holes; Ripple: circular | ✅ 2026-10-26 | |
+| Offset fill | area style Offset fill (was Contour): each row an inset of the outline by one more row spacing, rings around holes, joined into one run by inside steps, with underlay | ✅ 2026-10-26 | |
 | Pattern fill / Motif fill | motif (diamond) | ◐ one pattern | P3 |
 | Blackwork, candlewicking, lacework fills | — | ✗ | P3 |
 | Cross-stitch fill | cross | ✅ | |

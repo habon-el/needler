@@ -27,7 +27,7 @@ def test_invalid_styles_rejected(styles):
     with pytest.raises(ValueError):assignments({'region_styles':styles})
 
 
-@pytest.mark.parametrize('kind',['tatami','satin','raised_satin','motif','embossed','ripple','contour','cross','stipple'])
+@pytest.mark.parametrize('kind',['tatami','satin','raised_satin','motif','embossed','ripple','contour','cross','stipple','wave'])
 def test_all_styles_produce_real_distinct_svg_configuration(kind):
     rgb,alpha=sample();_,_,rings=next(regions(rgb,alpha))
     root=ET.Element('svg');node=ET.SubElement(root,'path',id='test',d='original',style='fill:#123456;fill-rule:evenodd;stroke:none')
@@ -37,6 +37,7 @@ def test_all_styles_produce_real_distinct_svg_configuration(kind):
         assert node.get(NS+'satin_column')=='true'
         assert len(root)==(3 if kind=='raised_satin' else 1)
     elif kind in ('contour','ripple','stipple'):assert node.get(NS+'fill_method')
+    elif kind=='wave':assert node.get(NS+'fill_method')=='wave_fill' and node.get(NS+'angle')
     else:
         assert root[-1].get(NS+'stroke_method')=='running_stitch'
         assert '#123456' in root[-1].get('style')

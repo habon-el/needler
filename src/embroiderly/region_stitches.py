@@ -18,6 +18,7 @@ CATALOG=[
     ('gradient','Gradient','Dense to open across the area'),
     ('shaded','Shaded','Tatami with a darker shade fading across it · one more thread'),
     ('radial','Radial','Rays from the centre'),
+    ('wave','Wave','Rows that rise and fall in smooth waves'),
     ('applique','Appliqué','Fabric piece, satin edge · 2 stops'),
     ('satin','Satin','Follows the shape · parts up to 8 mm wide'),
     ('raised_satin','3D satin','Three satin layers · experimental, no foam'),
@@ -25,7 +26,7 @@ CATALOG=[
     ('motif','Motif','Clipped diamond repeats · open fill'),
     ('embossed','Embossed','Tatami + diamond overlay · experimental texture'),
     ('ripple','Ripple','Concentric circular waves'),
-    ('contour','Contour','Follows the area boundary'),
+    ('contour','Offset fill','Rows follow the outline inward, around holes'),
     ('cross','Cross stitch','Clipped diagonal crosses · open fill'),
     ('stipple','Stipple single run','Meandering open fill'),
 ]
@@ -201,7 +202,7 @@ def apply_style(document,node,rings,scale,kind):
         shade.set(NS+'fill_method','gradient_fill');shade.set(NS+'angle',f'{fill_angle(rings)+90:.1f}')
         shade.set(NS+'fill_underlay','false');shade.set(NS+'gradient_open_spacing_mm','2.4')
         return
-    if kind in ('step','gradient','radial'):
+    if kind in ('step','gradient','radial','wave'):
         # Specialty fills (stitch_fills); rows run along the area's long side.
         from .fill_shaping import angle as fill_angle
         node.set(NS+'fill_method',kind+'_fill');node.set(NS+'angle',f'{fill_angle(rings):.1f}')
@@ -215,6 +216,10 @@ def apply_style(document,node,rings,scale,kind):
     if kind in ('contour','ripple','stipple'):
         node.set(NS+'fill_method',{'contour':'contour_fill','ripple':'circular_fill','stipple':'meander_fill'}[kind])
         if kind in ('ripple','stipple'):node.set(NS+'fill_underlay','false')
+        if kind=='contour':
+            # Offset fill: open underlay rows along the long side hold the fabric under the rings.
+            from .fill_shaping import angle as fill_angle
+            node.set(NS+'fill_underlay','true');node.set(NS+'angle',f'{fill_angle(rings):.1f}')
         if kind=='ripple':
             node.set(NS+'row_spacing_mm','1.2');node.set(NS+'running_stitch_length_mm','1')
             node.set(NS+'running_stitch_tolerance_mm','.15')

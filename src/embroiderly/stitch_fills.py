@@ -1,4 +1,4 @@
-"""Native area fills: tatami (with underlay), contour, spiral ripple and meander.
+"""Native area fills: tatami (with underlay), offset (contour), wave, spiral ripple and meander.
 
 Each function returns a list of runs (lists of points in millimetres). A new
 run means the caller must cut and lock, because no inside travel was found.
@@ -101,16 +101,9 @@ def tatami(shape, angle=0.0, spacing=0.4, max_len=3.0, staggers=4, minimum=0.45,
            underlay_max_len=3.0, join=True):
     """join=False leaves separate sections as separate runs (open fills, where a
     travel line across the area would show)."""
-    runs = []
-    position = start
-    if underlay:
-        inset = shape.buffer(-underlay_inset)
-        if not inset.is_empty and inset.area > 2*(underlay_spacing or spacing*3)**2:
-            for piece in polygons(inset):
-                for run in _tatami_layer(piece, angle+90 if underlay_angle is None else underlay_angle,
-                                         underlay_spacing or max(spacing*3, 1.2), underlay_max_len, 1,
-                                         minimum, position, travel_len, Travel(piece)):
-                    runs.append(run); position = run[-1]
+    runs = _underlay(shape, angle, spacing, minimum, start, travel_len, underlay_angle, underlay_spacing,
+                     underlay_inset, underlay_max_len) if underlay else []
+    position = runs[-1][-1] if runs else start
     top_runs = []
     for piece in sorted(polygons(shape), key=lambda p: -p.area):
         top_runs.extend(_tatami_layer(piece, angle, spacing, max_len, staggers, minimum,
@@ -118,6 +111,20 @@ def tatami(shape, angle=0.0, spacing=0.4, max_len=3.0, staggers=4, minimum=0.45,
         if top_runs:
             position = top_runs[-1][-1]
     return join_runs(runs+top_runs, shape, travel_len) if join else runs+top_runs
+
+
+def _underlay(shape, angle, spacing, minimum, start=None, travel_len=2.0, underlay_angle=None,
+              underlay_spacing=None, inset=0.3, max_len=3.0):
+    """Open rows across the top stitches, kept `inset` inside the edge, that hold the fabric."""
+    runs, position = [], start
+    inner = shape.buffer(-inset)
+    if not inner.is_empty and inner.area > 2*(underlay_spacing or spacing*3)**2:
+        for piece in polygons(inner):
+            for run in _tatami_layer(piece, angle+90 if underlay_angle is None else underlay_angle,
+                                     underlay_spacing or max(spacing*3, 1.2), max_len, 1,
+                                     minimum, position, travel_len, Travel(piece)):
+                runs.append(run); position = run[-1]
+    return runs
 
 
 def join_runs(runs, shape, travel_len):
@@ -221,8 +228,10 @@ def _tack(point, minimum):
     return [point, (point[0]+step, point[1]), point]
 
 
-def contour(shape, spacing=0.4, length=2.0, minimum=0.45, start=None, tolerance=0.1):
-    """Concentric outlines from the boundary inward, joined by short inside steps."""
+def contour(shape, spacing=0.4, length=2.0, minimum=0.45, start=None, tolerance=0.1, underlay=False, angle=0.0):
+    """Offset fill: concentric outlines from the boundary inward, each an inset of
+    the area by one more row spacing (holes grow outward the same way), joined
+    by short inside steps. underlay: open rows along `angle` first, inset 0.3 mm."""
     rings = []
     level = 0
     current = shape
@@ -237,8 +246,8 @@ def contour(shape, spacing=0.4, length=2.0, minimum=0.45, start=None, tolerance=
         current = base.buffer(-spacing*level, quad_segs=4, join_style='mitre' if level < 2 else 'round')
     if not rings:
         return _tiny(shape, minimum)
-    runs = []
-    position = start
+    runs = _underlay(shape, angle, spacing, minimum, start, length, underlay_angle=angle) if underlay else []
+    position = runs[-1][-1] if runs else start
     remaining = [(ring, np.asarray(ring)) for ring in rings]
     while remaining:
         if position is None:
@@ -441,6 +450,42 @@ def gradient(shape, angle=0.0, spacing=0.4, open_spacing=1.6, max_len=3.0, stagg
     # within the 0.2 mm segment length; long legs are re-split after mapping back.
     # Sections stay separate: a travel line across the open side would show.
     return [split_long([unwarp(p) for p in run], max_len) for run in runs]
+
+
+# Wave fill: tatami rows that rise and fall along a sine wave. One wavelength in
+# millimetres for every area, on the global grid, so neighbouring wave areas line up.
+WAVE_LENGTH_MM = 10.0
+WAVE_AMPLITUDE_MM = 1.2
+
+
+def wave(shape, angle=0.0, spacing=0.4, max_len=3.0, minimum=0.45, start=None, underlay=True,
+         amplitude=WAVE_AMPLITUDE_MM, wavelength=WAVE_LENGTH_MM, tolerance=0.05):
+    """Rows `spacing` apart (measured across the row direction) that follow
+    y + amplitude*sin(2*pi*x/wavelength) in the row frame. Like `gradient`, the
+    area is bent so the wave becomes straight rows, filled as tatami (inside
+    travel, row turns), and the stitches are bent back. Each straight stitch is
+    re-cut along the curve, at most `max_len` and within `tolerance` of it."""
+    if shape.is_empty:
+        return []
+    import shapely
+    to_frame, back = _frame(angle)
+    k = 2*math.pi/max(1.0, wavelength)
+    def bend(p, sign):
+        f = (p[0]*to_frame[0]+p[1]*to_frame[1], p[0]*to_frame[2]+p[1]*to_frame[3])
+        return back((f[0], f[1]+sign*amplitude*math.sin(k*f[0])))
+    flat = shapely.transform(shapely.segmentize(shape, .2),
+                             lambda xy: np.array([bend(p, -1) for p in xy]).reshape(-1, 2))
+    if not flat.is_valid:
+        flat = flat.buffer(0)
+    runs = _underlay(shape, angle, spacing, minimum, start) if underlay else []
+    position = runs[-1][-1] if runs else start
+    top = tatami(flat, angle, spacing, max_len, 4, minimum,
+                 None if position is None else bend(position, -1), underlay=False)
+    for run in top:
+        # Short pieces before bending, so the curve between stitches is kept.
+        dense = split_long(run, .25)
+        runs.append(running([bend(p, 1) for p in dense], max_len, tolerance))
+    return join_runs(runs, shape, 2.0)
 
 
 def radial(shape, spacing=0.4, max_len=3.0, minimum=0.45, start=None, center=None):

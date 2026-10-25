@@ -11,7 +11,8 @@ import json
 import math
 from pathlib import Path
 from . import svg_geometry as sg
-from .stitch_fills import contour, fill_shape, gradient, join_runs, meander, radial, spiral, step_fill, tatami
+from .stitch_fills import (WAVE_AMPLITUDE_MM, WAVE_LENGTH_MM, contour, fill_shape, gradient, join_runs, meander,
+                           radial, spiral, step_fill, tatami, wave)
 from .stitch_paths import (backstitch, bean, blanket, chain, dedupe, enforce_min, inward_side, order_runs, path_length,
                            polygons, running, split_long, stemstitch, zigzag_outline)
 from .stitch_satin import SPLIT_MM, satin
@@ -260,7 +261,14 @@ def _element_blocks(node, paths, style, scale, index, min_len, start=None, lines
             tolerance = max(.01, _float(node, 'running_stitch_tolerance_mm', .1))
             method = _attr(node, 'fill_method', 'auto_fill')
             if method == 'contour_fill':
-                runs = contour(shape, spacing, length, min_len, tolerance=tolerance)
+                runs = contour(shape, spacing, length, min_len, tolerance=tolerance,
+                               underlay=_bool(node, 'fill_underlay'), angle=_float(node, 'angle', 0))
+            elif method == 'wave_fill':
+                runs = wave(shape, _float(node, 'angle', 0), spacing,
+                            max(1.0, _float(node, 'max_stitch_length_mm', 3.0)), min_len,
+                            underlay=_bool(node, 'fill_underlay', True),
+                            amplitude=min(5.0, max(0.0, _float(node, 'wave_amplitude_mm', WAVE_AMPLITUDE_MM))),
+                            wavelength=min(50.0, max(2.0, _float(node, 'wave_length_mm', WAVE_LENGTH_MM))))
             elif method == 'circular_fill':
                 runs = spiral(shape, spacing, length, min_len, tolerance=tolerance)
             elif method == 'auto_satin':
