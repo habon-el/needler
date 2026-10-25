@@ -23,7 +23,7 @@
  <div class="piece-arrange" role="group" aria-label="Arrange">
  <button type="button" data-arrange="mirror:x" title="Mirror left–right">⇋ Mirror</button><button type="button" data-arrange="mirror:y" title="Mirror top–bottom">⇅ Mirror</button>
  <button type="button" data-arrange="rotate_by:-15" title="Rotate 15° to the left">↺ 15°</button><button type="button" data-arrange="rotate_by:15" title="Rotate 15° to the right">↻ 15°</button><button type="button" data-arrange="rotate_by:45" title="Rotate 45° to the right">↻ 45°</button>
- <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceSatinHere" aria-pressed="false" title="Drag a line where a thin part starts: that side becomes satin, the rest keeps its fill">〰 Satin here</button><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
+ <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceSatinHere" aria-pressed="false" title="Drag a line where a thin part starts: that side becomes satin, the rest keeps its fill">〰 Satin here</button><button type="button" id="pieceWeld" title="Join the selected pieces of one thread into one piece. They must touch or overlap.">⊕ Weld</button><button type="button" id="pieceSmooth" title="Smooth the outline: removes jagged pixel steps, keeps sharp corners and the size">Smooth</button><select id="pieceSmoothStrength" aria-label="How much to smooth" title="How much to smooth"><option value="light">Light</option><option value="more">More</option></select><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
  </div>
  </fieldset>
  <fieldset id="pieceLineUp"><legend>Line up</legend><div class="piece-arrange" role="group" aria-label="Line up several pieces">
@@ -91,6 +91,7 @@
   $('pieceAudit').textContent=items.length?`${items.some(p=>p.audit.level==='red')?'RED — check size':items.some(p=>p.audit.level==='yellow')?'YELLOW — check thin span':'GREEN — area check'} · ${[...new Set(items.flatMap(p=>p.audit.messages))].join(' ')}`:'';
   $('pieceAudit').dataset.level=items.some(p=>p.audit.level==='red')?'red':items.some(p=>p.audit.level==='yellow')?'yellow':'green';
   properties.querySelectorAll('[data-arrange],#pieceDuplicate,#pieceDelete,#pieceSkew,#pieceKnife,#pieceSatinHere').forEach(control=>{control.disabled=disabled;});
+  $('pieceWeld').disabled=disabled||items.length<2||items.some(p=>p.line);$('pieceSmooth').disabled=$('pieceSmoothStrength').disabled=disabled||items.some(p=>p.line);
   $('pieceKnife').disabled=$('pieceSatinHere').disabled=disabled||items.length!==1||items.some(p=>p.line);
   properties.querySelectorAll('[data-lineup]').forEach(b=>{b.disabled=disabled||items.length<(b.dataset.lineup.startsWith('distribute')?3:2)});
   const outline=items.length&&items.every(p=>JSON.stringify(p.outline)===JSON.stringify(items[0].outline))?items[0].outline:null;
@@ -153,6 +154,9 @@
  // Line up: the selection is kept in click order, so the first piece picked sets the size.
  properties.querySelectorAll('[data-lineup]').forEach(button=>button.onclick=()=>commit(...button.dataset.lineup.split(':')));
  $('pieceDuplicate').onclick=()=>commit('duplicate',[5,5]);
+ // Weld: the pieces in the order picked (the first keeps its style); Smooth: each selected outline.
+ $('pieceWeld').onclick=()=>commit('weld',null);
+ $('pieceSmooth').onclick=()=>commit('smooth',$('pieceSmoothStrength').value);
  // Sewing order by hand: send every part in its new place; the first selected part decides the spot.
  properties.querySelectorAll('[data-sew]').forEach(button=>button.onclick=()=>{
   if(button.dataset.sew==='auto'){commit('sew_order',null,report.pieces.map(p=>p.id));return}

@@ -527,3 +527,25 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   area styles and Pieces panels list them.
 - Tests: row geometry (inside the area, coverage, rows swing by twice the amplitude, holes kept
   empty, rings at row-spacing depths and around holes) and both styles through the release gate.
+
+## Weld and smooth pieces (added 2026-10-26)
+
+- `piece_weld.py`, piece commands `weld` (value `null`) and `smooth` (value `light` or `more`), routed
+  from `piece_layout.change()`. Both rebuild stitches (preparation.py and `pieceEdit` lists).
+- Weld: 2+ filled pieces, in the order picked, all of one thread (else refused: "different threads").
+  Each piece must come within `TOUCH_MM` (0.2 mm) of the pieces joined so far, else "do not touch".
+  The outlines (mm on the hoop, after each piece's transform) are united; a hair-thin gap between
+  touching pieces is closed with a mitred grow-and-shrink of `TOUCH_MM`/2, and holes under
+  `MIN_HOLE_MM2` (seam slivers) are dropped. Anything that still falls apart is refused.
+- Smooth: Douglas–Peucker at max(0.15 mm, 1 pixel) for Light or max(0.35 mm, 1.5 pixels) for More
+  removes pixel steps and wiggles; then corner cutting (1 or 2 passes) rounds bends gentler than
+  `CORNER_DEG` (50°) while sharper corners stay exact; the result is scaled about its centre back to
+  the original area. Holes are smoothed the same way. An outline that would move less than 0.03 mm
+  is refused as "already smooth". Each selected piece is smoothed on its own.
+- Storage is the knife's: a new part `{source, rings, matrix, rotation, name}` with the outline in
+  the source piece's picture pixels before its transform, so it moves and resizes like any part. A
+  picture piece or drawn shape that is replaced is marked `cut`; a copy or cut part is removed. The
+  new part keeps the (first) piece's style, stitch direction, hole choice and outline. Locked pieces
+  and stitched lines are refused; `MAX_COPIES` and `MAX_PART_POINTS` still apply through `edits()`.
+- Pieces panel, next to Knife and Satin here: ⊕ Weld (2+ selected) and Smooth with a Light / More
+  choice.

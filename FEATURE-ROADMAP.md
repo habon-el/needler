@@ -93,7 +93,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Align / space evenly / same size | Pieces panel Line up, 2+ selected: align left / centre / right / top / middle / bottom; space evenly across or down (3+); same width / height (proportions kept) or same size as the first piece picked | ✅ 2026-10-25 | |
 | Mirror-copy, wreath, circle layout, array, reflect | Pieces panel Repeat: Mirror copy ⇋ ⇅ (reflected, touching the edge), Circle (2–36 around a radius, Turn on for a wreath), Array (rows × columns with a gap in mm); each copy is its own piece | ✅ 2026-10-25 | |
 | Create outlines and offsets, outline design, create border | Outer-silhouette border (`borders.py`); Pieces panel Outline per part: Running, Triple or Satin, on the edge or a gap up to 6 mm outward, own thread colour, sewn after all fills | ✅ 2026-10-25 | |
-| Smooth shapes, weld | — | ✗ | P3 |
+| Smooth shapes, weld | Pieces panel: ⊕ Weld joins 2+ touching or overlapping pieces of one thread into one (the first picked keeps its style); Smooth (Light / More) takes out pixel steps and small wiggles, keeping sharp corners and the size (`piece_weld.py`) | ✅ 2026-10-26 | |
 | Remove overlaps | Colour knockout; areas never stack | ✅ | |
 | Stitch edit, insert stop/trim, convert to manual | Remove stitches by area; Check stitches: Add stop here, Add cut here (tie-off and tie-in), Delete this stitch, Move this stitch (up to 3 mm) at the playback position, saved with the design and checked against 0.3–7 mm and empty fabric. Converting a whole part to hand-placed stitches is not offered | ✅ 2026-10-25 | |
 | Recognize stitches (machine file → objects) | — | ✗ | P3 |

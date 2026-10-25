@@ -257,6 +257,10 @@ def change(options, report, command, image=None):
         repeat(updated, selected, field, value, len(copies))
         edits(updated)
         return updated
+    if field in ('weld', 'smooth'):
+        # Weld pieces of one thread into one, or smooth an outline (piece_weld); picking order counts.
+        from .piece_weld import run
+        return run(updated, report, sorted(selected, key=lambda p: ids.index(p['id'])), field, value)
     if field in ('knife', 'split_satin'):
         if any(p.get('line') for p in selected):
             raise ValueError('A stitched line cannot be cut. Delete it and draw it again.')
