@@ -54,6 +54,12 @@
    path('M10 32H106',1.6);for(let x=16;x<100;x+=20)path(`M${x} 32l6-8 6 8-6 8Z`,1.6);
   }else if(kind==='couching'){
    path('M10 32H110',4.5,.45);path('M10 32H110',1.4);for(let x=18;x<106;x+=14)path(`M${x} 25V39`,1.8);
+  }else if(kind==='blackwork'){
+   path('M12 40L36 24L60 40L84 24L108 40',2.6);
+  }else if(kind==='handstitch'){
+   for(let x=12;x<104;x+=17)path(`M${x} 32H${x+12}`,3);path('M12 32H108',.8,.6);
+  }else if(kind==='candlewick'){
+   path('M10 32H110',1.2,.6);for(let x=20;x<106;x+=20)for(let i=0;i<8;i++){const a=i*Math.PI/4;path(`M${x} 32l${(Math.cos(a)*6).toFixed(1)} ${(Math.sin(a)*6).toFixed(1)}`,1.8)}
   }else if(kind==='off'){path('M24 12H96V52H24Z',1,.25);path('M48 32H72',2)}
   else if(kind==='satin'){
    for(let y=12;y<=52;y+=2.5)path(`M28 ${y} L92 ${y-3}`,2);
@@ -106,6 +112,7 @@
  gallery('[data-option="ink_bean_repeats"]','ink_bean_repeats','Stitch type · black lines',[
   ['0','Running','running','One pass · fine line'],
   ['1','Reinforced','bean','Bean stitch · extra passes'],
+  ['2','Redwork','blackwork','Every line twice · no cuts'],
  ],'input');
  gallery('[data-border="border_style"]','border_style','Stitch type · subject border',[
   ['off','None','off','No added outline'],
@@ -117,5 +124,8 @@
   ['zigzag','Zigzag','zigzag','Open zigzag band'],
   ['motif','Motif run','motifrun','Small shapes along the line'],
   ['couching','Couching','couching','Thick cord tied down'],
+  ['blackwork','Blackwork run','blackwork','Line sewn twice, same holes'],
+  ['handstitch','Hand stitch','handstitch','Bold dashes, hand-sewn look'],
+  ['candlewick','Candlewicking','candlewick','Raised knots along the line'],
  ],'change');
 })();

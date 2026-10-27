@@ -9,7 +9,7 @@ from .stitch_paths import MOTIFS
 
 NS='http://inkstitch.org/namespace'
 # Running-line borders with a decorative stitch (stitch_engine.OUTLINE_STYLES); width is the band they cover.
-OUTLINES=('backstitch','stemstitch','blanket','zigzag','motif','couching')
+OUTLINES=('backstitch','stemstitch','blanket','zigzag','motif','couching','blackwork','handstitch','candlewick')
 INNER_GAP_MM=1.2   # space between a border and the decorative line inside it
 
 def border_plan(mask,height_mm,options):
@@ -92,7 +92,8 @@ def satin_rails(points,radius):
 
 def band_mm(kind,width):
     """Width of the stitched band centred on the border line (blanket spikes and motifs reach one side)."""
-    return {'backstitch':.6,'blanket':2*width,'motif':2*width}.get(kind,width)
+    return {'backstitch':.6,'blackwork':.6,'handstitch':.6,'candlewick':min(2.5,width),
+            'blanket':2*width,'motif':2*width}.get(kind,width)
 
 
 def coverage(plan,shape):
@@ -128,7 +129,7 @@ def add_border(document,plan):
         else:attrs.update({f'{{{NS}}}stroke_method':'running_stitch',f'{{{NS}}}running_stitch_length_mm':'2'})
         if plan['style'] in OUTLINES:
             attrs.update({f'{{{NS}}}outline_style':plan['style'],f'{{{NS}}}outline_width_mm':str(plan['width_mm']),
-                          f'{{{NS}}}running_stitch_length_mm':{'backstitch':'2.5','motif':'2'}.get(plan['style'],'3')})
+                          f'{{{NS}}}running_stitch_length_mm':{'backstitch':'2.5','motif':'2','blackwork':'2','candlewick':'2'}.get(plan['style'],'3')})
             if plan['style']=='motif':attrs[f'{{{NS}}}outline_motif']=plan.get('motif','diamond')
         attrs[f'{{{NS}}}trim_after']='true'
         ET.SubElement(document,'path',attrs)

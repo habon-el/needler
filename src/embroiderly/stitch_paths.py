@@ -237,6 +237,70 @@ def couching(points, length=3.0, width=1.6, spacing=3.0):
     return enforce_min(cord+split_long(dedupe(back), length), .45)
 
 
+def _along_line(line, a, b):
+    return [tuple(p) for p in substring(line, a, b).coords] if b > a else []
+
+
+def blackwork_run(points, length=2.0):
+    """Double running line: out along the line, then back through the same holes, so
+    every stitch is sewn twice and the line ends where it began."""
+    out = enforce_min(split_long(dedupe(points), length), .45)
+    return out+out[::-1][1:] if len(out) >= 2 else out
+
+
+def hand_stitch(points, length=3.0, link=1.0):
+    """Hand-sewn look: dashes about `length` mm long, each sewn three times (bold),
+    joined by single `link` mm stitches (fine). Dash lengths vary by up to 12 %,
+    the same way every time for the same line, so it reads as made by hand."""
+    pts = dedupe(points)
+    total = path_length(pts)
+    if len(pts) < 2 or total < length+link:
+        return split_long(pts, length)
+    vary = (.0, .1, -.08, .05, -.12, .08, -.04)
+    marks, d, k = [0.0], 0.0, int(total*10) % len(vary)
+    while True:
+        dash = length*(1+vary[k % len(vary)])
+        k += 1
+        if total-d < 2*(dash+link):
+            break
+        marks += [d+dash, d+dash+link]
+        d += dash+link
+    marks.append(total)
+    at = resample_at(pts, marks)
+    out = [at[0]]
+    for i in range(0, len(at)-1, 2):
+        out += bean(split_long([at[i], at[i+1]], 1.2*length), 1)[1:]
+        if i+2 < len(at):
+            out.append(at[i+2])
+    return enforce_min(out, .45)
+
+
+def candlewick(points, length=2.0, size=1.2, spacing=3.0):
+    """Candlewicking: a running line with a raised knot `size` mm across every `spacing`
+    mm, spread evenly. Each knot is twelve short spokes sewn out from one hole and back."""
+    pts = dedupe(points)
+    total = path_length(pts)
+    if len(pts) < 2 or total < spacing:
+        return split_long(pts, length)
+    line = LineString(pts)
+    count = max(1, int(total//spacing))
+    step = total/count
+    r = max(.6, size/2)
+    out, cursor = [pts[0]], 0.0
+    for k in range(count):
+        d = step*(k+.5)
+        out += _along_line(line, cursor, d)
+        c = line.interpolate(d)
+        c = (c.x, c.y)
+        out.append(c)
+        for j in range(12):
+            a = math.radians(j*60+(30 if j >= 6 else 0))
+            out += [(c[0]+r*math.cos(a), c[1]+r*math.sin(a)), c]
+        cursor = d
+    out += _along_line(line, cursor, total)
+    return enforce_min(split_long(dedupe(out), length), .45)
+
+
 def inward_side(points):
     """For a closed ring: 1 when the inside is to the left of travel (as stations()
     measures it), else -1."""

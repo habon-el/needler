@@ -693,3 +693,20 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   needle travels along the cord, hidden under it; the line ends where it began.
 - Ties are at least 1 mm across so each half stays above the 0.45 mm minimum stitch.
 - Subject border: style Couching (`border_style: couching`); Width is the tie length.
+
+## Hand-look runs (added 2026-10-27)
+- `stitch_paths.blackwork_run`: out along the line and back through the same holes; every stitch
+  is sewn twice and the line ends where it began. Border style Blackwork run, 2 mm stitches.
+- `stitch_paths.hand_stitch`: dashes about `running_stitch_length_mm` long (3 mm on borders), each
+  sewn three times, joined by single 1 mm links. Dash lengths vary by up to 12 % in a fixed
+  pattern, so the same line always sews the same. Border style Hand stitch.
+- `stitch_paths.candlewick`: a running line with a raised knot every `outline_spacing_mm`
+  (default 3 mm), spread evenly; each knot is twelve spokes out from one hole and back,
+  `outline_width_mm` across (0.6 mm spokes at least, 2.5 mm knots at most). Border style
+  Candlewicking; Width is the knot size.
+- Black lines only, Line weight Redwork (`ink_bean_repeats: 2`): `ink_lines.redwork_routes` sews
+  every traced line exactly twice, once each way, as one closed route per connected drawing, so a
+  drawing has no cuts inside it. Line ends within 3 px meet; a line end beside the middle of another
+  line splits that line there. Routes are not simplified, so both passes share their holes.
+- Measured: a 1200 px drawing of 400 crossing strokes, 2,265 traced lines, became 136 routes in
+  3.7 s. All three borders and a Redwork drawing pass the file checks.

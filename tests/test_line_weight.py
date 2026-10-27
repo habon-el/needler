@@ -9,7 +9,7 @@ from embroiderly.saved_plans import equivalent
     {'ink_length_mm':0}, {'ink_length_mm':float('nan')},
     {'ink_length_mm':float('inf')}, {'ink_length_mm':'2'},
     {'ink_length_mm':True}, {'ink_length_mm':5},
-    {'ink_bean_repeats':2}, {'ink_bean_repeats':True},
+    {'ink_bean_repeats':3}, {'ink_bean_repeats':True},
 ])
 def test_invalid_line_settings(options):
     with pytest.raises(ValueError):line_settings(options)
