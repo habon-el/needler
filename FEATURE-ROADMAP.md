@@ -65,7 +65,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Blanket (E-stitch) | `stitch_paths.blanket` (spikes inward), border style | ✅ 2026-10-24 | |
 | Zigzag outline | `stitch_paths.zigzag_outline`, border style | ✅ 2026-10-24 | |
 | Satin outline / raised satin outline | satin border | ✅ | |
-| Motif run, pattern run, sculpture run | — | ✗ | P3 |
+| Motif run, pattern run, sculpture run | `stitch_paths.motif_run`, border style Motif run: diamonds, triangles or scallops along the line | ◐ no pattern or sculpture run | P3 |
 | Blackwork run, candlewicking, redwork, hand stitch | — | ✗ | P3 |
 | Couching / laydown | — | ✗ | P3 |
 

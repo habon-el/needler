@@ -50,6 +50,8 @@
    path('M14 44H106',1.8);for(let x=18;x<=102;x+=12)path(`M${x} 44V22`,1.8);
   }else if(kind==='zigzag'){
    path('M14 42'+Array.from({length:12},(_,i)=>`L${20+i*7.5} ${i%2?42:22}`).join(''),1.8);
+  }else if(kind==='motifrun'){
+   path('M10 32H106',1.6);for(let x=16;x<100;x+=20)path(`M${x} 32l6-8 6 8-6 8Z`,1.6);
   }else if(kind==='off'){path('M24 12H96V52H24Z',1,.25);path('M48 32H72',2)}
   else if(kind==='satin'){
    for(let y=12;y<=52;y+=2.5)path(`M28 ${y} L92 ${y-3}`,2);
@@ -111,5 +113,6 @@
   ['stemstitch','Stemstitch','stemstitch','Twisted rope line'],
   ['blanket','Blanket','blanket','Edge with inward spikes'],
   ['zigzag','Zigzag','zigzag','Open zigzag band'],
+  ['motif','Motif run','motifrun','Small shapes along the line'],
  ],'change');
 })();

@@ -6,6 +6,7 @@ no inside route exists the caller receives None and must cut instead.
 import heapq
 import math
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+from shapely.ops import substring
 from shapely.prepared import prep
 
 
@@ -169,6 +170,57 @@ def zigzag_outline(points, spacing=1.0, width=2.0):
     """Stitches swinging from side to side of a band `width` wide."""
     marks = stations(points, spacing/2)
     return [_offset(p, n, (width if i % 2 else -width)/2) for i, (p, n) in enumerate(marks)]
+
+
+MOTIFS = ('diamond', 'triangle', 'scallop')
+MOTIF_SHAPES = {   # (along, across) points of one motif, from its start (0) to its end (1); scallops: _scallop
+    # The diamond's lower side is sewn twice so the line leaves from the far point.
+    'diamond': ((.5, .5), (1, 0), (.5, -.5), (0, 0), (.5, -.5), (1, 0)),
+    'triangle': ((.5, 1), (1, 0)),
+}
+
+
+def _scallop(size, width):
+    """Half-wave arch points, about 1 mm stitches; an even count puts one at the top,
+    and each step along it stays above the 0.45 mm minimum stitch."""
+    n = 2*max(2, min(round((size+2*width)/2.2), int(size)))
+    return tuple((i/n, math.sin(math.pi*i/n)) for i in range(1, n+1))
+
+
+def motif_run(points, length=2.0, width=2.5, spacing=2.0, motif='diamond', side=1):
+    """Running line with a small motif `width` mm across every `spacing` mm of line:
+    diamonds centred on the line, or triangles and scallops standing on one side
+    (side=1 to the left of travel, -1 right). Motifs are spread evenly along it."""
+    pts = dedupe(points)
+    total = path_length(pts)
+    size = max(1.5, width)
+    if len(pts) < 2 or total < size+spacing:
+        return split_long(pts, length)
+    line = LineString(pts)
+    closed = math.dist(pts[0], pts[-1]) < 1e-6
+    count = max(1, int((total-(0 if closed else spacing))//(size+spacing)))
+    gap = (total-count*size)/(count if closed else count+1)
+
+    def at(d, across):
+        d = min(max(d, 0.0), total)
+        p, q = line.interpolate(max(0.0, d-.05)), line.interpolate(min(total, d+.05))
+        dx, dy = q.x-p.x, q.y-p.y
+        n = math.hypot(dx, dy) or 1.0
+        c = line.interpolate(d)
+        return (c.x-dy/n*across*side, c.y+dx/n*across*side)
+
+    def along(a, b):
+        return [tuple(p) for p in substring(line, a, b).coords] if b > a else []
+
+    out, cursor = [pts[0]], 0.0
+    for k in range(count):
+        start = (gap/2 if closed else gap)+k*(size+gap)
+        out += along(cursor, start)
+        shape = _scallop(size, width) if motif == 'scallop' else MOTIF_SHAPES[motif]
+        out += [at(start+size*t, width*s) for t, s in shape]
+        cursor = start+size
+    out += along(cursor, total)
+    return enforce_min(split_long(dedupe(out), length), .45)
 
 
 def inward_side(points):

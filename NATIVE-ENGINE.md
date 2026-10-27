@@ -670,3 +670,17 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   a 6% wave at 90 mm along the curve passes. Limits found: 10 mm Graduate CHAMPIONS takes up to a
   6% wave and a 30 mm circle; short words take only gentle waves (Waves at 8 mm: 3%), and joined
   script fonts less (Pacifico Riverside Bakery: 7%).
+
+## Motif run (added 2026-10-27)
+- `stitch_paths.motif_run`: a running line with a small motif every `outline_spacing_mm` (default
+  2 mm) of line, spread evenly (a closed ring has no motif on its seam). `outline_motif`:
+  `diamond` (centred on the line, `outline_width_mm` across; its lower side is sewn twice so the
+  line carries on from the far point), `triangle` or `scallop` (standing `outline_width_mm` high
+  on one side). On a closed ring one-sided motifs stand outside the shape, off its fill.
+- Motifs are at least 1.5 mm along the line. Scallops get about 1 mm stitches with one at the
+  top, and never fewer steps along the line than keep each above 0.45 mm. Lines shorter than one
+  motif plus a gap are plain running stitch. Stitches are split at 2 mm.
+- Subject border: style Motif run (`border_style: motif`, `border_motif`), Motif menu shown only for
+  it; the release band is twice the width, as for blanket.
+- Measured on a 60 mm line, widths 0.5 to 6 mm, all three motifs: shortest stitch 0.52 mm, longest
+  1.88 mm. Borders with each motif pass the file checks.

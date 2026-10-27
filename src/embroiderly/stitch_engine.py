@@ -13,8 +13,8 @@ from pathlib import Path
 from . import svg_geometry as sg
 from .stitch_fills import (STIPPLE_STITCHES, WAVE_AMPLITUDE_MM, WAVE_LENGTH_MM, contour, fill_shape, gradient, join_runs,
                            meander, radial, spiral, step_fill, tatami, wave)
-from .stitch_paths import (backstitch, bean, blanket, chain, dedupe, enforce_min, inward_side, order_runs, path_length,
-                           polygons, running, split_long, stemstitch, zigzag_outline)
+from .stitch_paths import (MOTIFS, backstitch, bean, blanket, chain, dedupe, enforce_min, inward_side, motif_run,
+                           order_runs, path_length, polygons, running, split_long, stemstitch, zigzag_outline)
 from .stitch_satin import SPLIT_MM, satin
 from shapely.geometry import LineString
 
@@ -418,7 +418,7 @@ def applique_coverage(rings_px, scale, shape_px, cover=3.0):
     return cv2.morphologyEx(band, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8)).astype(bool)
 
 
-OUTLINE_STYLES = ('backstitch', 'stemstitch', 'blanket', 'zigzag')
+OUTLINE_STYLES = ('backstitch', 'stemstitch', 'blanket', 'zigzag', 'motif')
 
 
 def _outline(run, style, node, length):
@@ -429,10 +429,15 @@ def _outline(run, style, node, length):
     if style == 'stemstitch':
         # A shallow slant reads as a twisted rope; a steep one as saw teeth.
         return stemstitch(run, max(1.0, length), min(width, .4*max(1.0, length)))
-    spacing = max(.4, _float(node, 'outline_spacing_mm', 2.0 if style == 'blanket' else .8))
+    spacing = max(.4, _float(node, 'outline_spacing_mm', 2.0 if style in ('blanket', 'motif') else .8))
     if style == 'zigzag':
         return zigzag_outline(run, spacing, width)
     closed = len(run) > 3 and math.dist(run[0], run[-1]) < 1e-6
+    if style == 'motif':
+        # One-sided motifs (triangles, scallops) stand outside a closed shape, off its fill.
+        motif = _attr(node, 'outline_motif', 'diamond')
+        side = -inward_side(run[:-1]) if closed else 1
+        return motif_run(run, max(1.0, length), width, spacing, motif if motif in MOTIFS else 'diamond', side)
     # Spikes point into a closed shape (or out of it with blanket_side="outside").
     side = inward_side(run[:-1]) if closed else 1
     return blanket(run, spacing, width, -side if _attr(node, 'blanket_side') == 'outside' else side)

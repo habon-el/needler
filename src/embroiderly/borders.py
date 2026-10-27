@@ -5,10 +5,11 @@ import cv2
 import numpy as np
 from shapely.geometry import Polygon
 import xml.etree.ElementTree as ET
+from .stitch_paths import MOTIFS
 
 NS='http://inkstitch.org/namespace'
 # Running-line borders with a decorative stitch (stitch_engine.OUTLINE_STYLES); width is the band they cover.
-OUTLINES=('backstitch','stemstitch','blanket','zigzag')
+OUTLINES=('backstitch','stemstitch','blanket','zigzag','motif')
 INNER_GAP_MM=1.2   # space between a border and the decorative line inside it
 
 def border_plan(mask,height_mm,options):
@@ -26,6 +27,8 @@ def border_plan(mask,height_mm,options):
     if placement not in ('inside','center','outside'):raise ValueError('Invalid border placement.')
     inner_kind=options.get('border_inner','off')
     if inner_kind not in ('off','triple'):raise ValueError('Choose a listed line inside the border.')
+    motif=options.get('border_motif','diamond')
+    if motif not in MOTIFS:raise ValueError('Choose a listed motif for the motif run.')
     scale=height_mm/mask.shape[0]
     offset={'inside':-width/2,'center':0,'outside':width/2}[placement]/scale if kind=='satin' else 0
     contours,_=cv2.findContours(mask.astype(np.uint8),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
@@ -55,7 +58,7 @@ def border_plan(mask,height_mm,options):
     if not paths:raise ValueError('No outer boundary available for a border.')
     if len(paths)>100:raise ValueError('Too many disconnected border outlines. Refine the subject selection.')
     warnings.append('Tight corners, tiny islands and narrow gaps require a physical sew-out. Internal holes are not bordered.')
-    return dict(style=kind,width_mm=width,spacing_mm=spacing,colour=colour,placement=placement,paths=paths,inner=inner,warnings=list(dict.fromkeys(warnings)),scale=scale)
+    return dict(style=kind,motif=motif,width_mm=width,spacing_mm=spacing,colour=colour,placement=placement,paths=paths,inner=inner,warnings=list(dict.fromkeys(warnings)),scale=scale)
 
 def satin_rails(points,radius):
     """Matched offset rails; reject collapsed or sharply spiked outlines."""
@@ -88,8 +91,8 @@ def satin_rails(points,radius):
     return [(a[:mid+1],b[:mid+1]),(a[mid:],b[mid:])]
 
 def band_mm(kind,width):
-    """Width of the stitched band centred on the border line (blanket spikes reach one side)."""
-    return {'backstitch':.6,'blanket':2*width}.get(kind,width)
+    """Width of the stitched band centred on the border line (blanket spikes and motifs reach one side)."""
+    return {'backstitch':.6,'blanket':2*width,'motif':2*width}.get(kind,width)
 
 
 def coverage(plan,shape):
@@ -125,7 +128,8 @@ def add_border(document,plan):
         else:attrs.update({f'{{{NS}}}stroke_method':'running_stitch',f'{{{NS}}}running_stitch_length_mm':'2'})
         if plan['style'] in OUTLINES:
             attrs.update({f'{{{NS}}}outline_style':plan['style'],f'{{{NS}}}outline_width_mm':str(plan['width_mm']),
-                          f'{{{NS}}}running_stitch_length_mm':'2.5' if plan['style']=='backstitch' else '3'})
+                          f'{{{NS}}}running_stitch_length_mm':{'backstitch':'2.5','motif':'2'}.get(plan['style'],'3')})
+            if plan['style']=='motif':attrs[f'{{{NS}}}outline_motif']=plan.get('motif','diamond')
         attrs[f'{{{NS}}}trim_after']='true'
         ET.SubElement(document,'path',attrs)
     for i,points in enumerate(plan.get('inner',[])):
