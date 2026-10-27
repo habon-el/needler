@@ -182,8 +182,10 @@ MOTIF_SHAPES = {   # (along, across) points of one motif, from its start (0) to 
 
 def _scallop(size, width):
     """Half-wave arch points, about 1 mm stitches; an even count puts one at the top,
-    and each step along it stays above the 0.45 mm minimum stitch."""
-    n = 2*max(2, min(round((size+2*width)/2.2), int(size)))
+    and the flattest stitch, at the top, stays 0.5 mm or longer."""
+    n = 2*max(2, round((size+2*width)/1.8))
+    while n > 4 and math.hypot(size/n, width*(1-math.cos(math.pi/n))) < .5:
+        n -= 2
     return tuple((i/n, math.sin(math.pi*i/n)) for i in range(1, n+1))
 
 
@@ -201,26 +203,38 @@ def motif_run(points, length=2.0, width=2.5, spacing=2.0, motif='diamond', side=
     count = max(1, int((total-(0 if closed else spacing))//(size+spacing)))
     gap = (total-count*size)/(count if closed else count+1)
 
-    def at(d, across):
-        d = min(max(d, 0.0), total)
-        p, q = line.interpolate(max(0.0, d-.05)), line.interpolate(min(total, d+.05))
-        dx, dy = q.x-p.x, q.y-p.y
-        n = math.hypot(dx, dy) or 1.0
-        c = line.interpolate(d)
-        return (c.x-dy/n*across*side, c.y+dx/n*across*side)
-
     def along(a, b):
         return [tuple(p) for p in substring(line, a, b).coords] if b > a else []
 
+    shape = _scallop(size, width) if motif == 'scallop' else MOTIF_SHAPES[motif]
     out, cursor = [pts[0]], 0.0
     for k in range(count):
         start = (gap/2 if closed else gap)+k*(size+gap)
         out += along(cursor, start)
-        shape = _scallop(size, width) if motif == 'scallop' else MOTIF_SHAPES[motif]
-        out += [at(start+size*t, width*s) for t, s in shape]
+        # Each motif stands square on the chord from its start to its end, so the small
+        # corners of a traced outline do not tilt it.
+        a, b = line.interpolate(start), line.interpolate(start+size)
+        dx, dy = b.x-a.x, b.y-a.y
+        n = math.hypot(dx, dy) or 1.0
+        nx, ny = -dy/n*side, dx/n*side
+        out += [(a.x+dx*t+nx*width*s, a.y+dy*t+ny*width*s) for t, s in shape]
         cursor = start+size
     out += along(cursor, total)
     return enforce_min(split_long(dedupe(out), length), .45)
+
+
+def couching(points, length=3.0, width=1.6, spacing=3.0):
+    """Couching look: a triple-stitch cord laid along the line, then a pass back along
+    it with a tie stitch `width` mm across the cord every `spacing` mm. Between ties
+    the needle travels along the cord, hidden under it."""
+    pts = dedupe(points)
+    if len(pts) < 2 or path_length(pts) < 1.0:
+        return pts
+    cord = bean(enforce_min(running(pts, length), .45), 1)
+    back = []
+    for p, n in stations(pts[::-1], spacing):
+        back.extend((p, _offset(p, n, width/2), _offset(p, n, -width/2), p))
+    return enforce_min(cord+split_long(dedupe(back), length), .45)
 
 
 def inward_side(points):

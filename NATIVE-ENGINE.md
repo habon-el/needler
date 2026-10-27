@@ -677,10 +677,19 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   `diamond` (centred on the line, `outline_width_mm` across; its lower side is sewn twice so the
   line carries on from the far point), `triangle` or `scallop` (standing `outline_width_mm` high
   on one side). On a closed ring one-sided motifs stand outside the shape, off its fill.
-- Motifs are at least 1.5 mm along the line. Scallops get about 1 mm stitches with one at the
-  top, and never fewer steps along the line than keep each above 0.45 mm. Lines shorter than one
+- Motifs are at least 1.5 mm along the line and stand square on the chord from their start to
+  their end, so the small corners of a traced outline do not tilt them. Scallops get about 1 mm
+  stitches with one at the top; the flattest, at the top, stays 0.5 mm or longer. Lines shorter than one
   motif plus a gap are plain running stitch. Stitches are split at 2 mm.
 - Subject border: style Motif run (`border_style: motif`, `border_motif`), Motif menu shown only for
   it; the release band is twice the width, as for blanket.
 - Measured on a 60 mm line, widths 0.5 to 6 mm, all three motifs: shortest stitch 0.52 mm, longest
   1.88 mm. Borders with each motif pass the file checks.
+
+## Couching (added 2026-10-27)
+- `stitch_paths.couching`: the look of a thick cord tied down. First a triple-stitch cord along the
+  line (`running_stitch_length_mm`, 3 mm on borders), then a pass back along it with a tie
+  `outline_width_mm` across the cord every `outline_spacing_mm` (default 3 mm). Between ties the
+  needle travels along the cord, hidden under it; the line ends where it began.
+- Ties are at least 1 mm across so each half stays above the 0.45 mm minimum stitch.
+- Subject border: style Couching (`border_style: couching`); Width is the tie length.

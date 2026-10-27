@@ -52,6 +52,8 @@
    path('M14 42'+Array.from({length:12},(_,i)=>`L${20+i*7.5} ${i%2?42:22}`).join(''),1.8);
   }else if(kind==='motifrun'){
    path('M10 32H106',1.6);for(let x=16;x<100;x+=20)path(`M${x} 32l6-8 6 8-6 8Z`,1.6);
+  }else if(kind==='couching'){
+   path('M10 32H110',4.5,.45);path('M10 32H110',1.4);for(let x=18;x<106;x+=14)path(`M${x} 25V39`,1.8);
   }else if(kind==='off'){path('M24 12H96V52H24Z',1,.25);path('M48 32H72',2)}
   else if(kind==='satin'){
    for(let y=12;y<=52;y+=2.5)path(`M28 ${y} L92 ${y-3}`,2);
@@ -114,5 +116,6 @@
   ['blanket','Blanket','blanket','Edge with inward spikes'],
   ['zigzag','Zigzag','zigzag','Open zigzag band'],
   ['motif','Motif run','motifrun','Small shapes along the line'],
+  ['couching','Couching','couching','Thick cord tied down'],
  ],'change');
 })();

@@ -67,7 +67,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Satin outline / raised satin outline | satin border | ✅ | |
 | Motif run, pattern run, sculpture run | `stitch_paths.motif_run`, border style Motif run: diamonds, triangles or scallops along the line | ◐ no pattern or sculpture run | P3 |
 | Blackwork run, candlewicking, redwork, hand stitch | — | ✗ | P3 |
-| Couching / laydown | — | ✗ | P3 |
+| Couching / laydown | `stitch_paths.couching`, border style Couching: triple-stitch cord with ties across it | ✅ 2026-10-27 | |
 
 ## 5. Stitch effects and quality
 | Tool | Needler | Status | P |

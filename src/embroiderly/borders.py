@@ -9,7 +9,7 @@ from .stitch_paths import MOTIFS
 
 NS='http://inkstitch.org/namespace'
 # Running-line borders with a decorative stitch (stitch_engine.OUTLINE_STYLES); width is the band they cover.
-OUTLINES=('backstitch','stemstitch','blanket','zigzag','motif')
+OUTLINES=('backstitch','stemstitch','blanket','zigzag','motif','couching')
 INNER_GAP_MM=1.2   # space between a border and the decorative line inside it
 
 def border_plan(mask,height_mm,options):

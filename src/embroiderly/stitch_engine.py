@@ -13,7 +13,7 @@ from pathlib import Path
 from . import svg_geometry as sg
 from .stitch_fills import (STIPPLE_STITCHES, WAVE_AMPLITUDE_MM, WAVE_LENGTH_MM, contour, fill_shape, gradient, join_runs,
                            meander, radial, spiral, step_fill, tatami, wave)
-from .stitch_paths import (MOTIFS, backstitch, bean, blanket, chain, dedupe, enforce_min, inward_side, motif_run,
+from .stitch_paths import (MOTIFS, backstitch, bean, blanket, chain, couching, dedupe, enforce_min, inward_side, motif_run,
                            order_runs, path_length, polygons, running, split_long, stemstitch, zigzag_outline)
 from .stitch_satin import SPLIT_MM, satin
 from shapely.geometry import LineString
@@ -418,12 +418,15 @@ def applique_coverage(rings_px, scale, shape_px, cover=3.0):
     return cv2.morphologyEx(band, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8)).astype(bool)
 
 
-OUTLINE_STYLES = ('backstitch', 'stemstitch', 'blanket', 'zigzag', 'motif')
+OUTLINE_STYLES = ('backstitch', 'stemstitch', 'blanket', 'zigzag', 'motif', 'couching')
 
 
 def _outline(run, style, node, length):
     """Decorative outline stitch along one line (stitch_paths)."""
     width = min(6.0, max(.5, _float(node, 'outline_width_mm', 2.0 if style != 'stemstitch' else 1.2)))
+    if style == 'couching':
+        # Ties shorter than about 1 mm would fall under the minimum stitch on each side.
+        return couching(run, max(1.0, length), max(1.0, width), max(1.0, _float(node, 'outline_spacing_mm', 3.0)))
     if style == 'backstitch':
         return backstitch(run, length)
     if style == 'stemstitch':
