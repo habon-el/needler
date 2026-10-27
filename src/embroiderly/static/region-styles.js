@@ -64,7 +64,7 @@
   const base=styles.size===1?[...styles][0]:'',choices=report.variants?.[base];
   variant.hidden=!areas.length||!choices;variantBox.disabled=blocked||areas.some(a=>a.locked);
   if(choices&&variantBox.dataset.base!==base){
-   variantBox.dataset.base=base;variant.firstChild.textContent=base==='motif'?'Pattern ':'Stitch ';
+   variantBox.dataset.base=base;variant.firstChild.textContent=base==='motif'||base==='elastic'?'Pattern ':'Stitch ';
    variantBox.replaceChildren(...choices.map(([value,name])=>new Option(name,value)));
   }
   if(choices){const picked=new Set([...full].map(s=>s.split(':')[1]||choices[0][0]));variantBox.value=picked.size===1?[...picked][0]:''}

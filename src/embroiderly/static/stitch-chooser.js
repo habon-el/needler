@@ -15,6 +15,11 @@
   if(['tatami','embossed'].includes(kind)){
    for(let y=10;y<58;y+=4){path('M12 '+y+'H108',2);for(let x=20+(y%8)*2;x<108;x+=24)path('M'+x+' '+(y-1)+'v2',1,.4)}
    if(kind==='embossed')for(let x=20;x<100;x+=24)path(`M${x} 32l12-14 12 14-12 14Z`,2.5,.55);
+  }else if(kind==='sculptured'){
+   for(let y=10;y<58;y+=4)path('M12 '+y+'H108',2,.45);
+   for(let c=-48;c<110;c+=16){path(`M${c} 6l52 52`,1.4);path(`M${c} 58l52-52`,1.4)}
+  }else if(kind==='elastic'){
+   for(let x=12;x<108;x+=16){const h=(t)=>32+(t?1:-1)*(8+14*Math.sin((x+8-12)*Math.PI/96));path(`M${x+8} ${h(0).toFixed(1)}L${x+16} 32L${x+8} ${h(1).toFixed(1)}L${x} 32Z`,1.6)}
   }else if(kind==='motif'||kind==='cross'){
    for(let x=16;x<100;x+=22)for(let y=12;y<52;y+=22)path(kind==='cross'?`M${x} ${y}l16 16m0-16-16 16`:`M${x+8} ${y}l8 8-8 8-8-8Z`,1.6);
   }else if(kind==='contour'||kind==='ripple'){

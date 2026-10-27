@@ -81,16 +81,25 @@ def _sections(rows):
 def _row_points(k, interval, forward, max_len, staggers, minimum, spacing):
     a, b = interval
     y = (k+.5)*spacing
-    # staggers: a count (even diagonal), or a tuple of offset fractions (step fill patterns).
-    offset = (staggers[k % len(staggers)] if isinstance(staggers, tuple) else (k % staggers)/staggers)*max_len
+    # staggers: a count (even diagonal), a tuple of offset fractions (step fill patterns),
+    # or a tuple of tuples: several needle holes per repeat (sculptured fill).
+    chosen = staggers[k % len(staggers)] if isinstance(staggers, tuple) else (k % staggers)/staggers
+    offsets = sorted(f*max_len for f in (chosen if isinstance(chosen, tuple) else (chosen,)))
     grid = []
-    j = math.ceil((a-offset)/max_len)
-    while offset+j*max_len < b:
-        x = offset+j*max_len
-        if x-a >= minimum and b-x >= minimum:
-            grid.append(x)
-        j += 1
-    xs = [a]+grid+[b]
+    for offset in offsets:
+        j = math.ceil((a-offset)/max_len)
+        while offset+j*max_len < b:
+            x = offset+j*max_len
+            if x-a >= minimum and b-x >= minimum:
+                grid.append(x)
+            j += 1
+    grid.sort()
+    kept = []
+    for x in grid:
+        # Holes of two diagonals that meet are sewn as one.
+        if not kept or x-kept[-1] >= minimum:
+            kept.append(x)
+    xs = [a]+kept+[b]
     if not forward:
         xs = xs[::-1]
     return [(x, y) for x in xs]
@@ -486,6 +495,17 @@ def step_fill(shape, angle=0.0, spacing=0.4, max_len=3.5, minimum=0.45, start=No
     return tatami(shape, angle, spacing, max_len, STEP_PATTERN, minimum, start, underlay=underlay)
 
 
+# Sculptured fill: dense tatami whose needle holes run along both diagonals, one
+# repeat every SCULPTURED_PITCH_MM, so the holes outline a raised diamond lattice.
+SCULPTURED_PITCH_MM = 4.0
+
+
+def sculptured(shape, angle=0.0, spacing=0.4, minimum=0.45, start=None, underlay=True, pitch=SCULPTURED_PITCH_MM):
+    rows = max(2, round(pitch/spacing))
+    pattern = tuple((k/rows, (rows-k) % rows/rows) for k in range(rows))
+    return tatami(shape, angle, pitch/rows, pitch, pattern, minimum, start, underlay=underlay)
+
+
 def gradient(shape, angle=0.0, spacing=0.4, open_spacing=1.6, max_len=3.0, staggers=4, minimum=0.45, start=None):
     """Rows from dense (`spacing`) on one side to open (`open_spacing`) on the
     other. The area is stretched across the rows so that ordinary, evenly spaced
@@ -554,27 +574,38 @@ def florentine(shape, angle=0.0, spacing=0.4, max_len=3.0, minimum=0.45, start=N
                       start, underlay, tolerance)
 
 
-def _top_profile(shape, angle, step=.5):
-    """The top edge of `shape` in the row frame as (xs, offsets): offset 0 at its
-    highest point, growing where the edge dips. None for areas under 2 mm across."""
+def _edges(shape, angle, step=.5, smooth=FLORENTINE_SMOOTH_MM):
+    """The top and bottom edges of `shape` in the row frame, sampled every `step`
+    across it and averaged over `smooth` mm, as (xs, tops, bottoms). None for
+    areas under 2 mm across."""
     to_frame, _ = _frame(angle)
     flat = affine_transform(shape, to_frame)
     left, top, right, bottom = flat.bounds
     if right-left < 2.0:
         return None
     xs = np.arange(left, right+step, step)
-    tops = []
+    tops, bottoms = [], []
     for x in xs:
         hit = flat.intersection(LineString([(x, top-1), (x, bottom+1)]))
         tops.append(hit.bounds[1] if not hit.is_empty else np.nan)
-    tops = np.array(tops)
-    known = ~np.isnan(tops)
+        bottoms.append(hit.bounds[3] if not hit.is_empty else np.nan)
+    known = ~np.isnan(np.array(tops))
     if known.sum() < 2:
         return None
-    tops = np.interp(xs, xs[known], tops[known])
-    half = max(1, int(FLORENTINE_SMOOTH_MM/step/2))
-    padded = np.pad(tops, half, mode='edge')
-    tops = np.convolve(padded, np.ones(2*half+1)/(2*half+1), mode='valid')
+    half = max(1, int(smooth/step/2))
+    def even(values):
+        values = np.interp(xs, xs[known], np.array(values)[known])
+        return np.convolve(np.pad(values, half, mode='edge'), np.ones(2*half+1)/(2*half+1), mode='valid')
+    return xs, even(tops), even(bottoms)
+
+
+def _top_profile(shape, angle, step=.5):
+    """The top edge of `shape` in the row frame as (xs, offsets): offset 0 at its
+    highest point, growing where the edge dips. None for areas under 2 mm across."""
+    edges = _edges(shape, angle, step)
+    if edges is None:
+        return None
+    xs, tops, _ = edges
     # Flatten the whole curve until most of it is gentle enough, so a round top
     # stays a smooth dome; only the steep ends left over are clamped.
     steep = np.percentile(np.abs(np.diff(tops)), 95)/step
@@ -586,6 +617,22 @@ def _top_profile(shape, angle, step=.5):
             j = i-1 if order.step == 1 else i+1
             tops[i] = min(max(tops[i], tops[j]-rise), tops[j]+rise)
     return xs, tops-tops.min()
+
+
+def stretch_map(shape, angle, smooth=2.0):
+    """For elastic fills: a map from a flat strip to the area. Returns (left, right,
+    place) where place(x, t) is the point at frame position x, a share t of the way
+    from the area's top edge (t=0) to its bottom edge (t=1); or None for areas
+    under 2 mm across."""
+    edges = _edges(shape, angle, .25, smooth)
+    if edges is None:
+        return None
+    xs, tops, bottoms = edges
+    _, back = _frame(angle)
+    def place(x, t):
+        top, bottom = np.interp(x, xs, tops), np.interp(x, xs, bottoms)
+        return back((x, top+t*(bottom-top)))
+    return float(xs[0]), float(xs[-1]), place
 
 
 def _bent_fill(shape, angle, offset, spacing, max_len, minimum, start, underlay, tolerance):

@@ -25,7 +25,9 @@ CATALOG=[
     ('raised_satin','3D satin','Three satin layers · experimental, no foam'),
     ('puff','3D puff','Satin over foam · parts 3–6 mm wide (2 mm foam: 2–6)'),
     ('motif','Motif','Small repeated shapes · open fill'),
+    ('elastic','Elastic','Repeats that stretch to follow the shape · open fill'),
     ('embossed','Embossed','Tatami + diamond overlay · experimental texture'),
+    ('sculptured','Sculptured','Tatami with needle holes in a diamond lattice'),
     ('ripple','Ripple','Concentric circular waves'),
     ('maze','Maze','One line winding like a labyrinth · open fill'),
     ('star','Star','Star-shaped spiral from the centre · open fill'),
@@ -41,6 +43,7 @@ OPEN_FILLS=('blackwork_fill','candlewick_fill','lacework')   # whole-area patter
 # is stored as the plain style, so saved designs keep their look.
 VARIANTS={
     'motif':[('diamond','Diamonds'),('heart','Hearts'),('star','Stars'),('scale','Scales'),('circle','Circles')],
+    'elastic':[('diamond','Diamonds'),('heart','Hearts'),('star','Stars'),('scale','Scales'),('circle','Circles')],
     'stipple':[('run','Single run'),('backstitch','Backstitch'),('stemstitch','Stemstitch')],
 }
 
@@ -196,6 +199,34 @@ def motif_shapes(pattern,x,y,row):
     return [[(x+2,y),(x+4,y+2),(x+2,y+4),(x,y+2),(x+2,y)]]
 
 
+def elastic_parts(p,angle,pattern,scale):
+    """Motif repeats laid out on a strip that is stretched over the area (stitch_fills.stretch_map):
+    a whole number of rows from the top edge to the bottom edge, so each repeat grows and shrinks
+    with the area's height and follows its curve. Repeats squeezed under 1.5 mm high are left out."""
+    from shapely import segmentize
+    from .stitch_fills import stretch_map
+    mapping=stretch_map(p,angle)
+    if mapping is None:return []
+    left,right,place=mapping
+    xs=np.linspace(left,right,64)
+    heights=[math.dist(place(x,0),place(x,1)) for x in xs]
+    rows=max(1,round(float(np.median(heights))/MOTIF_PITCH))
+    pitch=MOTIF_PITCH;strip=rows*pitch;parts=[]
+    if math.ceil((right-left)/pitch)*rows>400:
+        raise ValueError('Decorative pattern exceeds 400 cells. Use a smaller area or Tatami.')
+    for row in range(rows):
+        for x in np.arange(left-(pitch if pattern=='scale' else 0),right,pitch):
+            if np.interp(x+pitch/2,xs,heights)/rows<1.5:continue
+            for shape in motif_shapes(pattern,x,row*pitch,row):
+                flat=segmentize(LineString(shape),.3)
+                bent=LineString([place(u,min(1.0,max(0.0,v/strip))) for u,v in flat.coords])
+                clipped=p.intersection(bent)
+                for segment in [clipped] if clipped.geom_type=='LineString' else list(getattr(clipped,'geoms',[])):
+                    if segment.geom_type=='LineString' and segment.length>=.4:
+                        parts.append(path_data(np.asarray(segment.coords)/scale))
+    return parts
+
+
 LACE_SIDE=2.0   # mm, one side of a lacework honeycomb cell
 KNOT_PITCH=4.0  # mm between candlewicking knots
 
@@ -248,6 +279,11 @@ def decorative_paths(rings,scale,kind,pattern='diamond'):
             raise ValueError('Decorative outline repair would change the selected area. Refine the selection or choose Tatami.')
         p=repaired
     left,top,right,bottom=p.bounds;pitch=MOTIF_PITCH;parts=[]
+    if kind=='elastic':
+        from .fill_shaping import angle as fill_angle
+        parts=elastic_parts(p,fill_angle(rings),pattern,scale)
+        if not parts:raise ValueError('Area is too small for this decorative pattern. Choose Tatami or enlarge this area.')
+        return ' '.join(parts)
     if math.ceil((right-left)/pitch)*math.ceil((bottom-top)/pitch)>400:
         raise ValueError('Decorative pattern exceeds 400 cells. Use a smaller area or Tatami.')
     # Scales are shifted half a repeat on every other row: start one repeat further left.
@@ -295,6 +331,10 @@ def apply_style(document,node,rings,scale,kind):
         shade.set('style',f'fill:{darker(colour,.7)};fill-rule:evenodd;stroke:none')
         shade.set(NS+'fill_method','gradient_fill');shade.set(NS+'angle',f'{fill_angle(rings)+90:.1f}')
         shade.set(NS+'fill_underlay','false');shade.set(NS+'gradient_open_spacing_mm','2.4')
+        return
+    if kind=='sculptured':
+        from .fill_shaping import angle as fill_angle
+        node.set(NS+'fill_method','sculptured_fill');node.set(NS+'angle',f'{fill_angle(rings):.1f}')
         return
     if kind in ('step','gradient','radial','wave','florentine'):
         # Specialty fills (stitch_fills); rows run along the area's long side.
@@ -349,7 +389,7 @@ def apply_style(document,node,rings,scale,kind):
                 extra=ET.SubElement(document,'path',dict(node.attrib))
                 extra.set('id',node.get('id')+f'-layer{layer}');extra.set(NS+'center_walk_underlay','false')
         return
-    if kind in ('motif','cross','embossed')+OPEN_FILLS:
+    if kind in ('motif','elastic','cross','embossed')+OPEN_FILLS:
         colour=node.get('style').split(';')[0].split(':')[1]
         decoration=decorative_paths(rings,scale,kind,pattern)
         if not decoration:return  # Embossed retains its base; inventory discloses no fitting repeat.
@@ -359,7 +399,7 @@ def apply_style(document,node,rings,scale,kind):
         target.set('d',decoration)
         target.set('style',f'fill:none;stroke:{colour};stroke-width:1')
         target.set(NS+'stroke_method','running_stitch');target.set(NS+'running_stitch_length_mm','2')
-        if kind=='motif' and pattern!='diamond':
+        if kind=='elastic' or kind=='motif' and pattern!='diamond':
             # Curved repeats: shorter stitches that keep their points, so hearts stay round.
             target.set(NS+'running_stitch_length_mm','1.2');target.set(NS+'running_stitch_tolerance_mm','.05')
         if kind=='lacework':target.set(NS+'running_stitch_length_mm','1.5')

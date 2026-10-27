@@ -759,3 +759,19 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Wave and Florentine share `_bent_fill`: the area is bent so the curve becomes straight rows,
   filled as tatami with underlay and inside travel, and the stitches bent back.
 - Passes the file checks on the standard test design.
+
+## Elastic and sculptured fills (added 2026-10-27)
+- Area style `elastic` (pattern choice as Motif: diamonds, hearts, stars, scales, circles;
+  `region_stitches.elastic_parts`): the area's top and bottom edges in the row frame (rows along
+  the long side) are sampled every 0.25 mm and averaged over 2 mm (`stitch_fills.stretch_map`).
+  Motif repeats are laid on a flat strip of whole 4 mm rows, as many as fit the area's median
+  height, and each point is placed the same share of the way from top edge to bottom edge, so
+  repeats grow, shrink and bend with the shape. Repeats squeezed under 1.5 mm high are left out;
+  the rest are clipped to the area and sewn as running stitch (1.2 mm, tolerance 0.05) with
+  inside travel, like Motif.
+- Area style `sculptured` (`fill_method="sculptured_fill"`, `stitch_fills.sculptured`): tatami
+  whose rows have two needle holes per 4 mm repeat, one on each diagonal (`_row_points` takes a
+  tuple of offsets per row), so the holes outline a diamond lattice. Holes closer than the
+  minimum stitch are sewn as one; stitches stay at most 4 mm. Row spacing is rounded so a whole
+  number of rows makes one repeat, with underlay.
+- Both pass the file checks on the standard test design.
