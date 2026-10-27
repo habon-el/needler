@@ -749,3 +749,13 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   at the points and 0.8 mm at the inner corners (`STAR_INNER`). Clipped to the area; pieces joined
   by travel inside it, like Ripple. Straight sides split into 2 mm stitches, corners kept.
 - Measured on a 30 mm disc: maze 490 stitches, star 947, one run each. Both pass the file checks.
+
+## Florentine fill (added 2026-10-27)
+- Area style `florentine` (`fill_method="florentine_fill"`, `stitch_fills.florentine`): tatami rows
+  that copy the area's top edge in the row frame (rows along the long side, as Wave). The edge is
+  sampled every 0.5 mm, averaged over 4 mm, scaled down until 95 % of it is no steeper than 0.7
+  (`FLORENTINE_SLOPE`), then the steep ends left over are clamped, so a round top stays a smooth
+  dome and lower rows keep their spacing. Areas under 2 mm across fall back to tatami.
+- Wave and Florentine share `_bent_fill`: the area is bent so the curve becomes straight rows,
+  filled as tatami with underlay and inside travel, and the stitches bent back.
+- Passes the file checks on the standard test design.

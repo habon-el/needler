@@ -45,6 +45,8 @@
    for(let x=14,g=2;x<108;x+=g,g*=1.2)path('M'+x.toFixed(1)+' 8V56',2.2);
   }else if(kind==='wave'){
    for(let y=10;y<58;y+=5)path(`M12 ${y}`+Array.from({length:24},(_,i)=>`L${16+i*4} ${(y+Math.sin((i+1)*Math.PI/6)*4).toFixed(1)}`).join(''),2);
+  }else if(kind==='florentine'){
+   for(let y=10;y<58;y+=5)path(`M12 ${y}`+Array.from({length:24},(_,i)=>`L${16+i*4} ${(y+12*Math.sin((i+1)*Math.PI/25)).toFixed(1)}`).join(''),2);
   }else if(kind==='gradient'){
    for(let y=8,g=2;y<60;y+=g,g*=1.18)path('M12 '+y.toFixed(1)+'H108',2);
   }else if(kind==='radial'){

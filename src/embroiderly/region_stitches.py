@@ -19,6 +19,7 @@ CATALOG=[
     ('shaded','Shaded','Tatami with a darker shade fading across it · one more thread'),
     ('radial','Radial','Rays from the centre'),
     ('wave','Wave','Rows that rise and fall in smooth waves'),
+    ('florentine','Florentine','Rows follow the curve of the top edge'),
     ('applique','Appliqué','Fabric piece, satin edge · 2 stops'),
     ('satin','Satin','Follows the shape · parts up to 8 mm wide'),
     ('raised_satin','3D satin','Three satin layers · experimental, no foam'),
@@ -295,7 +296,7 @@ def apply_style(document,node,rings,scale,kind):
         shade.set(NS+'fill_method','gradient_fill');shade.set(NS+'angle',f'{fill_angle(rings)+90:.1f}')
         shade.set(NS+'fill_underlay','false');shade.set(NS+'gradient_open_spacing_mm','2.4')
         return
-    if kind in ('step','gradient','radial','wave'):
+    if kind in ('step','gradient','radial','wave','florentine'):
         # Specialty fills (stitch_fills); rows run along the area's long side.
         from .fill_shaping import angle as fill_angle
         node.set(NS+'fill_method',kind+'_fill');node.set(NS+'angle',f'{fill_angle(rings):.1f}')

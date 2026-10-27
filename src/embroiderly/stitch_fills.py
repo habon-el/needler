@@ -1,4 +1,4 @@
-"""Native area fills: tatami (with underlay), offset (contour), wave, spiral ripple and meander.
+"""Native area fills: tatami (with underlay), offset (contour), wave, florentine, spiral ripple and meander.
 
 Each function returns a list of runs (lists of points in millimetres). A new
 run means the caller must cut and lock, because no inside travel was found.
@@ -527,18 +527,78 @@ WAVE_AMPLITUDE_MM = 1.2
 def wave(shape, angle=0.0, spacing=0.4, max_len=3.0, minimum=0.45, start=None, underlay=True,
          amplitude=WAVE_AMPLITUDE_MM, wavelength=WAVE_LENGTH_MM, tolerance=0.05):
     """Rows `spacing` apart (measured across the row direction) that follow
-    y + amplitude*sin(2*pi*x/wavelength) in the row frame. Like `gradient`, the
-    area is bent so the wave becomes straight rows, filled as tatami (inside
-    travel, row turns), and the stitches are bent back. Each straight stitch is
-    re-cut along the curve, at most `max_len` and within `tolerance` of it."""
+    y + amplitude*sin(2*pi*x/wavelength) in the row frame."""
     if shape.is_empty:
         return []
+    k = 2*math.pi/max(1.0, wavelength)
+    return _bent_fill(shape, angle, lambda x: amplitude*math.sin(k*x), spacing, max_len, minimum,
+                      start, underlay, tolerance)
+
+
+# Florentine fill: every row is a copy of the area's top edge (in the row frame),
+# smoothed over FLORENTINE_SMOOTH_MM, flattened and never steeper than FLORENTINE_SLOPE, so
+# rows lower down keep their spacing and the curve reads across the whole area.
+FLORENTINE_SMOOTH_MM = 4.0
+FLORENTINE_SLOPE = .7
+
+
+def florentine(shape, angle=0.0, spacing=0.4, max_len=3.0, minimum=0.45, start=None, underlay=True,
+               tolerance=0.05):
+    if shape.is_empty:
+        return []
+    profile = _top_profile(shape, angle)
+    if profile is None:
+        return tatami(shape, angle, spacing, max_len, 4, minimum, start, underlay=underlay)
+    xs, offsets = profile
+    return _bent_fill(shape, angle, lambda x: float(np.interp(x, xs, offsets)), spacing, max_len, minimum,
+                      start, underlay, tolerance)
+
+
+def _top_profile(shape, angle, step=.5):
+    """The top edge of `shape` in the row frame as (xs, offsets): offset 0 at its
+    highest point, growing where the edge dips. None for areas under 2 mm across."""
+    to_frame, _ = _frame(angle)
+    flat = affine_transform(shape, to_frame)
+    left, top, right, bottom = flat.bounds
+    if right-left < 2.0:
+        return None
+    xs = np.arange(left, right+step, step)
+    tops = []
+    for x in xs:
+        hit = flat.intersection(LineString([(x, top-1), (x, bottom+1)]))
+        tops.append(hit.bounds[1] if not hit.is_empty else np.nan)
+    tops = np.array(tops)
+    known = ~np.isnan(tops)
+    if known.sum() < 2:
+        return None
+    tops = np.interp(xs, xs[known], tops[known])
+    half = max(1, int(FLORENTINE_SMOOTH_MM/step/2))
+    padded = np.pad(tops, half, mode='edge')
+    tops = np.convolve(padded, np.ones(2*half+1)/(2*half+1), mode='valid')
+    # Flatten the whole curve until most of it is gentle enough, so a round top
+    # stays a smooth dome; only the steep ends left over are clamped.
+    steep = np.percentile(np.abs(np.diff(tops)), 95)/step
+    if steep > FLORENTINE_SLOPE:
+        tops = tops*(FLORENTINE_SLOPE/steep)
+    rise = FLORENTINE_SLOPE*step
+    for order in (range(1, len(tops)), range(len(tops)-2, -1, -1)):
+        for i in order:
+            j = i-1 if order.step == 1 else i+1
+            tops[i] = min(max(tops[i], tops[j]-rise), tops[j]+rise)
+    return xs, tops-tops.min()
+
+
+def _bent_fill(shape, angle, offset, spacing, max_len, minimum, start, underlay, tolerance):
+    """Rows that follow y + offset(x) in the row frame, `spacing` apart measured
+    across the row direction. The area is bent so the curve becomes straight
+    rows, filled as tatami (inside travel, row turns), and the stitches are bent
+    back. Each straight stitch is re-cut along the curve, at most `max_len` and
+    within `tolerance` of it."""
     import shapely
     to_frame, back = _frame(angle)
-    k = 2*math.pi/max(1.0, wavelength)
     def bend(p, sign):
         f = (p[0]*to_frame[0]+p[1]*to_frame[1], p[0]*to_frame[2]+p[1]*to_frame[3])
-        return back((f[0], f[1]+sign*amplitude*math.sin(k*f[0])))
+        return back((f[0], f[1]+sign*offset(f[0])))
     flat = shapely.transform(shapely.segmentize(shape, .2),
                              lambda xy: np.array([bend(p, -1) for p in xy]).reshape(-1, 2))
     if not flat.is_valid:
