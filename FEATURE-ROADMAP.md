@@ -48,7 +48,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Wave / Ripple fill | area style Wave: tatami rows that rise and fall along a smooth wave (10 mm long, 1.2 mm high, lined up across areas), underlay, around holes; Ripple: circular | ✅ 2026-10-26 | |
 | Offset fill | area style Offset fill (was Contour): each row an inset of the outline by one more row spacing, rings around holes, joined into one run by inside steps, with underlay | ✅ 2026-10-26 | |
 | Pattern fill / Motif fill | area style Motif with a Pattern choice: diamonds (default), hearts, stars, scales (rows of half circles) or circles, repeated every 4 mm and clipped to the area, around holes | ✅ 2026-10-26 | |
-| Blackwork, candlewicking, lacework fills | — | ✗ | P3 |
+| Blackwork, candlewicking, lacework fills | area styles Blackwork (lattice of long lines with a diamond in every cell), Candlewicking (raised knots on staggered rows), Lacework (honeycomb net); open fills, travel inside the area | ✅ 2026-10-27 | |
 | Cross-stitch fill | cross | ✅ | |
 | Stipple run / backstitch / stemstitch fill | area style Stipple with a Stitch choice: single run (default), backstitch (each stitch partly sewn back over) or stemstitch (short slanted stitches, rope look) along the same meandering line | ✅ 2026-10-26 | |
 | Maze, star fill, elastic embossed, sculptured fancy | embossed (diamond overlay) | ◐ | P3 |

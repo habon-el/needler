@@ -19,6 +19,13 @@
    for(let x=16;x<100;x+=22)for(let y=12;y<52;y+=22)path(kind==='cross'?`M${x} ${y}l16 16m0-16-16 16`:`M${x+8} ${y}l8 8-8 8-8-8Z`,1.6);
   }else if(kind==='contour'||kind==='ripple'){
    for(let i=0;i<5;i++){const x=12+i*9,y=7+i*5,w=96-i*18,h=50-i*10;if(kind==='contour')path(`M${x} ${y}h${w}v${h}h-${w}Z`);else path(`M${x} 32a${w/2} ${h/2} 0 1 0 ${w} 0a${w/2} ${h/2} 0 1 0 -${w} 0`)}
+  }else if(kind==='blackwork_fill'){
+   for(let y=16;y<60;y+=16)path(`M10 ${y}H110`,1.4);for(let x=18;x<110;x+=16)path(`M${x} 6V58`,1.4);
+   for(let c=-56;c<110;c+=16){path(`M${c} 0l64 64`,1.2,.7);path(`M${c} 64l64-64`,1.2,.7)}
+  }else if(kind==='candlewick_fill'){
+   for(let y=14,k=0;y<60;y+=16,k++)for(let x=16+(k%2?8:0);x<110;x+=16)for(let i=0;i<8;i++){const a=i*Math.PI/4;path(`M${x} ${y}l${(Math.cos(a)*4.5).toFixed(1)} ${(Math.sin(a)*4.5).toFixed(1)}`,1.6)}
+  }else if(kind==='lacework'){
+   const s=8,d=s*Math.sqrt(3)/2;for(let k=0,y=4;y<62;y+=d,k++){let x=-24+(k%2?1.5*s:0),dd=`M${x} ${y.toFixed(1)}`;while(x<120){dd+=`l${s} 0l${s/2} ${d.toFixed(1)}l${s} 0l${s/2} ${(-d).toFixed(1)}`;x+=3*s}path(dd,1.4)}
   }else if(kind==='stipple'){
    path('M12 12C44-2 28 28 14 26S8 52 30 52S52 36 38 26S50 3 68 12S62 32 60 40S84 62 94 46S70 22 100 12');
   }else if(kind==='puff'){

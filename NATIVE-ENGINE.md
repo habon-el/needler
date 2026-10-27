@@ -710,3 +710,17 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   line splits that line there. Routes are not simplified, so both passes share their holes.
 - Measured: a 1200 px drawing of 400 crossing strokes, 2,265 traced lines, became 136 routes in
   3.7 s. All three borders and a Redwork drawing pass the file checks.
+
+## Hand-look open fills (added 2026-10-27)
+- Area styles `blackwork_fill`, `candlewick_fill` and `lacework` (`region_stitches.open_fill_shapes`),
+  sewn like Motif and Cross stitch: running-stitch pieces clipped to the area, joined by travel
+  inside it (`travel_area`).
+- Blackwork: lines across and down every 4 mm through the cell centres, plus both diagonals through
+  the cell edges' middles, so every cell holds a diamond. Long lines, so few pieces (a 32 mm disc: 38).
+- Lacework: a honeycomb net with 2 mm sides, drawn as rows of half cells that share their flat
+  sides with the next row (shared sides are sewn twice); 1.5 mm stitches.
+- Candlewicking: knots 4 mm apart on rows shifted half a step each row; each knot is twelve 0.7 mm
+  spokes out from one hole and back. Only whole knots inside the area are kept, and routes are not
+  simplified so every spoke stays.
+- Measured on the 60 mm test design: Blackwork 1,327 stitches, Candlewicking 3,050, Lacework 1,559,
+  one cut each (Cross stitch: 979). All pass the file checks.

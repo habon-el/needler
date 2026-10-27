@@ -29,7 +29,11 @@ CATALOG=[
     ('contour','Offset fill','Rows follow the outline inward, around holes'),
     ('cross','Cross stitch','Clipped diagonal crosses · open fill'),
     ('stipple','Stipple','Meandering open fill'),
+    ('blackwork_fill','Blackwork','Lattice of straight lines · open fill'),
+    ('candlewick_fill','Candlewicking','Raised knots in rows · open fill'),
+    ('lacework','Lacework','Honeycomb net · open fill'),
 ]
+OPEN_FILLS=('blackwork_fill','candlewick_fill','lacework')   # whole-area patterns (open_fill_shapes)
 # Choices under a style, first = default. Stored with the style as 'motif:heart'; the default
 # is stored as the plain style, so saved designs keep their look.
 VARIANTS={
@@ -189,6 +193,43 @@ def motif_shapes(pattern,x,y,row):
     return [[(x+2,y),(x+4,y+2),(x+2,y+4),(x,y+2),(x+2,y)]]
 
 
+LACE_SIDE=2.0   # mm, one side of a lacework honeycomb cell
+KNOT_PITCH=4.0  # mm between candlewicking knots
+
+
+def open_fill_shapes(bounds,kind):
+    """Polylines (mm) across the area's box. Blackwork: a lattice of long lines (across, down
+    and both diagonals) so it sews in few pieces. Lacework: rows of half honeycomb cells, each
+    row sharing its flat sides with the next. Candlewicking: knots on staggered rows, twelve
+    spokes out from one hole and back."""
+    left,top,right,bottom=bounds;shapes=[]
+    if kind=='blackwork_fill':
+        pitch=MOTIF_PITCH;span=(right-left)+(bottom-top)
+        for y in np.arange(top+pitch/2,bottom,pitch):shapes.append([(left,y),(right,y)])
+        for x in np.arange(left+pitch/2,right,pitch):shapes.append([(x,top),(x,bottom)])
+        # Diagonals through the cell edges' middles make a diamond in every cell.
+        for c in np.arange(-span,span,pitch):
+            shapes.append([(left+c,top),(left+c+span,top+span)])
+            shapes.append([(left+c,bottom),(left+c+span,bottom-span)])
+    elif kind=='lacework':
+        s=LACE_SIDE;d=s*math.sqrt(3)/2
+        for k,y in enumerate(np.arange(top-d,bottom+d,d)):
+            x=left-3*s+(1.5*s if k%2 else 0);row=[(x,y)]
+            while x<right+3*s:
+                row+=[(x+s,y),(x+1.5*s,y+d),(x+2.5*s,y+d),(x+3*s,y)];x+=3*s
+            shapes.append(row)
+    else:
+        r=.7
+        for k,y in enumerate(np.arange(top+KNOT_PITCH/2,bottom,KNOT_PITCH)):
+            for x in np.arange(left+KNOT_PITCH/2+(KNOT_PITCH/2 if k%2 else 0),right,KNOT_PITCH):
+                knot=[(x,y)]
+                for j in range(12):
+                    a=math.radians(j*60+(30 if j>=6 else 0))
+                    knot+=[(x+r*math.cos(a),y+r*math.sin(a)),(x,y)]
+                shapes.append(knot)
+    return shapes
+
+
 def decorative_paths(rings,scale,kind,pattern='diamond'):
     p=polygon(rings,scale)
     if not p.is_valid:
@@ -208,6 +249,18 @@ def decorative_paths(rings,scale,kind,pattern='diamond'):
         raise ValueError('Decorative pattern exceeds 400 cells. Use a smaller area or Tatami.')
     # Scales are shifted half a repeat on every other row: start one repeat further left.
     columns=np.arange(left-(pitch if pattern=='scale' else 0),right,pitch)
+    if kind in OPEN_FILLS:
+        from shapely.geometry import Point
+        for shape in open_fill_shapes(p.bounds,kind):
+            if kind=='candlewick_fill':
+                # Whole knots only; clipping a line that retraces itself would merge its spokes.
+                if p.contains(Point(shape[0]).buffer(.75)):parts.append(path_data(np.asarray(shape)/scale))
+                continue
+            clipped=p.intersection(LineString(shape))
+            for segment in [clipped] if clipped.geom_type=='LineString' else list(getattr(clipped,'geoms',[])):
+                if segment.geom_type=='LineString' and segment.length>=.4:
+                    parts.append(path_data(np.asarray(segment.coords)/scale))
+        columns=[]
     for row,y in enumerate(np.arange(top,bottom,pitch)):
         for x in columns:
             shapes=[[(x,y),(x+pitch,y+pitch)],[(x+pitch,y),(x,y+pitch)]] if kind=='cross' else motif_shapes(pattern,x,y,row)
@@ -287,7 +340,7 @@ def apply_style(document,node,rings,scale,kind):
                 extra=ET.SubElement(document,'path',dict(node.attrib))
                 extra.set('id',node.get('id')+f'-layer{layer}');extra.set(NS+'center_walk_underlay','false')
         return
-    if kind in ('motif','cross','embossed'):
+    if kind in ('motif','cross','embossed')+OPEN_FILLS:
         colour=node.get('style').split(';')[0].split(':')[1]
         decoration=decorative_paths(rings,scale,kind,pattern)
         if not decoration:return  # Embossed retains its base; inventory discloses no fitting repeat.
@@ -300,5 +353,7 @@ def apply_style(document,node,rings,scale,kind):
         if kind=='motif' and pattern!='diamond':
             # Curved repeats: shorter stitches that keep their points, so hearts stay round.
             target.set(NS+'running_stitch_length_mm','1.2');target.set(NS+'running_stitch_tolerance_mm','.05')
+        if kind=='lacework':target.set(NS+'running_stitch_length_mm','1.5')
+        if kind=='candlewick_fill':target.set(NS+'running_stitch_tolerance_mm','0')  # keep every spoke
         return
     raise ValueError('Unsupported stitch style.')
