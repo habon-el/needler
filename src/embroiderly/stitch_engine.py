@@ -15,7 +15,7 @@ from .stitch_fills import (STIPPLE_STITCHES, WAVE_AMPLITUDE_MM, WAVE_LENGTH_MM, 
                            meander, radial, spiral, step_fill, tatami, wave)
 from .stitch_paths import (MOTIFS, backstitch, bean, blackwork_run, blanket, candlewick, chain, couching, dedupe,
                            enforce_min, hand_stitch, inward_side, motif_run,
-                           order_runs, path_length, polygons, running, split_long, stemstitch, zigzag_outline)
+                           PATTERNS, pattern_run, sculpture_run, order_runs, path_length, polygons, running, split_long, stemstitch, zigzag_outline)
 from .stitch_satin import SPLIT_MM, satin
 from shapely.geometry import LineString
 
@@ -420,7 +420,7 @@ def applique_coverage(rings_px, scale, shape_px, cover=3.0):
 
 
 OUTLINE_STYLES = ('backstitch', 'stemstitch', 'blanket', 'zigzag', 'motif', 'couching', 'blackwork', 'handstitch',
-                  'candlewick')
+                  'candlewick', 'pattern', 'sculpture')
 
 
 def _outline(run, style, node, length):
@@ -429,6 +429,12 @@ def _outline(run, style, node, length):
     if style == 'couching':
         # Ties shorter than about 1 mm would fall under the minimum stitch on each side.
         return couching(run, max(1.0, length), max(1.0, width), max(1.0, _float(node, 'outline_spacing_mm', 3.0)))
+    if style == 'pattern':
+        # Below 2 mm across the key's hooks and the loops close up into short stitches.
+        pattern = _attr(node, 'outline_pattern', 'wave')
+        return pattern_run(run, max(1.0, length), max(2.0, width), pattern if pattern in PATTERNS else 'wave')
+    if style == 'sculpture':
+        return sculpture_run(run, max(1.5, length))
     if style == 'blackwork':
         return blackwork_run(run, max(1.0, length))
     if style == 'handstitch':

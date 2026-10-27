@@ -223,6 +223,75 @@ def motif_run(points, length=2.0, width=2.5, spacing=2.0, motif='diamond', side=
     return enforce_min(split_long(dedupe(out), length), .45)
 
 
+PATTERNS = ('wave', 'loop', 'key')
+PATTERN_TILES = {   # (along, across) points of one repeat, from its start (0) to its end (1); across spans -.5 to .5
+    # A key on a 6 x 4 grid: down the left, along the bottom, a hook back in, then over the top to the next.
+    'key': tuple((x/6, y/4-.5) for x, y in ((0, 0), (4, 0), (4, 3), (2, 3), (2, 2), (3, 2), (3, 1), (1, 1),
+                                             (1, 4), (6, 4))),
+}
+PATTERN_SIZE = {'wave': 1.6, 'loop': .8, 'key': 1.5}   # repeat length per mm of width
+
+
+def _pattern_tile(pattern, size, width):
+    if pattern in PATTERN_TILES:
+        return PATTERN_TILES[pattern]
+    # Wave: one sine period. Loop: a trochoid, which runs back on itself at the top
+    # and so closes a small loop in every repeat.
+    u = [i/96 for i in range(97)]
+    if pattern == 'wave':
+        curve = [(v, .5*math.sin(2*math.pi*v)) for v in u]
+    else:
+        curve = [(v-.35*math.sin(2*math.pi*v), -.5*math.cos(2*math.pi*v)) for v in u]
+    # Stitches about 0.8 mm, evenly spaced along the curve in millimetres; a count that
+    # is a multiple of four puts a needle hole on each crest and trough of the wave.
+    mm = [(t*size, s*width) for t, s in curve]
+    count = 4*max(1, round(path_length(mm)/3.2))
+    at = resample_at(mm, [path_length(mm)*i/count for i in range(1, count+1)])
+    return tuple((x/size, y/width) for x, y in at)
+
+
+def pattern_run(points, length=2.0, width=2.5, pattern='wave'):
+    """A pattern `width` mm across repeated end to end along the line, with no plain
+    stitches between repeats: a wave, a row of loops or a key. The repeats are
+    stretched slightly so a whole number of them fills the line."""
+    pts = dedupe(points)
+    total = path_length(pts)
+    size = PATTERN_SIZE[pattern]*width
+    if len(pts) < 2 or total < size:
+        return split_long(pts, length)
+    line = LineString(pts)
+    count = max(1, round(total/size))
+    size = total/count
+    tile = _pattern_tile(pattern, size, width)
+    out = [pts[0]]
+    for k in range(count):
+        # Each repeat stands square on its chord, as motif_run's motifs do.
+        a, b = line.interpolate(k*size), line.interpolate((k+1)*size)
+        dx, dy = b.x-a.x, b.y-a.y
+        n = math.hypot(dx, dy) or 1.0
+        nx, ny = -dy/n, dx/n
+        out += [(a.x+dx*t+nx*width*s, a.y+dy*t+ny*width*s) for t, s in tile]
+    out.append(pts[-1])
+    return enforce_min(split_long(dedupe(out), length), .45)
+
+
+def sculpture_run(points, length=2.5):
+    """Raised cord: stitches `length` mm long, each one starting halfway back along the
+    one before (two steps forward, one back), so every part of the line is sewn three
+    times by overlapping stitches and reads thick and twisted."""
+    pts = dedupe(points)
+    total = path_length(pts)
+    steps = round(total/(length/2))
+    if len(pts) < 2 or steps < 3:
+        return bean(enforce_min(split_long(pts, length), .45), 1)
+    at = resample_at(pts, [total*i/steps for i in range(steps+1)])
+    out = [at[0]]
+    for i in range(steps-1):
+        out += [at[i+2], at[i+1]]
+    out.append(at[-1])
+    return out
+
+
 def couching(points, length=3.0, width=1.6, spacing=3.0):
     """Couching look: a triple-stitch cord laid along the line, then a pass back along
     it with a tie stitch `width` mm across the cord every `spacing` mm. Between ties

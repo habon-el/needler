@@ -67,6 +67,10 @@
    for(let x=12;x<104;x+=17)path(`M${x} 32H${x+12}`,3);path('M12 32H108',.8,.6);
   }else if(kind==='candlewick'){
    path('M10 32H110',1.2,.6);for(let x=20;x<106;x+=20)for(let i=0;i<8;i++){const a=i*Math.PI/4;path(`M${x} 32l${(Math.cos(a)*6).toFixed(1)} ${(Math.sin(a)*6).toFixed(1)}`,1.8)}
+  }else if(kind==='patternrun'){
+   path('M10 32'+Array.from({length:40},(_,i)=>`L${(12.5+i*2.5).toFixed(1)} ${(32-10*Math.sin((i+1)*Math.PI/8)).toFixed(1)}`).join(''),1.8);
+  }else if(kind==='sculpture'){
+   for(let x=10;x<104;x+=6)path(`M${x} ${x%12?30:34}L${x+12} ${x%12?34:30}`,2.2,.8);
   }else if(kind==='off'){path('M24 12H96V52H24Z',1,.25);path('M48 32H72',2)}
   else if(kind==='satin'){
    for(let y=12;y<=52;y+=2.5)path(`M28 ${y} L92 ${y-3}`,2);
@@ -134,5 +138,7 @@
   ['blackwork','Blackwork run','blackwork','Line sewn twice, same holes'],
   ['handstitch','Hand stitch','handstitch','Bold dashes, hand-sewn look'],
   ['candlewick','Candlewicking','candlewick','Raised knots along the line'],
+  ['pattern','Pattern run','patternrun','Wave, loops or key, end to end'],
+  ['sculpture','Sculpture run','sculpture','Thick raised cord'],
  ],'change');
 })();

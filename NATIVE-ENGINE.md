@@ -724,3 +724,17 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   simplified so every spoke stays.
 - Measured on the 60 mm test design: Blackwork 1,327 stitches, Candlewicking 3,050, Lacework 1,559,
   one cut each (Cross stitch: 979). All pass the file checks.
+
+## Pattern run and sculpture run borders (added 2026-10-27)
+- Border style `pattern` (`stitch_paths.pattern_run`, option `border_pattern` → `outline_pattern`):
+  a pattern repeated end to end along the line, with no plain stitches between repeats. Wave (one
+  sine period per 1.6 × width), Loops (a trochoid that closes a loop every 0.8 × width) and Key
+  (square hooks on a 6 × 4 grid, 1.5 × width long). Repeats are stretched so a whole number fills
+  the line, and each stands square on its chord like motif-run motifs. Curves are sewn in stitches
+  of about 0.8 mm spaced along the curve (a multiple of four per wave, so crests get a hole).
+  Width is held at 2 mm or more; below that the hooks and loops close up into short stitches.
+- Border style `sculpture` (`stitch_paths.sculpture_run`): 2.5 mm stitches, each starting halfway
+  back along the one before (two forward, one back), so the line is sewn three times by
+  overlapping stitches and reads as a thick twisted cord. Lines under 3 half steps fall back to a
+  triple line.
+- Stitches stay 0.45–2 mm on lines and rings; both borders pass the file checks.
