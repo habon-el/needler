@@ -738,3 +738,14 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   overlapping stitches and reads as a thick twisted cord. Lines under 3 half steps fall back to a
   triple line.
 - Stitches stay 0.45–2 mm on lines and rings; both borders pass the file checks.
+
+## Maze and star fills (added 2026-10-27)
+- Area style `maze` (`fill_method="maze_fill"`, `stitch_fills.maze`): the stipple spanning-tree
+  trace with `straight=.7` (the tree keeps its direction 70 % of the time, so corridors run long)
+  and no rounding, so it reads as a labyrinth. Lanes 1 mm apart, 1.5 mm stitches, square corners
+  kept (tolerance 0.05 mm). One line per connected area; no underlay.
+- Area style `star` (`fill_method="star_fill"`, `stitch_fills.star`): one line spiralling out from
+  the area's visual centre as a five-point star with a point straight up. Turns are 1.6 mm apart
+  at the points and 0.8 mm at the inner corners (`STAR_INNER`). Clipped to the area; pieces joined
+  by travel inside it, like Ripple. Straight sides split into 2 mm stitches, corners kept.
+- Measured on a 30 mm disc: maze 490 stitches, star 947, one run each. Both pass the file checks.

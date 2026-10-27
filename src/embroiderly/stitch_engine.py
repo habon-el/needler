@@ -12,7 +12,7 @@ import math
 from pathlib import Path
 from . import svg_geometry as sg
 from .stitch_fills import (STIPPLE_STITCHES, WAVE_AMPLITUDE_MM, WAVE_LENGTH_MM, contour, fill_shape, gradient, join_runs,
-                           meander, radial, spiral, step_fill, tatami, wave)
+                           maze, meander, radial, spiral, star, step_fill, tatami, wave)
 from .stitch_paths import (MOTIFS, backstitch, bean, blackwork_run, blanket, candlewick, chain, couching, dedupe,
                            enforce_min, hand_stitch, inward_side, motif_run,
                            PATTERNS, pattern_run, sculpture_run, order_runs, path_length, polygons, running, split_long, stemstitch, zigzag_outline)
@@ -272,6 +272,10 @@ def _element_blocks(node, paths, style, scale, index, min_len, start=None, lines
                             wavelength=min(50.0, max(2.0, _float(node, 'wave_length_mm', WAVE_LENGTH_MM))))
             elif method == 'circular_fill':
                 runs = spiral(shape, spacing, length, min_len, tolerance=tolerance)
+            elif method == 'maze_fill':
+                runs = maze(shape, spacing, length, min_len, tolerance=tolerance)
+            elif method == 'star_fill':
+                runs = star(shape, spacing, length, min_len, tolerance=tolerance)
             elif method == 'auto_satin':
                 runs = _satin_area(shape, max(.2, _float(node, 'zigzag_spacing_mm', .4)),
                                    _float(node, 'pull_compensation_mm', 0), min_len,

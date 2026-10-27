@@ -295,10 +295,11 @@ def spiral(shape, spacing=1.2, length=1.0, minimum=0.45, start=None, tolerance=0
 STIPPLE_STITCHES = ('run', 'backstitch', 'stemstitch')
 
 
-def meander(shape, cell=2.0, length=1.0, minimum=0.45, seed=1, smooth=2, tolerance=0.1, stitch='run'):
+def meander(shape, cell=2.0, length=1.0, minimum=0.45, seed=1, smooth=2, tolerance=0.1, stitch='run', straight=0.0):
     """Single-line stipple: trace around a random spanning tree of grid cells.
     stitch: 'run' (single run), 'backstitch' (each stitch partly sewn back over, a firmer line)
-    or 'stemstitch' (short slanted stitches overlapping like a rope, along the same path)."""
+    or 'stemstitch' (short slanted stitches overlapping like a rope, along the same path).
+    straight: chance that the tree keeps its direction at each step (long corridors)."""
     zone = shape.buffer(-cell*.25)
     if zone.is_empty:
         return _tiny(shape, minimum)
@@ -326,7 +327,8 @@ def meander(shape, cell=2.0, length=1.0, minimum=0.45, seed=1, smooth=2, toleran
                        if (node[0]+dx, node[1]+dy) in unvisited]
             if not options:
                 stack.pop(); continue
-            nxt = rng.choice(options)
+            ahead = (2*node[0]-stack[-2][0], 2*node[1]-stack[-2][1]) if len(stack) > 1 else None
+            nxt = ahead if ahead in options and rng.random() < straight else rng.choice(options)
             unvisited.discard(nxt)
             tree[node].append(nxt); tree[nxt] = [node]
             stack.append(nxt)
@@ -336,6 +338,45 @@ def meander(shape, cell=2.0, length=1.0, minimum=0.45, seed=1, smooth=2, toleran
             points = _chaikin(points)
         runs.append(_stipple_line(points+[points[0]], shape, length, tolerance, stitch))
     return join_runs(runs, shape, length)
+
+
+def maze(shape, lane=1.0, length=1.5, minimum=0.45, seed=1, tolerance=0.05):
+    """Maze fill: one line that winds through the area like a labyrinth, lanes `lane` mm
+    apart, with square corners and long straight corridors (a stipple tree that mostly
+    keeps its direction, traced without rounding)."""
+    return meander(shape, 2*lane, length, minimum, seed, smooth=0, tolerance=tolerance, straight=.7)
+
+
+STAR_POINTS = 5
+STAR_INNER = .5   # radius at a star's inner corners, as a share of the radius at its points
+
+
+def star(shape, spacing=1.6, length=2.0, minimum=0.45, start=None, tolerance=0.1, center=None):
+    """Star fill: one line that spirals out from the area's centre as a five-point star,
+    each turn `spacing` mm outside the last at the points (half that at the inner corners),
+    with a point straight up. Clipped to the area; pieces joined by travel inside it."""
+    if center is None:
+        center = shape.representative_point() if not shape.centroid.within(shape) else shape.centroid
+        center = (center.x, center.y)
+    cx, cy = center
+    left, top, right, bottom = shape.bounds
+    radius = max(math.dist((cx, cy), corner) for corner in ((left, top), (right, top), (left, bottom), (right, bottom)))
+    points, k = [(cx, cy)], 1
+    while True:
+        theta = k*math.pi/STAR_POINTS
+        r = spacing*theta/(2*math.pi)*(1 if k % 2 == 0 else STAR_INNER)
+        if r*STAR_INNER > radius+spacing:
+            break
+        points.append((cx+r*math.cos(theta-math.pi/2), cy+r*math.sin(theta-math.pi/2)))
+        k += 1
+    clipped = shape.intersection(LineString(points))
+    pieces = [clipped] if isinstance(clipped, LineString) else [g for g in getattr(clipped, 'geoms', []) if isinstance(g, LineString)]
+    pieces = [p for p in pieces if p.length >= minimum]
+    if not pieces:
+        return _tiny(shape, minimum)
+    # Keep the corners: split each straight side, never smooth across a point.
+    runs = [enforce_min(split_long(list(p.coords), length), minimum) for p in pieces]
+    return join_runs([r for r in runs if len(r) >= 2] or runs, shape, length)
 
 
 def _stipple_line(points, shape, length, tolerance, stitch):

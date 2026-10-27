@@ -26,6 +26,8 @@ CATALOG=[
     ('motif','Motif','Small repeated shapes · open fill'),
     ('embossed','Embossed','Tatami + diamond overlay · experimental texture'),
     ('ripple','Ripple','Concentric circular waves'),
+    ('maze','Maze','One line winding like a labyrinth · open fill'),
+    ('star','Star','Star-shaped spiral from the centre · open fill'),
     ('contour','Offset fill','Rows follow the outline inward, around holes'),
     ('cross','Cross stitch','Clipped diagonal crosses · open fill'),
     ('stipple','Stipple','Meandering open fill'),
@@ -304,9 +306,15 @@ def apply_style(document,node,rings,scale,kind):
         node.set(NS+'fill_method','puff_satin');node.set(NS+'zigzag_spacing_mm','.22')
         node.set(NS+'pull_compensation_mm','.45')
         return
-    if kind in ('contour','ripple','stipple'):
-        node.set(NS+'fill_method',{'contour':'contour_fill','ripple':'circular_fill','stipple':'meander_fill'}[kind])
-        if kind in ('ripple','stipple'):node.set(NS+'fill_underlay','false')
+    if kind in ('contour','ripple','stipple','maze','star'):
+        node.set(NS+'fill_method',{'contour':'contour_fill','ripple':'circular_fill','stipple':'meander_fill',
+                                   'maze':'maze_fill','star':'star_fill'}[kind])
+        if kind!='contour':node.set(NS+'fill_underlay','false')
+        if kind=='maze':
+            # Lanes 1 mm apart, square corners kept (stitch_fills.maze).
+            node.set(NS+'row_spacing_mm','1');node.set(NS+'running_stitch_length_mm','1.5')
+            node.set(NS+'running_stitch_tolerance_mm','.05')
+        if kind=='star':node.set(NS+'row_spacing_mm','1.6');node.set(NS+'running_stitch_length_mm','2')
         if kind=='contour':
             # Offset fill: open underlay rows along the long side hold the fabric under the rings.
             from .fill_shaping import angle as fill_angle

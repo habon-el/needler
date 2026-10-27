@@ -26,6 +26,10 @@
    for(let y=14,k=0;y<60;y+=16,k++)for(let x=16+(k%2?8:0);x<110;x+=16)for(let i=0;i<8;i++){const a=i*Math.PI/4;path(`M${x} ${y}l${(Math.cos(a)*4.5).toFixed(1)} ${(Math.sin(a)*4.5).toFixed(1)}`,1.6)}
   }else if(kind==='lacework'){
    const s=8,d=s*Math.sqrt(3)/2;for(let k=0,y=4;y<62;y+=d,k++){let x=-24+(k%2?1.5*s:0),dd=`M${x} ${y.toFixed(1)}`;while(x<120){dd+=`l${s} 0l${s/2} ${d.toFixed(1)}l${s} 0l${s/2} ${(-d).toFixed(1)}`;x+=3*s}path(dd,1.4)}
+  }else if(kind==='maze'){
+   path('M14 56V8H106V56H26V20H94V44H38V32H82',1.8);
+  }else if(kind==='star'){
+   let d='M60 34';for(let k=1;k<=40;k++){const a=k*Math.PI/5-Math.PI/2,r=k*.7*(k%2?.5:1);d+=`L${(60+r*Math.cos(a)).toFixed(1)} ${(34+r*Math.sin(a)).toFixed(1)}`}path(d,1.6);
   }else if(kind==='stipple'){
    path('M12 12C44-2 28 28 14 26S8 52 30 52S52 36 38 26S50 3 68 12S62 32 60 40S84 62 94 46S70 22 100 12');
   }else if(kind==='puff'){

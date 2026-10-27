@@ -51,7 +51,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Blackwork, candlewicking, lacework fills | area styles Blackwork (lattice of long lines with a diamond in every cell), Candlewicking (raised knots on staggered rows), Lacework (honeycomb net); open fills, travel inside the area | ✅ 2026-10-27 | |
 | Cross-stitch fill | cross | ✅ | |
 | Stipple run / backstitch / stemstitch fill | area style Stipple with a Stitch choice: single run (default), backstitch (each stitch partly sewn back over) or stemstitch (short slanted stitches, rope look) along the same meandering line | ✅ 2026-10-26 | |
-| Maze, star fill, elastic embossed, sculptured fancy | embossed (diamond overlay) | ◐ | P3 |
+| Maze, star fill, elastic embossed, sculptured fancy | area styles Maze (one line winding like a labyrinth, square corners) and Star (star-shaped spiral from the centre); embossed (diamond overlay) | ◐ no elastic or sculptured | P3 |
 | Florentine effect, colour blending | area style Shaded: a darker shade fades across the fill | ◐ no florentine | P3 |
 | 3D puff | puff | ✅ | |
 
