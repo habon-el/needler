@@ -36,12 +36,21 @@ window.threadPreviewUI={sync(layer,available){
  $('retrySurface').hidden=!layer.surfaceError;
  $('downloadMockup').disabled=!available||!!download;
 }};
+const placements=new Map();
+fetch('/api/products').then(r=>r.json()).then(data=>{
+ for(const product of data.products){placements.set(product.id,product.placements);$('mockupProduct').append(new Option(product.label,product.id));}
+}).catch(()=>{});
+$('mockupProduct').addEventListener('change',()=>{
+ const list=placements.get($('mockupProduct').value)||[];
+ $('mockupPlacement').replaceChildren(...list.map(p=>new Option(p.label,p.id)));$('mockupPlacement').hidden=!list.length;
+});
 $('downloadMockup').addEventListener('click',async()=>{
  if(download||!window.embroideryStudio.hasPlayback())return;
  const path=new URL($('exportPes').href,location.origin).pathname;
  const name=path.split('/').at(-2);
  if(!name)return;
  const options=new URLSearchParams({strand:$('threadVisualWidth').value,fabric:$('fabric').value,texture:$('fabricTexture').value,angle:$('lightAngle').value,neutral:String($('neutralLight').checked)});
+ if($('mockupProduct').value){options.set('product',$('mockupProduct').value);options.set('placement',$('mockupPlacement').value);}
  download=new AbortController();const timeout=setTimeout(()=>download?.abort(),45000);
  $('downloadMockup').disabled=true;$('surfaceStatus').textContent='Rendering a full-design PNG from the exported PES file…';
  try{
@@ -49,7 +58,8 @@ $('downloadMockup').addEventListener('click',async()=>{
   if(!response.ok){const data=await response.json();throw Error(data.error||'Mockup unavailable.');}
   const url=URL.createObjectURL(await response.blob()),a=document.createElement('a');
   a.href=url;a.download='embroiderly-thread-mockup.png';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-  $('surfaceStatus').textContent='PNG saved from the exported PES. Full design fitted; no physical sew-out claimed.';
+  const note=response.headers.get('X-Mockup-Note');
+  $('surfaceStatus').textContent=$('mockupProduct').value?'PNG saved: the design at real size on the product.'+(note?' '+note:''):'PNG saved from the exported PES. Full design fitted; no physical sew-out claimed.';
  }catch(error){$('surfaceStatus').textContent=error.name==='AbortError'?'Mockup timed out. Your design is unchanged; you can retry.':error.message;}
  finally{clearTimeout(timeout);download=null;$('downloadMockup').disabled=!window.embroideryStudio.hasPlayback();}
 });

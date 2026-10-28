@@ -17,7 +17,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Custom fabric settings | My own fabric under the Fabric menu (studio and lettering): a listed fabric with your own fill and satin spacing, pull, longest stitch and underlay; saved for every design, and each design keeps its own copy | ✅ 2026-10-27 | |
 | Hoop list, show hoop, rotate hoop, saved hoops | Edit step "Hoop": sewing fields by machine brand plus common sizes, Turn 90°, a fit note (spare room or how much too big), Show on canvas, My own hoop (save / delete); the worksheet names the chosen hoop | ✅ 2026-10-25 | |
 | Multi-hooping (add hoops, calculate, preview hoopings) | A design too big for the hoop is split into hoopings (up to 12): seams fall between objects where they can, cut thread ends are tied off, neighbours share pink alignment crosses; Show hoopings on the stitches; one checked machine file per hooping | ✅ 2026-10-27 | |
-| Product visualizer, product/fabric colour | Fabric colour, PNG mockup | ◐ | P3 |
+| Product visualizer, product/fabric colour | Fabric colour; Save PNG mockup on a product (T-shirt, polo, hoodie, cap, tote bag, towel) in the fabric colour, with a placement per product (left/right/centre chest, cap front, towel border or corner); the design is shown at real size, with a note when it is bigger than usual for that spot | ✅ 2026-10-28 | |
 | Colourways (create, rename, switch) | Colours panel "Colourway": Save as new, Rename, Delete, and a menu to switch; each colourway keeps the thread colours (and border thread) per design, and the stitches and machine files follow the one in use | ✅ 2026-10-25 | |
 | Thread charts (166), match to chart, colour wheel | `thread_matching.py` (pyembroidery charts, CIEDE2000) | ◐ fewer charts | P3 |
 | Grid, rulers, guides, snap, measure | Ruler and measure; Pieces panel "Guides and snap": + Across / + Down guides (or drag one in from the canvas top or left edge), drag on the canvas or type the position in mm from the hoop centre, ✕ or drop off the canvas to remove, up to 20, saved with the design; Snap: moving and drawing pieces lock onto guides, the hoop centre lines and the grid; faint grid 1 / 5 / 10 mm. Guides never change stitches | ✅ 2026-10-26 | |
@@ -197,7 +197,7 @@ instructions are typed by hand, so they fall behind every new feature.
 | 10 | AI digitizer step 3, part 2: sewing order, density, outline colour, appliqué, holes | ✓ 2026-10-28 |
 | 11 | AI digitizer steps 4 and 5: feedback per colour; the person's request leads with a plan | ✓ 2026-10-28 |
 | 12 | AI digitizer step 6: fake-Claude tests, then real runs on the person's pictures ($2 budget) | ✓ 2026-10-28 |
-| 13 | P3: templates / save as template; product colour and mockup | ✗ |
+| 13 | P3: templates / save as template; product colour and mockup | ✓ 2026-10-28 |
 | 14 | P3: partial, combined and overlap-free appliqué; buttonholes and basting markers | ✗ |
 | 15 | P3: lettering envelopes and elastic lettering; more fonts | ✗ |
 | 16 | P3: morphing (pinch, punch, twirl, wave); auto trace to vectors and magic wand | ✗ |
