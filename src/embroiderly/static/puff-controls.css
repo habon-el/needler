@@ -87,6 +87,15 @@
 .fabric-applique { margin:8px 0 0; padding:4px 8px 6px; border:1px solid var(--line,#ddd); border-radius:6px; font-size:12px; }
 .fabric-applique legend { padding:0 4px; }
 .fabric-applique label.fabric-check { display:flex; gap:6px; align-items:center; margin-top:4px; }
+/* Buttonholes (fabric-controls.js): X, Y, length, angle, thread, remove on one line. */
+.buttonholes { margin-top:6px; font-size:12px; }
+.buttonholes p { margin:4px 0; }
+.buttonhole-row { display:flex; gap:4px; align-items:center; margin-bottom:4px; }
+.buttonhole-row input[type=number] { flex:1; min-width:0; min-height:26px; box-sizing:border-box; }
+.buttonhole-row input[type=color] { width:28px; height:26px; padding:0; }
+.buttonhole-row button { min-height:26px; padding:0 8px; }
+.buttonhole-head span { flex:1; min-width:0; }
+.buttonhole-head::after { content:''; width:60px; }
 /* Named colourways (colourway-controls.js), under the thread swatches. */
 .colourway-controls { margin-top:10px; }
 .colourway-controls select, .colourway-controls input { width:100%; min-height:28px; box-sizing:border-box; }

@@ -32,7 +32,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Click to fill (with/without holes), turning fill, outline, centerline | Pieces panel "Click to fill": click an empty space closed by the artwork; it fills up to and 0.3 mm under the lines (gaps up to ~0.8 mm bridged), sewn first; Keep holes on/off. Auto satin, line art | ✅ 2026-10-25 | |
 | Appliqué (placement, tack-down, cover, stops) and Export cutting | area style Appliqué: placement run, stop, zigzag tack-down, stop, 3 mm satin cover; cutting shapes SVG at actual size | ✅ 2026-10-24 | |
 | Partial appliqué, combine appliqué, remove appliqué overlaps | Appliqué box in the design panel (shown when the design has appliqué): Tuck under parts on top (fabric runs 1.5 mm under later parts, no satin there), Share stops (one colour's pieces: 2 stops in all), Cover joins once; Claude sets them too | ✅ 2026-10-28 | |
-| Buttonholes, basting stitch markers | — | ✗ | P3 |
+| Buttonholes, basting stitch markers | Basting menu (off, around the design, around the hoop; sewn first in its own thread, no tie-offs); Buttonholes list (position, length, angle, thread; two satin legs, bar tacks, slit left open; sewn last) | ✅ 2026-10-28 | |
 
 ## 3. Stitch types — fills
 | Tool | Needler | Status | P |
@@ -198,7 +198,7 @@ instructions are typed by hand, so they fall behind every new feature.
 | 11 | AI digitizer steps 4 and 5: feedback per colour; the person's request leads with a plan | ✓ 2026-10-28 |
 | 12 | AI digitizer step 6: fake-Claude tests, then real runs on the person's pictures ($2 budget) | ✓ 2026-10-28 |
 | 13 | P3: templates / save as template; product colour and mockup | ✓ 2026-10-28 |
-| 14 | P3: partial, combined and overlap-free appliqué; buttonholes and basting markers | ✗ |
+| 14 | P3: partial, combined and overlap-free appliqué; buttonholes and basting markers | ✓ 2026-10-28 |
 | 15 | P3: lettering envelopes and elastic lettering; more fonts | ✗ |
 | 16 | P3: morphing (pinch, punch, twirl, wave); auto trace to vectors and magic wand | ✗ |
 | 17 | P3: multi-colour and open photo stitch; recognize stitches (machine file to objects) | ✗ |

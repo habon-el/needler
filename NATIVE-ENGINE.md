@@ -897,3 +897,19 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Release check: `applique_coverage(..., bare=)` uses the same geometry as the stitches.
 - Colour mode only; the piece layout path keeps one piece per node. Claude sets them with
   `make_stitches.applique` (handbook row `concept:applique_pieces`).
+
+## Basting and buttonholes (added 2026-10-28)
+- `basting_buttonholes.apply` edits the engine plan after the stitch edits (`engine.py`), in
+  playback millimetres like them. `basting`: `design` (box 5 mm outside every stitch, buttonholes
+  included) or `hoop` (3 mm inside `piece_hoop_mm`, centred on the design); 5 mm stitches, no
+  tie-offs, sewn first in its own thread `#ff8c1a` with a colour change after it. Puff thread
+  indexes in the plan's extras move up by one.
+- `buttonholes` (up to 40: x, y, length 8–40 mm, width 3–6 mm, angle, colour): tie-in, a run
+  along both leg centres, satin up one leg, a bar tack across both legs, satin down the other,
+  a closing bar tack, tie-off; 0.6 mm slit left between the legs. Sewn last, a cut before each,
+  a colour change only when the thread differs from the one before.
+- Both may reach outside the picture. `band` returns the pixels they sew on a canvas grown by
+  `pad` pixels each side; the engine pads the release mask (and the knockout mask) by `pad`
+  and moves the recorded origin by `pad*scale`, so every later check uses the larger canvas.
+  A canvas over 16 million pixels is refused with a message. Thread recolour reuse is off
+  when either is used; the cache key includes them.

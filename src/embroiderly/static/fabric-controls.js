@@ -30,7 +30,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   <fieldset id="appliqueOptions" class="fabric-applique" hidden><legend>Appliqué</legend>
   <label class="fabric-check" title="The fabric runs on under the parts sewn on it; their stitches hide that edge, so it gets no satin"><input type="checkbox" data-key="applique_partial"> Tuck under parts on top</label>
   <label class="fabric-check" title="Pieces of one colour are placed, tacked down and covered together: two stops in all"><input type="checkbox" data-key="applique_combine"> Share stops</label>
-  <label class="fabric-check" title="Where two pieces meet, only the top piece's satin covers the join"><input type="checkbox" data-key="applique_join"> Cover joins once</label></fieldset>`;
+  <label class="fabric-check" title="Where two pieces meet, only the top piece's satin covers the join"><input type="checkbox" data-key="applique_join"> Cover joins once</label></fieldset>
+  <label for="bastingChoice">Basting</label>
+  <select id="bastingChoice" title="Long stitches sewn first in their own thread, holding the fabric to the backing; pull them out afterwards"><option value="off">Off</option><option value="design">Around the design</option><option value="hoop">Around the hoop</option></select>
+  <details id="buttonholes" class="buttonholes"><summary>Buttonholes</summary>
+  <p class="muted">Sewn last. Position is from the design's centre, in mm.</p>
+  <div id="buttonholeList"></div><button type="button" id="buttonholeAdd">Add buttonhole</button></details>`;
  anchor.after(box);
  // Hoop picker (hoop-controls.js) sits with the other design-wide choices.
  const hoop=await window.hoopControls?.(studio);if(hoop)box.append(hoop);
@@ -86,6 +91,29 @@ document.addEventListener('DOMContentLoaded', async () => {
  for(const box of switches)box.addEventListener('change',()=>{try{studio.apply({[box.dataset.key]:box.checked})}catch(error){(window.studioStatus||console.warn)(error.message)}syncApplique()});
  window.addEventListener('studio:preview',e=>{hasApplique=!!e.detail?.applique;syncApplique()});
  window.addEventListener('studio:controls',syncApplique);syncApplique();
+ // Basting and buttonholes (basting_buttonholes.py).
+ const basting=$('bastingChoice'),holeList=$('buttonholeList');
+ const tell=error=>(window.studioStatus||console.warn)(error.message);
+ const holes=()=>(studio.snapshot().buttonholes||[]).map(h=>({...h}));
+ const saveHoles=list=>{try{studio.apply({buttonholes:list})}catch(error){tell(error)}syncExtras()};
+ const fields=[['x','X',-1000,1000,.5],['y','Y',-1000,1000,.5],['length_mm','Length',8,40,.5],['angle','Angle',-180,180,15]];
+ const syncExtras=()=>{const o=studio.snapshot();basting.value=o.basting||'off';
+  basting.querySelector('[value=hoop]').disabled=!o.piece_hoop_mm&&o.basting!=='hoop';
+  const list=holes();if(list.length)$('buttonholes').open=true;
+  const head=document.createElement('div');head.className='buttonhole-row buttonhole-head';
+  head.append(...['X mm','Y mm','Length','Angle °'].map(t=>Object.assign(document.createElement('span'),{textContent:t})));
+  holeList.replaceChildren(...(list.length?[head]:[]),...list.map((hole,i)=>{const row=document.createElement('div');row.className='buttonhole-row';
+   for(const [key,label,min,max,step] of fields){const input=Object.assign(document.createElement('input'),{type:'number',min,max,step,value:hole[key]});
+    input.setAttribute('aria-label',label+(key==='angle'?' °':' mm'));input.title=label;
+    input.onchange=()=>{const next=holes();next[i][key]=Number(input.value);saveHoles(next)};row.append(input)}
+   const colour=Object.assign(document.createElement('input'),{type:'color',value:hole.colour,title:'Thread'});
+   colour.onchange=()=>{const next=holes();next[i].colour=colour.value;saveHoles(next)};
+   const remove=Object.assign(document.createElement('button'),{type:'button',textContent:'✕',title:'Remove'});
+   remove.onclick=()=>{const next=holes();next.splice(i,1);saveHoles(next)};
+   row.append(colour,remove);return row}))};
+ basting.addEventListener('change',()=>{try{studio.apply({basting:basting.value})}catch(error){tell(error)}syncExtras()});
+ $('buttonholeAdd').onclick=()=>saveHoles([...holes(),{x:0,y:0,length_mm:15,width_mm:4,angle:90,colour:'#202020'}]);
+ window.addEventListener('studio:controls',syncExtras);window.addEventListener('studio:preview',syncExtras);syncExtras();
  window.addEventListener('studio:controls',sync);window.addEventListener('studio:preview',sync);sync();
  // Clean Edit panel: size, its ±10% buttons and notes together, then the design options.
  const resize=$('canvasResize');

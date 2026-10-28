@@ -372,6 +372,8 @@ def digitize(source, directory, height_mm=100, colours=None):
     colour_holes=colour_hole_choices(settings)
     from .applique_layout import choices as applique_choices, finish as applique_finish
     applique_choices(settings)
+    from .basting_buttonholes import choices as extra_choices
+    basting,buttonholes=extra_choices(settings)
     # 3D puff for every area that can hold foam; others stay flat.
     puff_all=settings.get('puff') is True
     from .stitch_engine import puff_min_mm
@@ -622,6 +624,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     key=hashlib.sha256((cache_key(source,svg)+json.dumps(policy,sort_keys=True)+(json.dumps(piece_layout,sort_keys=True) if piece_layout else '')
                         +(json.dumps(cuts,sort_keys=True) if cuts else '')
                         +(json.dumps(stitch_edits,sort_keys=True) if stitch_edits else '')
+                        +(json.dumps([basting,buttonholes,settings.get('piece_hoop_mm') if basting=='hoop' else None]) if basting!='off' or buttonholes else '')
                         # The allowed-stitching mask is recorded only on a fresh run; a cached result
                         # must not keep an older mask when only the mask changed.
                         +hashlib.sha256(np.packbits(release_mask).tobytes()+str(release_mask.shape).encode()).hexdigest()
@@ -630,7 +633,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     if cached is not None:return cached
     # Both machine files come from one engine plan. PES v6 retains custom RGB.
     from .thread_recolour import reuse
-    recoloured=None if border or piece_layout or cuts or stitch_edits else reuse(directory,svg,policy)
+    recoloured=None if border or piece_layout or cuts or stitch_edits or basting!='off' or buttonholes else reuse(directory,svg,policy)
     if recoloured:
         plan_bytes,previous_pes=recoloured
     else:
@@ -658,6 +661,17 @@ def digitize(source, directory, height_mm=100, colours=None):
                                   lambda a,b:pixels.crosses([a[0]+shift[0],a[1]+shift[1]],[b[0]+shift[0],b[1]+shift[1]]))
         plan.setdefault('extras',{})['stitch_edits']=edit_report
         plan_bytes=json.dumps(plan).encode()
+    extra_pad=0
+    if basting!='off' or buttonholes:
+        # Basting first and buttonholes last (basting_buttonholes.py), placed in playback millimetres.
+        from .basting_buttonholes import apply as add_extras, band as extras_band
+        shift=(np.asarray(piece_origin)-np.asarray(piece_layout['origin_mm']))*10 if piece_layout else np.zeros(2)
+        frame=(np.asarray(mask_origin)-shift/10).tolist() if piece_layout else source_origin
+        plan=json.loads(plan_bytes)
+        drawn=add_extras(plan,basting,buttonholes,settings.get('piece_hoop_mm'),lambda x,y:(x*10-shift[0],y*10-shift[1]))
+        # They may reach past the picture: the checked canvas grows to hold them.
+        extra_pad,extra_band=extras_band(drawn,scale,np.asarray(frame),release_mask.shape)
+        plan_bytes=json.dumps(plan).encode()
     raw=directory/'engine-plan.json'
     raw.write_bytes(plan_bytes)
     pattern=emb.EmbPattern(str(raw))
@@ -670,12 +684,17 @@ def digitize(source, directory, height_mm=100, colours=None):
         pattern.translate(float(shift[0]*10),float(shift[1]*10))
         origin=(np.asarray(mask_origin)-shift).tolist()
         display_origin=piece_layout['origin_mm']
+    gate=alpha if settings.get('ink_only') and not ink_routed else release_mask
+    if extra_pad:
+        gate=np.pad(gate,extra_pad)|extra_band
+        origin=[float(o+extra_pad*scale) for o in origin]
 
     knockout_cuts=0
     if settings.get('colour_knockouts'):
         from .knockout_routing import protect, verify
         # A border is requested stitching on the design's edge: its band is not a removed area.
         kept=alpha|coverage(border,alpha.shape) if border else alpha
+        if extra_pad:kept=np.pad(kept,extra_pad)|extra_band
         knockout_cuts=protect(pattern,kept,scale,origin)
     if settings.get('colour_knockouts'):
         from tempfile import TemporaryDirectory
@@ -693,10 +712,10 @@ def digitize(source, directory, height_mm=100, colours=None):
     before_repair=[s[:] for s in pattern.stitches]
     from .lock_repair import repair as repair_locks
     lock_candidate=pattern.copy()
-    lock_report=repair_locks(lock_candidate,alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,origin)
+    lock_report=repair_locks(lock_candidate,gate,scale,origin)
     from .gap_repair import repair as repair_gaps
-    gap_report=repair_gaps(lock_candidate,alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,origin)
-    candidate,repair_report=propose(lock_candidate,alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,origin)
+    gap_report=repair_gaps(lock_candidate,gate,scale,origin)
+    candidate,repair_report=propose(lock_candidate,gate,scale,origin)
     repair_report['locks']=lock_report
     repair_report['gaps']=gap_report
     if repair_report['automatic'] and (repair_report['changes'] or lock_report['end_locks_rebuilt'] or lock_report['start_locks_rebuilt'] or gap_report['gaps_cut']):
@@ -743,6 +762,6 @@ def digitize(source, directory, height_mm=100, colours=None):
     payload['sew_parts']=[e.get('id')[6:] for e in document.iter('path') if (e.get('id') or '').startswith('piece-')] if piece_layout else sewn_parts
     (directory/'playback.json').write_text(json.dumps(payload))
     from .release_gate import record_context
-    record_context(directory,alpha if settings.get('ink_only') and not ink_routed else release_mask,scale,origin)
+    record_context(directory,gate,scale,origin)
     publish(directory,key,policy)
     return payload
