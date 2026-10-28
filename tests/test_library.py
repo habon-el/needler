@@ -110,3 +110,16 @@ def test_save_as_template_and_start_a_design_from_it(library):
     lib.change('delete',[item(lib.get(template['id']))])
     assert not lib.list('templates') and template['id'] in {r['id'] for r in lib.list('trash')}
     assert client.get('/api/library?view=templates').status_code==200
+
+
+def test_facts_read_other_designs_saved_plans_only_once(library, monkeypatch):
+    lib,_=library
+    for n in range(3):
+        (lib.uploads/f'prepared_{n:032x}.prep.json').write_text(json.dumps({'source':'other.png','options':{}}))
+    lib.facts('flower.png')
+    reads=[]
+    original=Path.read_text
+    monkeypatch.setattr(Path,'read_text',lambda self,*a,**k:(reads.append(self.name),original(self,*a,**k))[1])
+    lib.facts('flower.png')
+    # Unchanged plans of other designs are not opened again.
+    assert not [name for name in reads if name.endswith('.prep.json')]

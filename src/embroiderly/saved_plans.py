@@ -3,6 +3,7 @@ from .preparation_identity import preparation_key
 import json
 import math
 from pathlib import Path
+from threading import Lock
 
 DEFAULTS = dict(region_styles={}, ink_only=False, line_art=False, ink_length_mm=2, ink_bean_repeats=0, selection='full', count=4, brightness=1, contrast=1,
                 height_mm=100, floor_mm2=1, simplify=0, smooth=1,
@@ -44,6 +45,26 @@ def read_plan(path):
         return None
 
 
+_owners = {}  # prep.json path -> (mtime_ns, size, source name)
+_owners_lock = Lock()
+
+
+def _owner(path):
+    """Source a saved plan belongs to; re-read only when the file changes."""
+    stat = path.stat()
+    with _owners_lock:
+        cached = _owners.get(path)
+    if cached and cached[:2] == (stat.st_mtime_ns, stat.st_size):
+        return cached[2]
+    try:
+        source = json.loads(path.read_text()).get('source')
+    except (OSError, ValueError, AttributeError):
+        source = None
+    with _owners_lock:
+        _owners[path] = (stat.st_mtime_ns, stat.st_size, source)
+    return source
+
+
 def matching_plan(root, source, options):
     root,source=Path(root),Path(source)
     source_bytes=source.read_bytes()
@@ -55,6 +76,7 @@ def matching_plan(root, source, options):
     # Older plans may have an earlier interaction counter or omitted defaults.
     for path in (root/'work'/'uploads').glob('prepared_*.prep.json'):
         try:
+            if _owner(path)!=source.name:continue
             metadata=json.loads(path.read_text())
             if metadata.get('source')==source.name and equivalent(metadata.get('options',{}),options):
                 stored=metadata['options']
