@@ -1,0 +1,722 @@
+{
+  "version": 1,
+  "seed_data": true,
+  "rows": [
+    {
+      "id": "mode:colour",
+      "tool": "Colour mode",
+      "control": "mode",
+      "does": "Splits the picture into thread colours and sews each colour area as fill or satin, with joins, underlay and pull from the fabric.",
+      "use": "Flat-colour logos, badges, cartoons, illustrations, anything that must keep its background or several colours.",
+      "avoid": "Real photos and portraits (use photo_lines); thin line drawings (fills lose lines under 1 mm).",
+      "limits": "2 to 8 colours. Parts thinner than about 1 mm vanish unless line_details brings them back.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "mode:line_art",
+      "tool": "Light lines on dark",
+      "control": "mode",
+      "does": "Sews light lines on a dark background as running stitches; the dark background stays bare fabric.",
+      "use": "Chalk, neon or white line drawings on black, line icons.",
+      "avoid": "Art with filled areas or a background that must be stitched.",
+      "limits": "One thread. line_retrace_mm sets how far it may travel back over sewn lines to save cuts.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "mode:black_lines",
+      "tool": "Black line drawing",
+      "control": "mode",
+      "does": "Sews the black lines of a drawing; white stays bare fabric.",
+      "use": "Clean black ink line drawings on a plain white background.",
+      "avoid": "Shaded art, pencil, engravings, halftone or textured backgrounds: shading turns into specks and a honeycomb of lines (use photo_lines).",
+      "limits": "One thread. Filled black areas become heavy dense lines.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "mode:photo_lines",
+      "tool": "Photo in one thread",
+      "control": "mode",
+      "does": "Sews rows of zigzag whose width follows the shading, as one continuous thread with few cuts.",
+      "use": "Real photos, portraits, pets, shaded black-and-white art.",
+      "avoid": "Flat logos and text, which look blurry in rows.",
+      "limits": "One thread colour. row_mm 0.6 to 2 (smaller = more detail and stitches). light_thread for light thread on dark fabric.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:tatami",
+      "tool": "Tatami",
+      "does": "Rows of fill stitches with staggered needle holes and underlay; the standard fill.",
+      "use": "Any area wider than about 8 mm, backgrounds, large shapes. The safe default.",
+      "avoid": "Thin parts under about 1.5 mm wide (use satin or a line).",
+      "limits": "Row direction can be set per area; rows across the long side of an area pull it less.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:step",
+      "tool": "Step fill",
+      "does": "Tatami with needle holes stepped in a chevron, so the rows show a faint zigzag texture.",
+      "use": "Large fills that look too flat, backgrounds with a subtle texture.",
+      "avoid": "Small areas, where the texture cannot show.",
+      "limits": "Same density and pull as tatami.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:gradient",
+      "tool": "Gradient",
+      "does": "Rows go from full density on one side to open spacing (1.6 mm) on the other, so the fabric shows through.",
+      "use": "Fades, skies, light effects, lighter stitch count on big areas.",
+      "avoid": "Areas that must look solid; dark fabric under a light thread where the open side looks dirty.",
+      "limits": "No underlay. Sections are cut, never travelled across, so it can add cuts.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:shaded",
+      "tool": "Shaded",
+      "does": "The area's tatami plus a gradient in a 30% darker shade across it, for depth.",
+      "use": "Round or soft shapes that need shading in a flat-colour design (petals, leaves, balls).",
+      "avoid": "Designs that must keep few colours: it adds one more thread.",
+      "limits": "One extra colour change per shaded area colour.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:radial",
+      "tool": "Radial",
+      "does": "Rays from the centre of the area outward.",
+      "use": "Round shapes: suns, flower centres, buttons, eyes.",
+      "avoid": "Long or irregular shapes; it falls back to tatami when rays cover under 85% of the area.",
+      "limits": "Dense at the centre; best on areas roughly as wide as they are tall.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:wave",
+      "tool": "Wave",
+      "does": "Rows that rise and fall in smooth waves.",
+      "use": "Water, flags, hair, decorative backgrounds.",
+      "avoid": "Small areas where the wave cannot show.",
+      "limits": "Same density as tatami.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:florentine",
+      "tool": "Florentine",
+      "does": "Rows follow the curve of the area's top edge.",
+      "use": "Curved bands, arches, petals and leaves where rows should follow the shape.",
+      "avoid": "Shapes with a ragged or very steep top edge.",
+      "limits": "Steep ends of the curve are flattened.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:applique",
+      "tool": "Appliqué",
+      "does": "A fabric piece instead of stitches: placement line, machine stop to lay the fabric, tack-down, stop to trim, then a satin edge (3 mm by default). Needler also writes a cutting file.",
+      "use": "Big solid areas on patches, jackets, blankets, kids' designs; saves many stitches.",
+      "avoid": "Small or thin parts (hard to cut and lay); caps and stretchy fabric.",
+      "limits": "2 machine stops per piece. The person must cut and place fabric during sewing.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:satin",
+      "tool": "Satin",
+      "does": "Long smooth stitches across the shape that follow its direction; shiny and raised.",
+      "use": "Narrow parts: lettering strokes, borders, stems, outlines, small shapes 1.5 to 8 mm wide.",
+      "avoid": "Areas wider than 8 mm (loose, snag); very thin parts under about 1 mm.",
+      "limits": "Parts up to 8 mm wide. Stitches longer than 7 mm are auto-split with staggered holes. Underlay chosen by width.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:raised_satin",
+      "tool": "3D satin",
+      "does": "Three satin layers stacked for a raised look, without foam.",
+      "use": "Small raised accents, initials, on firm fabric.",
+      "avoid": "Wide, curved or branching shapes; stretchy fabric.",
+      "limits": "Experimental. Needs a straight band shape.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:puff",
+      "tool": "3D puff",
+      "control": "puff",
+      "does": "Satin over foam; the machine stops so the foam can be placed, the satin cuts through it and the foam stays raised.",
+      "use": "When the person asks for puff, foam, raised or 3D: bold lettering and outlines, especially on caps.",
+      "avoid": "Big solid areas, fine detail, thin parts.",
+      "limits": "Parts 3 to 6 mm wide on 3 mm foam (2 to 6 mm on 2 mm foam); wider or thinner parts stay flat. One stop per puff colour.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:motif",
+      "tool": "Motif",
+      "does": "Small repeated shapes sewn as running stitch across the area; open fill.",
+      "use": "Light decorative fills, quilt-like textures, backgrounds where the fabric may show.",
+      "avoid": "Areas that must look solid; small areas (too small for the pattern).",
+      "limits": "Choices: diamonds, hearts, stars, scales, circles. At most 400 pattern cells per area.",
+      "choices": [
+        "Diamonds",
+        "Hearts",
+        "Stars",
+        "Scales",
+        "Circles"
+      ],
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:elastic",
+      "tool": "Elastic",
+      "does": "Repeated shapes that stretch to follow the area's top and bottom edges; open fill.",
+      "use": "Decorative bands and curved shapes where the pattern should bend with the shape.",
+      "avoid": "Solid-looking areas; small or round areas.",
+      "limits": "Same choices as Motif.",
+      "choices": [
+        "Diamonds",
+        "Hearts",
+        "Stars",
+        "Scales",
+        "Circles"
+      ],
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:embossed",
+      "tool": "Embossed",
+      "does": "Tatami with a diamond overlay that presses a texture into it.",
+      "use": "Textured solid areas: leather looks, quilted backgrounds.",
+      "avoid": "Small areas; designs that need few stitches.",
+      "limits": "Experimental texture; more stitches than tatami.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:sculptured",
+      "tool": "Sculptured",
+      "does": "Tatami with needle holes placed in a diamond lattice, so a quilted pattern shows in the fill.",
+      "use": "Large solid fills that should carry a subtle pattern.",
+      "avoid": "Small areas, where the lattice cannot show.",
+      "limits": "Same density as tatami.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:feather",
+      "tool": "Feathered",
+      "does": "Tatami rows whose ends are uneven, like fur or feathers.",
+      "use": "Animal fur, feathers, grass, soft edges that blend into the next colour.",
+      "avoid": "Logos with crisp edges.",
+      "limits": "Choices: one edge, both edges, textured edge.",
+      "choices": [
+        "One edge",
+        "Both edges",
+        "Textured edge"
+      ],
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:globe",
+      "tool": "Globe",
+      "does": "Tatami whose rows tighten towards the edges, so the area looks domed.",
+      "use": "Balls, planets, eyes, round shapes that should look curved.",
+      "avoid": "Flat logos.",
+      "limits": "Areas under 4 mm across fall back to tatami.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:hand",
+      "tool": "Hand stitch",
+      "does": "Uneven stitches in open rows, like hand sewing; open fill.",
+      "use": "Hand-made, rustic or folk looks.",
+      "avoid": "Areas that must cover the fabric.",
+      "limits": "Open fill: the fabric shows.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:ripple",
+      "tool": "Ripple",
+      "does": "Concentric rings spiralling from the centre outward.",
+      "use": "Round shapes, water drops, targets, decorative circles.",
+      "avoid": "Long thin areas.",
+      "limits": "Best on round, compact areas.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:maze",
+      "tool": "Maze",
+      "does": "One line winding like a labyrinth through the area; open fill.",
+      "use": "Light decorative texture, quilt looks.",
+      "avoid": "Areas that must look solid.",
+      "limits": "Open fill: the fabric shows.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:star",
+      "tool": "Star",
+      "does": "A star-shaped spiral from the centre; open fill.",
+      "use": "Decorative round areas, festive designs.",
+      "avoid": "Areas that must look solid; long areas.",
+      "limits": "Open fill: the fabric shows.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:contour",
+      "tool": "Offset fill",
+      "does": "Rows follow the area's outline inward, ring by ring, around holes.",
+      "use": "Shapes where rows should echo the outline: letters with holes, frames, organic shapes.",
+      "avoid": "Very large areas (many rings, many stitches).",
+      "limits": "Same density as tatami.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:cross",
+      "tool": "Cross stitch",
+      "does": "Diagonal crosses on a grid clipped to the area; open fill.",
+      "use": "Cross-stitch looks, folk and pixel art.",
+      "avoid": "Small or thin areas; solid coverage.",
+      "limits": "Open fill: the fabric shows.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:stipple",
+      "tool": "Stipple",
+      "does": "One meandering line through the area; open fill.",
+      "use": "Quilting looks, light backgrounds, texture behind other parts.",
+      "avoid": "Areas that must look solid.",
+      "limits": "Choices: single run, backstitch, stemstitch (heavier lines).",
+      "choices": [
+        "Single run",
+        "Backstitch",
+        "Stemstitch"
+      ],
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:blackwork_fill",
+      "tool": "Blackwork",
+      "does": "A lattice of straight lines every 4 mm with diagonals; open fill.",
+      "use": "Traditional blackwork looks, light geometric backgrounds.",
+      "avoid": "Areas that must look solid.",
+      "limits": "Open fill: the fabric shows.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:candlewick_fill",
+      "tool": "Candlewicking",
+      "does": "Raised knots in rows, 4 mm apart; open fill.",
+      "use": "Vintage, quilt and cushion looks.",
+      "avoid": "Small areas; solid coverage.",
+      "limits": "Many stitches per knot.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "area:lacework",
+      "tool": "Lacework",
+      "does": "A honeycomb net with 2 mm sides; open fill.",
+      "use": "Lace looks, light decorative backgrounds.",
+      "avoid": "Areas that must look solid.",
+      "limits": "Open fill: the fabric shows.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:running",
+      "tool": "Running border",
+      "control": "border",
+      "does": "A plain running-stitch line around the design.",
+      "use": "A light outline that tidies edges without weight.",
+      "avoid": "Badges and patches (use satin).",
+      "limits": "Width 0.8 to 6 mm.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:satin",
+      "tool": "Satin border",
+      "control": "border",
+      "does": "A satin band around the whole design; the classic badge edge.",
+      "use": "Badges, patches, round emblems.",
+      "avoid": "Logos on shirts, which usually have no border.",
+      "limits": "Width 1.6 to 6 mm. Placement inside, centre or outside the edge. Optional line inside (triple stitch 1.2 mm inside).",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:backstitch",
+      "tool": "Backstitch border",
+      "control": "border",
+      "does": "Each stitch goes forward then back a little: a solid, hand-drawn line.",
+      "use": "Outlines that should look drawn by hand, redwork.",
+      "avoid": "Badge edges.",
+      "limits": "Width is the band it covers.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:stemstitch",
+      "tool": "Stemstitch border",
+      "control": "border",
+      "does": "Slanted overlapping stitches: a rope-like line.",
+      "use": "Stems, vines, hand-embroidery outlines.",
+      "avoid": "Badge edges.",
+      "limits": "Width is the band it covers.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:blanket",
+      "tool": "Blanket border",
+      "control": "border",
+      "does": "A line with spikes into the shape, like a blanket edge.",
+      "use": "Appliqué edges, folk and kids' designs.",
+      "avoid": "Small designs where spikes crowd.",
+      "limits": "Width is the spike length.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:zigzag",
+      "tool": "Zigzag border",
+      "control": "border",
+      "does": "An open zigzag line around the design.",
+      "use": "Light decorative edges, casual looks.",
+      "avoid": "Clean badge edges (use satin).",
+      "limits": "Width is the band it covers.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:motif",
+      "tool": "Motif border",
+      "control": "border",
+      "does": "A line of repeated small shapes.",
+      "use": "Decorative frames.",
+      "avoid": "Small designs.",
+      "limits": "Shapes: diamond, triangle, scallop (motif setting).",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:couching",
+      "tool": "Couching border",
+      "control": "border",
+      "does": "A line held down by small crossing stitches, like cord laid on fabric.",
+      "use": "Cord-like frames, vintage looks.",
+      "avoid": "Small designs.",
+      "limits": "Width is the band it covers.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:blackwork",
+      "tool": "Blackwork run border",
+      "control": "border",
+      "does": "Out along the line and back through the same holes; every stitch sewn twice.",
+      "use": "Crisp heavy lines, blackwork and redwork.",
+      "avoid": "Badge edges.",
+      "limits": "2 mm stitches.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:handstitch",
+      "tool": "Hand stitch border",
+      "control": "border",
+      "does": "Uneven stitches with gaps, like hand sewing.",
+      "use": "Rustic, hand-made frames.",
+      "avoid": "Clean professional edges.",
+      "limits": "Width is the band it covers.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:candlewick",
+      "tool": "Candlewicking border",
+      "control": "border",
+      "does": "A running line with a raised knot at intervals.",
+      "use": "Vintage and cushion frames.",
+      "avoid": "Small designs.",
+      "limits": "Width is the knot size.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:pattern",
+      "tool": "Pattern border",
+      "control": "border",
+      "does": "A running line drawn as a repeating pattern.",
+      "use": "Decorative frames.",
+      "avoid": "Small designs.",
+      "limits": "Patterns: wave, loop, key (pattern setting).",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "border:sculpture",
+      "tool": "Sculpture run border",
+      "control": "border",
+      "does": "2.5 mm stitches, each starting halfway back along the last: a thick textured line.",
+      "use": "Bold frames that are lighter than satin.",
+      "avoid": "Fine designs.",
+      "limits": "Width is the band it covers.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:colours",
+      "tool": "Thread colours",
+      "control": "colours",
+      "does": "How many thread colours colour mode finds in the picture.",
+      "use": "Match the colours that matter in the art; each colour is a thread change.",
+      "avoid": "Too many: photo noise becomes scattered specks and many cuts.",
+      "limits": "2 to 8.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:merge_colours",
+      "tool": "Fold a colour into another",
+      "control": "merge_colours",
+      "does": "Sews one found colour with another's thread, keeping the colour count.",
+      "use": "A colour scattered in many small pieces (many cuts in per_colour), near-duplicate shades.",
+      "avoid": "Colours that carry meaning in the art.",
+      "limits": "Up to 6 merges; replaces earlier merges.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:merge_small",
+      "tool": "Merge small areas",
+      "control": "merge_small_mm2",
+      "does": "Colour areas smaller than this are merged into their neighbours.",
+      "use": "Specks, noise and tiny islands that cause cuts.",
+      "avoid": "Values so high that eyes, dots or small letters disappear.",
+      "limits": "0 to 25 mm² (default 1).",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:simplify",
+      "tool": "Simplify",
+      "control": "simplify",
+      "does": "Smooths away fine detail before stitching.",
+      "use": "Busy pictures at small sizes, photo-like logos.",
+      "avoid": "Line art and text, which lose shape.",
+      "limits": "0 to 100 (default 0).",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:smooth",
+      "tool": "Smooth edges",
+      "control": "smooth",
+      "does": "Smooths the boundaries between colour areas.",
+      "use": "Jagged edges from low-resolution pictures.",
+      "avoid": "Sharp corners and pixel art.",
+      "limits": "0 to 3 (default 1).",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:size",
+      "tool": "Design size",
+      "control": "height_mm",
+      "does": "Sets the canvas height; the sewn design may be smaller because of margins.",
+      "use": "Match the person's size; rescale from the measured sewn size.",
+      "avoid": "Changing the person's size unless the design cannot sew at it; bigger means more stitches, cuts and time.",
+      "limits": "3 to 400 mm. Lettering under about 5 mm capital height and parts under 1 mm do not sew cleanly.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:line_details",
+      "tool": "Line details",
+      "control": "line_details",
+      "does": "Thin lines the fills lose are sewn on top as running stitches.",
+      "use": "Illustrations with fine linework: faces, highlights, hatching.",
+      "avoid": "Flat logos (adds clutter and stitches).",
+      "limits": "light: light lines only. all: dark lines too.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:keep_background",
+      "tool": "Keep background",
+      "control": "keep_background",
+      "does": "true stitches the whole picture including the background; false keeps the saved subject cut-out.",
+      "use": "true only when the person wants the background sewn.",
+      "avoid": "Stitching a plain white or photo background the person did not ask for.",
+      "limits": "Colour mode only; line modes leave the background bare.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:erase",
+      "tool": "Erase boxes",
+      "control": "erase",
+      "does": "Removes boxes from the picture before stitching.",
+      "use": "Screenshot buttons, page dots, captions, watermarks, app frames.",
+      "avoid": "Boxes that cut into the art.",
+      "limits": "Up to 12 boxes in picture fractions; replaces earlier boxes.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:fabric",
+      "tool": "Fabric",
+      "control": "fabric",
+      "does": "Sets density, pull compensation, underlay, stitch length and tie-offs for the fabric, and the backing advice.",
+      "use": "Always match what it will be sewn on (t-shirt stretch_knit, polo pique, hoodie fleece, cap cap).",
+      "avoid": "Guessing when the person did not say: keep the current one.",
+      "limits": "The person's own saved fabrics are offered too.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:hoop",
+      "tool": "Hoop",
+      "control": "hoop",
+      "does": "The sewing field the design must fit; designs bigger than it are split into several hoopings.",
+      "use": "Only when the person names their machine or hoop.",
+      "avoid": "Choosing one without being told.",
+      "limits": "Multi-hooping adds alignment work for the person.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:foam",
+      "tool": "Puff foam thickness",
+      "control": "foam_mm",
+      "does": "Foam under 3D puff: 2 or 3 mm.",
+      "use": "3 mm by default; 2 mm for smaller lettering (parts 2 to 6 mm wide).",
+      "avoid": "Setting it without puff.",
+      "limits": "2 or 3 mm.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:photo",
+      "tool": "Photo row settings",
+      "control": "photo",
+      "does": "Row spacing, row angle, light thread and thread colour for photo_lines.",
+      "use": "Finer rows for detailed faces; light_thread for light thread on dark fabric.",
+      "avoid": "Rows under 0.8 mm on small designs (too dense).",
+      "limits": "row_mm 0.6 to 2, angle -180 to 180.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:line_retrace",
+      "tool": "Line retrace",
+      "control": "line_retrace_mm",
+      "does": "How far the needle may travel back over sewn lines instead of cutting (line_art).",
+      "use": "Raise it when line art has many cuts.",
+      "avoid": "Very high values on fine art: retraced lines look heavier.",
+      "limits": "2 to 30 mm (default 6).",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "concept:underlay",
+      "tool": "Underlay",
+      "does": "Light stitches sewn first under fills and satin to hold the fabric and lift the top stitches.",
+      "use": "Set by the fabric and the part width automatically: none under 1.5 mm, centre walk to 3 mm, edge run above, zigzag from 6 mm.",
+      "avoid": "Adding heavy underlay to tiny lettering.",
+      "limits": "Automatic; not a control.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "concept:pull",
+      "tool": "Pull compensation",
+      "does": "Widens shapes slightly across the stitch direction because thread pulls fabric in.",
+      "use": "Set by the fabric; stretchy fabric needs more.",
+      "avoid": "Expecting thin parts to keep their exact width without it.",
+      "limits": "Automatic from the fabric.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "concept:density",
+      "tool": "Density",
+      "does": "Space between rows of fill or satin stitches (about 0.4 mm on most fabrics).",
+      "use": "Set by the fabric; open fills and gradients are lighter by design.",
+      "avoid": "Very dense stitching on thin or stretchy fabric (puckers, holes).",
+      "limits": "Automatic from the fabric.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "concept:cuts",
+      "tool": "Cuts and joins",
+      "does": "Same-colour parts that touch are joined without cutting; separate parts are sewn nearest first; each jump over bare fabric is cut.",
+      "use": "Read per_colour: many cuts in one colour mean scattered pieces; merge colours or small areas.",
+      "avoid": "Expecting joins across bare fabric: the file check fails any uncut jump.",
+      "limits": "Fewer pieces means fewer cuts.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "concept:sewing_order",
+      "tool": "Sewing order",
+      "does": "Colours are sewn back to front: parts enclosed by others go first, fills grow slightly under later parts so no fabric shows between them.",
+      "use": "Automatic; overlaps prevent gaps between colours.",
+      "avoid": "Expecting a light colour sewn last to fully cover a dark one.",
+      "limits": "Automatic.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "concept:holes",
+      "tool": "Holes",
+      "does": "Holes inside an area (the inside of an O, a ring) are left unsewn so the colour behind or the fabric shows.",
+      "use": "Keep holes that are part of the art; tiny holes can be sewn over.",
+      "avoid": "Satin on areas with holes (use tatami or offset fill).",
+      "limits": "Per area.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "concept:direction",
+      "tool": "Stitch direction",
+      "does": "The angle of fill rows or satin per area (0 = horizontal).",
+      "use": "Vary direction between neighbouring areas so they catch light differently; follow the shape for leaves and petals.",
+      "avoid": "Rows along a very long thin area (it pulls and narrows).",
+      "limits": "-180 to 180 degrees.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "concept:outline_colour",
+      "tool": "Outline colour",
+      "does": "Outlines between parts can be one thread colour or a darker shade of each part's thread.",
+      "use": "Cartoons and illustrations that have dark outlines in the art.",
+      "avoid": "Logos without outlines.",
+      "limits": "Adds stitches and possibly a colour.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    }
+  ]
+}

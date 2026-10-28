@@ -1,11 +1,13 @@
 """Claude's tool choices come from Needler's own lists: a fabric, border or hoop that reaches
 the app must reach Claude too, and each choice must turn into settings the engine accepts."""
 import json
+from types import SimpleNamespace
 
 import numpy as np
+from PIL import Image
 
 from embroiderly import custom_fabrics, hoops
-from embroiderly.auto_claude import catalog, settings_from, tools
+from embroiderly.auto_claude import catalog, handbook, run, settings_from, tools
 from embroiderly.borders import OUTLINES, border_plan
 from embroiderly.generation_policy import preset_for, presets
 from embroiderly.region_stitches import CATALOG, VARIANTS
@@ -75,3 +77,56 @@ def test_unlisted_choices_are_ignored(tmp_path):
                           root=tmp_path)
     assert after == before
     json.dumps(tools(tmp_path))
+
+
+def _handbook_rows():
+    from embroiderly.knowledge_store import load_knowledge
+    return {r['id']: r for r in load_knowledge()['handbook.json']['rows']}
+
+
+def test_the_handbook_covers_every_tool_claude_can_meet():
+    rows = _handbook_rows()
+    offered = _settings()
+    for mode in offered['mode']['enum']:
+        assert f'mode:{mode}' in rows
+    for style, _, _ in CATALOG:
+        assert f'area:{style}' in rows, style
+    for style, choices in VARIANTS.items():
+        assert rows[f'area:{style}']['choices'] == [n for _, n in choices], style
+    for style in catalog()['borders'][1:]:
+        assert f'border:{style}' in rows, style
+    # Every make_stitches setting is explained by at least one row.
+    controls = {r.get('control') for r in rows.values()}
+    assert set(offered) - {'note'} <= controls, set(offered) - {'note'} - controls
+    for row in rows.values():
+        assert all(isinstance(row[k], str) and row[k].strip() for k in ('tool', 'does', 'use', 'avoid', 'limits'))
+    text = handbook()
+    for fabric in presets():
+        assert f"- {fabric['fabric']} ({fabric['label']})" in text
+
+
+class _FakeClaude:
+    """Finishes at once and records what was sent."""
+
+    def __init__(self):
+        self.sent = []
+        self.beta = SimpleNamespace(messages=SimpleNamespace(create=self.create))
+
+    def create(self, **kwargs):
+        self.sent.append(kwargs)
+        return SimpleNamespace(stop_reason='tool_use', usage=SimpleNamespace(
+            input_tokens=10, output_tokens=10, cache_creation_input_tokens=0, cache_read_input_tokens=0),
+            content=[SimpleNamespace(type='tool_use', name='finish', id='t1', input=dict(attempt=1, summary='x'))])
+
+
+def test_the_handbook_is_sent_and_cached_with_the_instructions(tmp_path):
+    picture = tmp_path / 'work' / 'uploads' / 'p.png'
+    picture.parent.mkdir(parents=True)
+    (tmp_path / 'work' / 'decisions').mkdir()
+    Image.new('RGB', (64, 64), 'white').save(picture)
+    claude = _FakeClaude()
+    attempts, finish = run(dict(request=''), picture, 'logo', {}, {}, {}, lambda o: None, lambda m: None, client=claude)
+    assert attempts == [] and finish['attempt'] == 1
+    instructions, book = claude.sent[0]['system']
+    assert 'expert machine-embroidery digitizer' in instructions['text'] and 'cache_control' not in instructions
+    assert book['text'] == handbook() and book['cache_control'] == dict(type='ephemeral')

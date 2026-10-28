@@ -179,6 +179,35 @@ def tools(root=None):
     return built
 
 
+HANDBOOK_PARTS = (('mode', 'Modes'), ('area', 'Area styles (per colour area)'), ('border', 'Borders'),
+                  ('setting', 'Settings'), ('concept', 'How Needler sews'))
+
+
+def handbook():
+    """The digitizer's handbook (knowledge/handbook.json) as text for Claude: every Needler tool,
+    what it does, when to use it, when not, its limits; fabrics come from the fabric presets."""
+    from .generation_policy import presets
+    rows = json.loads(Path(__file__).with_name('knowledge').joinpath('handbook.json').read_text(encoding='utf-8'))['rows']
+    lines = ["# Digitizer's handbook",
+             "Every Needler tool: what it does, when to use it, when not, its limits. Tools marked "
+             "(make_stitches: x) are yours to set with that setting; Needler applies the others itself "
+             "or the person picks them in the studio. Know them all to judge each result and explain it."]
+    for part, title in HANDBOOK_PARTS:
+        lines += ['', '## ' + title]
+        for row in rows:
+            kind, _, ident = row['id'].partition(':')
+            if kind != part:
+                continue
+            head = f"- {ident} ({row['tool']}" + (f"; make_stitches: {row['control']}" if row.get('control') else '') + ')'
+            lines.append(f"{head}: {row['does']} Use: {row['use']} Avoid: {row['avoid']} Limits: {row['limits']}")
+    lines += ['', '## Fabrics (density, pull, backing)']
+    for r in presets():
+        lines.append(f"- {r['fabric']} ({r['label']}): rows {r['row_spacing_mm']:g} mm, satin pull {r['satin_pull_mm']:g} mm, "
+                     f"stitches up to {r['max_stitch_length_mm']:g} mm, " + ('underlay' if r['fill_underlay'] else 'no fill underlay') +
+                     f". Backing: {r['backing']}" + (f"; topping: {r['topping']}" if r.get('topping') else '') + '.')
+    return '\n'.join(lines)
+
+
 def available():
     import importlib.util
     return bool(os.environ.get('ANTHROPIC_API_KEY')) and importlib.util.find_spec('anthropic') is not None
@@ -356,6 +385,9 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
     spend = Spend(Path(path).parent.parent / 'decisions' / 'claude-spend.json')
     root = Path(path).parent.parent.parent
     offered = tools(root)
+    # The handbook rides with the instructions and is cached with them across attempts and runs.
+    system = [dict(type='text', text=SYSTEM.format(attempts=MAX_ATTEMPTS)),
+              dict(type='text', text=handbook(), cache_control=dict(type='ephemeral'))]
     if spend.room():
         raise RuntimeError(spend.room())
     with Image.open(path) as image:
@@ -380,7 +412,7 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
             log(problem + ' Keeping the best attempt so far.')
             break
         response = client.beta.messages.create(
-            model=MODEL, max_tokens=16000, system=SYSTEM.format(attempts=MAX_ATTEMPTS), tools=offered,
+            model=MODEL, max_tokens=16000, system=system, tools=offered,
             messages=messages, output_config=dict(effort='medium'), cache_control=dict(type='ephemeral'),
             betas=['server-side-fallback-2026-07-01'], fallbacks='default')
         spend.add(response.usage)

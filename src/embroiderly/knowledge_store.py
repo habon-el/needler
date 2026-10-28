@@ -3,7 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 
-TABLES = ('placements.json','lettering.json','backing.json','defaults.json','sewout.json','threads/generic.json','legacy.json','knockout.json','generation.json')
+TABLES = ('placements.json','lettering.json','backing.json','defaults.json','sewout.json','threads/generic.json','legacy.json','knockout.json','generation.json','handbook.json')
 
 
 def load_knowledge():

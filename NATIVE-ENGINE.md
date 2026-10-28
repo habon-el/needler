@@ -828,3 +828,12 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Routes: `GET /api/hoopings/<name>/<w>x<h>` (summary, `[]` when the stitches fit) and
   `GET /hooping/<name>/<w>x<h>/<n>/<format>`. The studio (`multi-hooping.js`) asks only for current
   stitches (visible export link) when the hoop fit note is red.
+
+## Digitizer's handbook for Claude (added 2026-10-28)
+- `knowledge/handbook.json` (loaded by `knowledge_store` like the other tables): one row per mode, area
+  style (with its choices), border, `make_stitches` setting (`control`) and sewing concept, with
+  `does` / `use` / `avoid` / `limits`. `auto_claude.handbook()` renders it as text and adds the fabric
+  presets from `generation.json`, so a fabric change reaches Claude by itself.
+- `auto_claude.run` sends it as a second system block with `cache_control`, so it is cached with the
+  instructions across attempts and runs (about 5,200 tokens).
+- `tests/test_claude_tools.py` fails when a mode, area style, choice, border or setting has no row.
