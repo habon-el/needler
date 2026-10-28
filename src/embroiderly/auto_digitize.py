@@ -134,7 +134,10 @@ def parse_request(text):
         wish['detail'] = 'less'
     if re.search(r'\boutlines?\b|\boutlined\b', text):
         wish['outlines'] = True
-    if re.search(r'keep\b.{0,25}back ?ground|back ?ground.{0,20}\b(stitch|sew|fill|keep)', text):
+    # "Remove the white background and stitch the rose" asks to leave it out, not keep it.
+    if re.search(r'keep\b.{0,25}back ?ground|back ?ground.{0,20}\b(stitch|sew|fill|keep)', text) and not re.search(
+            r'\b(remove|delete|erase|drop|cut|without|no|lose|get rid of|leave out|take out|take off)\b.{0,25}back ?ground'
+            r'|back ?ground.{0,10}\b(removed|off|out|gone)\b', text):
         wish['keep_background'] = True
     if re.search(r'\bpuff|\bfoam|\b3d\b|raised', text):
         wish['puff'] = True

@@ -9,6 +9,8 @@ def test_keep_the_background_is_understood():
     assert parse_request('YOU CAN KEEP THEY BLACK BACK GROUND THERE')['keep_background'] is True
     assert parse_request('keep the background')['keep_background'] is True
     assert 'keep_background' not in parse_request('6 cm wide, 3 colours')
+    assert 'keep_background' not in parse_request('Remove the white background and stitch the rose only.')
+    assert 'keep_background' not in parse_request('no background, just sew the flower')
 
 
 def test_claude_erase_boxes_become_erase_edits():
