@@ -58,6 +58,14 @@ def test_fill_across_the_seam_is_cut_cleanly_and_fits_each_hoop():
     assert [t.description for t in rebuilt.threadlist] == ['Alignment marks', None]
 
 
+def test_every_sewn_stitch_is_long_enough_after_rounding():
+    # The file stores whole tenths of a mm. These two points are 0.311 mm apart but land on
+    # grid points 0.283 mm apart, which the machine-file check refuses.
+    chain = mh._tidy([(.55, .55), (2.75, 2.75), (30, 30), (60, 60)], True, True)
+    assert all(isinstance(v, int) for p in chain for v in p)
+    assert min(math.dist(a, b) for a, b in zip(chain, chain[1:]) if a != b) >= 3
+
+
 def test_seam_falls_in_the_gap_between_objects():
     left, right = fill(-900, -100, -200, 200), fill(150, 900, -200, 200)
     hoopings = mh.split(pattern(left, right), [100, 100])

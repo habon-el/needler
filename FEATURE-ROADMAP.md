@@ -173,6 +173,20 @@ Studied the bundled sample designs: a bird picture and 96 monogram templates (pr
 | 4. Decorative line inside borders | border "Line inside": triple stitch, 1.2 mm inside the border | ✅ 2026-10-25 | |
 | 5. Monograms with frames | classic monogram + 7 satin frames + 4 ornaments (crown, laurel, swirls, line below) on the Text page | ✅ 2026-10-26 | |
 
+## AI digitizer: every tool, the person's own words (next, before the rest of P3)
+Claude inside Needler (`auto_claude.py`) can reach only about 15 settings; the area styles, most borders,
+sewing order, density, outline colour, all fabrics, the hoop and multi-hooping are out of its reach, and its
+instructions are typed by hand, so they fall behind every new feature.
+
+| Step | What | Status |
+|---|---|---|
+| 1 | Claude's tool choices built from Needler's own lists (area styles and their choices, borders, fabrics incl. the person's own, hoops); a test fails when a feature reaches the app but not Claude | ✗ |
+| 2 | Digitizer's handbook in `knowledge/`: per tool what it does, when to use it, when not, its limits; cached with the instructions | ✗ |
+| 3 | New controls: style per colour (choice, direction), every border kind, line inside, placement, sewing order, density, outline colour, fabric, hoop, appliqué, holes | ✗ |
+| 4 | Feedback per colour after each attempt: area sizes, widest part, style used, why a style was refused | ✗ |
+| 5 | The person's request leads: Claude shows a short plan (what each colour is, the style and why), follows the request, and says which tools it used | ✗ |
+| 6 | Scripted tests with a fake Claude (free), then real runs on the person's own pictures within a $2 test budget | ✗ |
+
 ## Build order
 
 1. **P1 engine — done 2026-10-24.** Satin auto split with staggered holes; satin spacing by column width; underlay chosen by width; underlay chosen by letter height; percentage pull compensation; closest join between same-colour areas; fabric settings reaching lettering.

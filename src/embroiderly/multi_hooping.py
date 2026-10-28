@@ -22,7 +22,7 @@ from tempfile import TemporaryDirectory
 import numpy as np
 import pyembroidery as emb
 
-VERSION = 1         # part of the saved plan's key: a new splitter rebuilds the files
+VERSION = 2         # part of the saved plan's key: a new splitter rebuilds the files
 EDGE_MM = 5.        # spare hoop room around each part, holding the alignment crosses
 MAX_HOOPINGS = 12
 MARK_ARM_MM = 3.    # alignment cross: arms 3 mm long, sewn as 1.5 mm running stitches
@@ -103,7 +103,9 @@ def _cut(points, xs, ys):
 
 
 def _tidy(chain, tie_start, tie_end):
-    """Merge too-short stitches and tie off the ends cut on a seam; None when too short to sew."""
+    """Merge too-short stitches and tie off the ends cut on a seam; None when too short to sew.
+    Points are rounded to the file's 0.1 mm grid first, so the lengths checked are the ones sewn."""
+    chain = [(round(x), round(y)) for x, y in chain]
     kept = [chain[0]]
     for p in chain[1:]:
         if math.dist(kept[-1], p) >= SHORT:
@@ -115,7 +117,8 @@ def _tidy(chain, tie_start, tie_end):
         if length < 2*SHORT:
             return []
         step = min(TIE_MM*10, length/2)/length
-        return [(end[0]+(toward[0]-end[0])*step, end[1]+(toward[1]-end[1])*step), end]
+        back = (round(end[0]+(toward[0]-end[0])*step), round(end[1]+(toward[1]-end[1])*step))
+        return [back, end] if math.dist(end, back) >= SHORT else []
     if tie_start:
         kept = [kept[0]]+tie(kept[0], kept[1])+kept[1:]
     if tie_end:
@@ -125,7 +128,7 @@ def _tidy(chain, tie_start, tie_end):
 
 def _cross(centre):
     """Running-stitch cross: left to right, back to the middle, top to bottom."""
-    x, y = centre
+    x, y = round(centre[0]), round(centre[1])
     arm, step = MARK_ARM_MM*10, MARK_ARM_MM*5
     across = [(x+d, y) for d in np.arange(-arm, arm+1, step)]
     return across+[(x+step, y), (x, y)]+[(x, y+d) for d in np.arange(-arm, arm+1, step)]
@@ -154,8 +157,9 @@ def split(pattern, field, crosses=None):
     for row in range(rows):
         for column in range(columns):
             cell = [edges_x[column], edges_y[row], edges_x[column+1], edges_y[row+1]]
+            # Whole tenths of a mm, so moving the points onto the hoop centre keeps them on the grid.
             hoopings.append(dict(n=len(hoopings)+1, column=column, row=row, cell=cell,
-                                 centre=[(cell[0]+cell[2])/2, (cell[1]+cell[3])/2], runs=[], marks_first=[], marks_last=[]))
+                                 centre=[round((cell[0]+cell[2])/2), round((cell[1]+cell[3])/2)], runs=[], marks_first=[], marks_last=[]))
     at = {(h['column'], h['row']): h for h in hoopings}
     for colour, points in sections:
         # Parts of this run still open per hooping: [points, starts on seam, ends on seam].
