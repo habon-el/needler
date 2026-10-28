@@ -913,3 +913,18 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   and moves the recorded origin by `pad*scale`, so every later check uses the larger canvas.
   A canvas over 16 million pixels is refused with a message. Thread recolour reuse is off
   when either is used; the cache key includes them.
+
+## Lettering envelopes (added 2026-10-28)
+
+- `embroidery_fonts.layout(..., envelope, envelope_percent)`; `ENVELOPES` = none, arch_top,
+  arch_bottom, bulge, pinch, bend_up, grow, shrink. Straight baseline only (any number of lines);
+  refused with arch, smile, circle, wave or a classic monogram. Strength 10–50%.
+- `_envelope_warp`: measured on the straight words' outline bounds; each point keeps its x and
+  moves between the shape's new top and bottom edges (sine bump or linear ramp), so letters
+  stretch rather than move rigidly. Applied after placement, before the half-em move onto the page.
+- `_bend_rails`: satin rails get points at most 0.6 mm apart first (matched pairs stay matched),
+  then bend. Stroke width for underlay, walk and the puff range is measured on the bent rails.
+  Fill letters, travel areas, frame and ornament bounds all use the bent outlines.
+- Recipe keys `envelope`, `envelope_percent` (left out when none, so old cache keys hold).
+  Text page: Envelope select + Strength slider in the Shape box (hidden off a straight line).
+  Claude's text tools take `envelope` / `envelope_percent`.

@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const pressed=()=>shapes.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.baseline===$('nativeBaseline').value)));
   $('nativeBaseline').addEventListener('input',pressed);$('nativeBaseline').addEventListener('change',pressed);
   document.addEventListener('lettering:layout',pressed);pressed();
-  shape.append(shapes,$('nativeCurveField'),$('nativeCircleField'),$('nativeWaveField'),$('nativeFitLengthField'));edit.append(shape);
+  shape.append(shapes,$('nativeCurveField'),$('nativeCircleField'),$('nativeWaveField'),$('nativeEnvelopeField'),$('nativeFitLengthField'));edit.append(shape);
   // Monogram: a satin frame around the words, an ornament and the classic three-initial layout.
   const monogram=node('fieldset','','workflowTextFrame');monogram.append(node('legend','Monogram & frame'));
   monogram.append(document.querySelector('label[for=nativeFrame]'),$('nativeFrame'),$('nativeFrameWidthField'),

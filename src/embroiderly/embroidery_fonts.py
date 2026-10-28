@@ -324,6 +324,63 @@ def _frame_ring(kind, bounds, margin, radius):
     ring = [tuple(p) for p in shape.exterior.coords][:-1]
     return [p for i, p in enumerate(ring) if i == 0 or math.dist(p, ring[i-1]) > 1e-6]
 SEQUENCES = ('left', 'centre')
+# Envelopes: the words stretched to fill a shape, letters bending with it (elastic lettering).
+ENVELOPES = ('none', 'arch_top', 'arch_bottom', 'bulge', 'pinch', 'bend_up', 'grow', 'shrink')
+
+
+def _envelope_warp(kind, percent, bounds):
+    """The bend of an envelope over the straight words' bounds (px): each point keeps its
+    place along the line and moves up or down between the shape's new top and bottom edges,
+    so letters grow, shrink and lean with it. `percent` is how far the edges move, as a share
+    of the words' height. stretch(x) is how much taller the words are there."""
+    import numpy as np
+    left, top, right, bottom = bounds
+    width, height = max(right-left, 1e-6), max(bottom-top, 1e-6)
+    move = percent/100*height
+
+    def edges(x):
+        u = np.clip((np.asarray(x, float)-left)/width, 0, 1)
+        bump = np.sin(np.pi*u)
+        up, down = {'arch_top': (-bump, 0), 'arch_bottom': (0, bump), 'bulge': (-bump/2, bump/2),
+                    'pinch': (bump/2, -bump/2), 'bend_up': (-bump, -bump),
+                    'grow': ((1-u)/2, -(1-u)/2), 'shrink': (u/2, -u/2)}[kind]
+        return top+move*up, bottom+move*down
+
+    def warp(x, y):
+        x, y = np.asarray(x, float), np.asarray(y, float)
+        new_top, new_bottom = edges(x)
+        return x, new_top+(y-top)/height*(new_bottom-new_top)
+
+    def stretch(x):
+        new_top, new_bottom = edges(x)
+        return (new_bottom-new_top)/height
+    warp.stretch = stretch
+    return warp
+
+
+def _bend_rails(a, b, warp, step):
+    """Satin rails bent by an envelope: points added at most `step` apart first (matched
+    pairs stay matched), so a straight stroke follows the curve."""
+    import numpy as np
+
+    def pieces(p, q, n):
+        return [_lerp(p, q, k/n) for k in range(1, n+1)]
+    if len(a) == len(b):
+        fine_a, fine_b = [a[0]], [b[0]]
+        for i in range(1, len(a)):
+            n = max(1, math.ceil(max(math.dist(a[i-1], a[i]), math.dist(b[i-1], b[i]))/step))
+            fine_a += pieces(a[i-1], a[i], n)
+            fine_b += pieces(b[i-1], b[i], n)
+    else:
+        def fine(rail):
+            return [rail[0]]+[p for i in range(1, len(rail))
+                              for p in pieces(rail[i-1], rail[i], max(1, math.ceil(math.dist(rail[i-1], rail[i])/step)))]
+        fine_a, fine_b = fine(a), fine(b)
+
+    def bend(rail):
+        x, y = warp(*np.array(rail, float).T)
+        return [(float(p), float(q)) for p, q in zip(x, y)]
+    return bend(fine_a), bend(fine_b)
 
 
 def _arc_matrices(placed, widths, widest, em_px, baseline_of, align, baseline, radius_px):
@@ -436,7 +493,7 @@ class LengthError(ValueError):
 def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0, fill=False,
            pull_mm=None, letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', radius_mm=None,
            sequence='left', arc_degrees=None, frame='none', frame_mm=2.5, classic=False, ornament='none',
-           circle_mm=None, wave_percent=6.0, fit_length_mm=None):
+           circle_mm=None, wave_percent=6.0, fit_length_mm=None, envelope='none', envelope_percent=30.0):
     """SVG of satin-column lettering; user units are CSS px (96 per inch).
     puff: letters over foam (see stitch_satin._puff_satin). Each letter has a
     placement line sewn before the stop for the foam, then a perforation line
@@ -451,9 +508,20 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
     words round a whole circle circle_mm across (a second line along the bottom);
     'wave': one S-shaped wave rising wave_percent of the words' length. fit_length_mm:
     one letter spacing chosen so the stitched line is exactly this long along its
-    baseline (letter_spacing_mm is then not used)."""
+    baseline (letter_spacing_mm is then not used). envelope: the words (every line) stretched
+    to fill a shape, letters bending with it, its edges moving envelope_percent of the words'
+    height (_envelope_warp)."""
     if baseline not in BASELINES or sequence not in SEQUENCES:
         raise ValueError('Choose a listed baseline and letter order.')
+    if envelope not in ENVELOPES:
+        raise ValueError('Choose a listed envelope.')
+    if envelope != 'none':
+        if baseline != 'straight':
+            raise ValueError('An envelope shapes words on a straight line. Choose a straight line or no envelope.')
+        if classic:
+            raise ValueError('A classic monogram cannot have an envelope. Choose no envelope.')
+        if not 10 <= float(envelope_percent) <= 50:
+            raise ValueError('Choose an envelope strength from 10 to 50%.')
     if frame not in FRAMES:
         raise ValueError('Choose a listed frame.')
     if frame != 'none' and puff:
@@ -582,11 +650,27 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
         raise ValueError('The letters would touch around a circle this small. Make the circle larger.'
                          if baseline == 'circle' else
                          'The letters would touch on a wave this strong. Choose a gentler wave.')
-    if baseline != 'straight' or classic or frame != 'none' or ornament != 'none':
-        # Keep the bent words (and the frame and ornament) on the page: measure them and move them in by half an em.
-        from shapely.affinity import affine_transform
+    from shapely.affinity import affine_transform
+    warp = None
+
+    def page(shape, m):
+        # A letter's outline as sewn: placed, then bent by the envelope.
+        shape = affine_transform(shape, m)
+        if warp is None:
+            return shape
+        import numpy as np
+        from shapely import segmentize, transform
+        return transform(segmentize(shape, .5/PX_MM), lambda xy: np.column_stack(warp(xy[:, 0], xy[:, 1])))
+    if envelope != 'none':
         from shapely.ops import unary_union
-        outline = unary_union([affine_transform(glyph_columns(font_path(key), char)[2], matrices[row, index])
+        block = unary_union([affine_transform(glyph_columns(font_path(key), char)[2], matrices[row, index])
+                             for row, glyphs in placed for index, (char, *_) in enumerate(glyphs) if char != ' '])
+        if not block.is_empty:
+            warp = _envelope_warp(envelope, float(envelope_percent), block.bounds)
+    if baseline != 'straight' or classic or frame != 'none' or ornament != 'none' or warp is not None:
+        # Keep the bent words (and the frame and ornament) on the page: measure them and move them in by half an em.
+        from shapely.ops import unary_union
+        outline = unary_union([page(glyph_columns(font_path(key), char)[2], matrices[row, index])
                                for row, glyphs in placed for index, (char, *_) in enumerate(glyphs) if char != ' '])
         if not outline.is_empty:
             left, top, right, bottom = outline.bounds
@@ -621,6 +705,15 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
             for m in matrices.values():
                 m[4] += em_px/2-left
                 m[5] += em_px/2-top
+            if warp is not None:
+                # The envelope was measured before the move: undo it, bend, redo it.
+                import numpy as np
+                bent, dx, dy = warp, em_px/2-left, em_px/2-top
+
+                def warp(x, y, bent=bent):
+                    x, y = bent(np.asarray(x, float)-dx, np.asarray(y, float)-dy)
+                    return x+dx, y+dy
+                warp.stretch = lambda x, bent=bent: bent.stretch(np.asarray(x, float)-dx)
             size = (right-left+em_px, bottom-top+em_px)
     ET.register_namespace('', SVG_NS); ET.register_namespace('inkstitch', INK_NS)
     ET.register_namespace('inkscape', LABEL_NS)
@@ -646,8 +739,7 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
             if fill:
                 # Big letters: strokes too wide for satin are sewn as one tatami fill
                 # per letter (holes kept), as professional lettering does.
-                from shapely.affinity import affine_transform
-                outline = affine_transform(glyph_columns(font_path(key), char)[2], m)
+                outline = page(glyph_columns(font_path(key), char)[2], m)
                 rings = [ring for poly in getattr(outline, 'geoms', [outline]) if not poly.is_empty
                          for ring in (poly.exterior, *poly.interiors)]
                 if rings:
@@ -664,23 +756,33 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
             nodes = []
             sewn_columns, column_nodes = [], []
             previous_end = None
-            for a, b, closed, width_em in columns:
-                ra, rb = [place(p) for p in a], [place(p) for p in b]
+            rails = [([place(p) for p in a], [place(p) for p in b]) for a, b, *_ in columns]
+            if warp is not None:
+                rails = [_bend_rails(ra, rb, warp, .6/PX_MM) for ra, rb in rails]
+            for (a, b, closed, width_em), (ra, rb) in zip(columns, rails):
                 sewn_columns.append((ra, rb))
-                walk = width_em*2*em_px*PX_MM >= .9
+                width_mm = width_em*2*em_px*PX_MM
+                if warp is not None:
+                    # Bent strokes are as wide as the envelope makes them.
+                    width_mm = (max(math.dist(p, q) for p, q in zip(ra, rb))*PX_MM if len(ra) == len(rb) else
+                                width_mm*float(max(warp.stretch([p[0] for p in ra+rb]))))
+                walk = width_mm >= .9
                 start = _lerp(ra[0], rb[0], .5) if walk else _lerp(ra[0], rb[0], .3)
                 if previous_end is not None:
                     # Move between strokes inside the letter, never across fabric.
                     if travel is None:
-                        from shapely.affinity import affine_transform
                         from .stitch_paths import Travel
                         # Inside the sewn columns, not the font outline: where two
                         # columns meet the outline has an unsewn wedge, and a travel
                         # across it is a thread over bare fabric.
                         from shapely.geometry import Polygon
                         from shapely.ops import unary_union
-                        shape = unary_union([Polygon(list(ca) + list(cb)[::-1]).buffer(0) for ca, cb, *_ in columns])
-                        travel = Travel(affine_transform(shape, m), inset=.15/PX_MM, slack=.05/PX_MM)
+                        if warp is None:
+                            shape = affine_transform(unary_union([Polygon(list(ca) + list(cb)[::-1]).buffer(0)
+                                                                  for ca, cb, *_ in columns]), m)
+                        else:
+                            shape = unary_union([Polygon(list(ca) + list(cb)[::-1]).buffer(0) for ca, cb in rails])
+                        travel = Travel(shape, inset=.15/PX_MM, slack=.05/PX_MM)
                     route = travel.route(previous_end, start, direct_mm=math.inf)
                     if route is None:
                         nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
@@ -697,7 +799,6 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                             f'{{{INK_NS}}}running_stitch_tolerance_mm': '0'}))
                 previous_end = _lerp(rb[-1], ra[-1], .3)
                 d = ' '.join([_path(ra), _path(rb)])
-                width_mm = width_em*2*em_px*PX_MM
                 if puff and not puff_columns[0] <= width_mm <= puff_columns[1]:
                     raise ValueError(f'3D puff on {foam_mm:g} mm foam needs letter strokes {puff_columns[0]:g}–{puff_columns[1]:g} mm wide; '
                                      f'“{char}” has a {width_mm:.1f} mm stroke at this size. '

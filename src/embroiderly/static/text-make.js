@@ -36,8 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
  document.addEventListener('lettering:failed',e=>say(e.detail,true));
  // Changing the words or settings only marks the stitches as out of date.
  const later=()=>{hint.classList.remove('text-make-error');hint.textContent=made?'Words or settings changed · press Make stitches to update.':'Press Make stitches when your words are ready.'};
- for(const id of ['letteringWords','nativeFont','nativeHeight','nativeWidth','letteringAlign','letteringColour','puffOn','puffFoam','nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeFabric','nativeLetterSpacing','nativeLineSpacing','nativeSequence'])
-  $(id)?.addEventListener(['letteringWords','nativeHeight','nativeWidth','nativeCurve','nativeCircle','nativeWave','nativeFitLength'].includes(id)?'input':'change',later);
+ for(const id of ['letteringWords','nativeFont','nativeHeight','nativeWidth','letteringAlign','letteringColour','puffOn','puffFoam','nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeFabric','nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeEnvelope','nativeEnvelopeStrength'])
+  $(id)?.addEventListener(['letteringWords','nativeHeight','nativeWidth','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeEnvelopeStrength'].includes(id)?'input':'change',later);
  // The size note is only useful once there is a measured size.
  const size=$('workflowMeasuredSize');
  if(size){
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
   colour:'letteringColour',baseline:'nativeBaseline',arc_degrees:'nativeCurve',letter_spacing_mm:'nativeLetterSpacing',
   line_spacing_percent:'nativeLineSpacing',sequence:'nativeSequence',fabric_preset:'nativeFabric',puff_foam_mm:'puffFoam',
   frame:'nativeFrame',frame_mm:'nativeFrameWidth',ornament:'nativeOrnament',circle_mm:'nativeCircle',wave_percent:'nativeWave',
-  fit_length_mm:'nativeFitLength'};
+  fit_length_mm:'nativeFitLength',envelope:'nativeEnvelope',envelope_percent:'nativeEnvelopeStrength'};
  function apply(values){
   if('puff' in values&&window.NativePuff&&window.NativePuff.get()!==!!values.puff){
    window.NativePuff.set(!!values.puff,values.puff_foam_mm);$('puffOn').dispatchEvent(new Event('change',{bubbles:true}));
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  const later=()=>{clearTimeout(timer);timer=setTimeout(check,350)};
  // Delegated: the puff controls are added by another script, possibly after this one.
- const watched=new Set(['letteringWords','nativeFont','nativeHeight','nativeWidth','nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeLetterSpacing','nativeLineSpacing','puffOn','puffFoam','nativeFabric','nativeFrame','nativeFrameWidth','nativeClassic','nativeOrnament']);
+ const watched=new Set(['letteringWords','nativeFont','nativeHeight','nativeWidth','nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeLetterSpacing','nativeLineSpacing','puffOn','puffFoam','nativeFabric','nativeFrame','nativeFrameWidth','nativeClassic','nativeOrnament','nativeEnvelope','nativeEnvelopeStrength']);
  for(const type of ['input','change'])document.addEventListener(type,e=>{if(watched.has(e.target?.id))later()});
  document.addEventListener('lettering:layout',later);document.addEventListener('lettering:result',later);
  setTimeout(check,800);

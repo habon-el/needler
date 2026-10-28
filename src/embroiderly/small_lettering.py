@@ -142,6 +142,11 @@ def layout_options(body):
             options['arc_degrees']=number('arc_degrees',90,10,300,'Choose a curve from 10 to 300 degrees.')
         else:
             options['radius_mm']=number('arc_radius_mm',60,5,1000,'Enter an arc radius from 5 to 1000 mm.')
+    # Envelope: the words stretched to fill a shape (embroidery_fonts.ENVELOPES), and how strongly.
+    options['envelope']=body.get('envelope','none')
+    if options['envelope'] not in embroidery_fonts.ENVELOPES:raise ValueError('Choose a listed envelope.')
+    if options['envelope']!='none':
+        options['envelope_percent']=number('envelope_percent',30,10,50,'Choose an envelope strength from 10 to 50%.')
     if body.get('fit_length_mm') not in (None,''):
         # Fixed length: the letter spacing is worked out from it (embroidery_fonts.layout).
         options['fit_length_mm']=number('fit_length_mm',0,5,1000,'Enter a fixed length from 5 to 1000 mm.')

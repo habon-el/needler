@@ -119,7 +119,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Joins: closest / bottom / as digitized | letters that touch are joined inside both (script fonts); separate letters keep their cut, since an uncut thread over fabric fails the file checks | ◐ no bottom join | P3 |
 | Letter sequence (centre-out for caps, line by line) | left to right, centre out | ✅ 2026-10-24 | |
 | Baselines: arc, circle, custom line, fixed length | Shape buttons Straight / Arch / Smile / Circle / Wave; Curve slider in degrees for arch and smile (the circle follows the words' length); Full circle of a chosen size, the first line over the top reading clockwise and an optional second line along the bottom reading left to right; Wave (one S-curve) with a strength slider as the custom line; Fixed length (mm) spreads or squeezes the letter spacing so the stitched line is exactly that long along its baseline, refused with the shortest or longest workable length when letters would overlap or end up more than a letter's height apart; letters stay rigid, and a bend that makes letters touch is refused | ✅ 2026-10-26 | |
-| Lettering envelopes, elastic lettering | — | ✗ | P3 |
+| Lettering envelopes, elastic lettering | Envelope under Shape (straight words, any number of lines): Arch top, Arch bottom, Bulge, Pinch, Bend up, Grow to the right, Shrink to the right, with a Strength slider (10–50% of the words' height); the letters stretch and bend with the shape (satin rails bent point by point, stroke widths measured after bending), not just moved | ✅ 2026-10-28 | |
 | Monogramming (templates, ornaments, borders) | Text page "Monogram & frame": classic layout (middle initial bigger), satin frames (circle, oval, square, diamond, hexagon, shield, heart) and an Ornament: crown above, laurel round the sides and bottom, swirls left and right, or a line below; satin drawn in code, scaled to the letters, placed round the words and frame, in the thread colour, sewn last | ✅ 2026-10-26 | |
 | Team names | Text page "Team names": one name per line (up to 50, 40 letters each), the same font, height, shape and colour for all; Make all names builds and checks one file per name in turn, lists each width and stitches, and names any too wide or failing a check with the reason (too wide: offers one smaller height for all, never resizes); Download all (zip) in the chosen machine format | ✅ 2026-10-25 | |
 
@@ -199,7 +199,7 @@ instructions are typed by hand, so they fall behind every new feature.
 | 12 | AI digitizer step 6: fake-Claude tests, then real runs on the person's pictures ($2 budget) | ✓ 2026-10-28 |
 | 13 | P3: templates / save as template; product colour and mockup | ✓ 2026-10-28 |
 | 14 | P3: partial, combined and overlap-free appliqué; buttonholes and basting markers | ✓ 2026-10-28 |
-| 15 | P3: lettering envelopes and elastic lettering; more fonts | ✗ |
+| 15 | P3: lettering envelopes and elastic lettering (✓ 2026-10-28); more fonts | ◐ |
 | 16 | P3: morphing (pinch, punch, twirl, wave); auto trace to vectors and magic wand | ✗ |
 | 17 | P3: multi-colour and open photo stitch; recognize stitches (machine file to objects) | ✗ |
 | 18–19 | Parked bugs (parallel agents): merging a colour on a cut-out subject fails the file check; rose gaps and flat leaves; Start does nothing over an old result; white parts dropped and white merging with pale sky; colour change unticks "I approve"; ~30 edge-speck cleanup choices; stuck on "Opening image editor…"; big script satin gaps; designs page and studio freezing Chrome | ✗ |

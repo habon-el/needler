@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 from . import auto_claude, small_lettering
+from .embroidery_fonts import ENVELOPES
 
 MAX_TURNS = 8
 
@@ -28,6 +29,7 @@ arc_under. curve_degrees is how far round a circle the words reach: 60 is gentle
 second line along the bottom (a badge or patch ring). Shape wave is one S-shaped wave; wave_percent is how high \
 it rises (3 gentle, 6 usual, 10 strong); short words need a gentle wave.
 - Arch, smile and wave text must be one line; a circle takes at most two.
+- envelope stretches straight words (any number of lines) to fill a shape, the letters bending with it: arch_top (the top edge bows up), arch_bottom (the bottom edge bows down), bulge (both bow out), pinch (both bow in), bend_up (the whole block bows up), grow (letters get bigger to the right), shrink (smaller to the right). envelope_percent is how far the edges move (20 gentle, 30 usual, 50 strong). Only with shape straight.
 - fixed_length_mm spreads or squeezes the letters so one line is exactly that long (e.g. "make it exactly \
 90 mm long"); leave it out otherwise. The check says the shortest or longest it can be.
 - Monograms: initials as the words (e.g. "JAM"), classic true for the bigger middle initial, and a frame \
@@ -45,7 +47,8 @@ FIELDS = dict(  # tool name -> the screen's value name
     colour='colour', shape='baseline', curve_degrees='arc_degrees', letter_spacing_mm='letter_spacing_mm',
     line_spacing_percent='line_spacing_percent', sequence='sequence', puff='puff', foam_mm='puff_foam_mm',
     fabric='fabric_preset', frame='frame', frame_mm='frame_mm', classic='classic',
-    ornament='ornament', circle_mm='circle_mm', wave_percent='wave_percent', fixed_length_mm='fit_length_mm')
+    ornament='ornament', circle_mm='circle_mm', wave_percent='wave_percent', fixed_length_mm='fit_length_mm',
+    envelope='envelope', envelope_percent='envelope_percent')
 
 
 def tools(fonts, fabrics):
@@ -60,6 +63,8 @@ def tools(fonts, fabrics):
         curve_degrees=dict(type='number', minimum=20, maximum=240),
         circle_mm=dict(type='number', minimum=10, maximum=500, description='Circle shape: the size across, inside the letters.'),
         wave_percent=dict(type='number', minimum=2, maximum=25, description='Wave shape: how high it rises.'),
+        envelope=dict(type='string', enum=list(ENVELOPES), description='Straight words stretched to fill a shape.'),
+        envelope_percent=dict(type='number', minimum=10, maximum=50, description='Envelope: how strongly it bends.'),
         fixed_length_mm=dict(type='number', minimum=5, maximum=1000,
                              description='One line spread or squeezed to exactly this length.'),
         letter_spacing_mm=dict(type='number', minimum=-2, maximum=10),
@@ -103,6 +108,11 @@ def merged(values, settings):
         else:
             out.pop(name, None)
     out.pop('arc_radius_mm', None)
+    if shape != 'straight' or out.get('envelope', 'none') == 'none':
+        out.pop('envelope', None)
+        out.pop('envelope_percent', None)
+    else:
+        out.setdefault('envelope_percent', 30)
     if out.get('puff'):
         out.setdefault('puff_foam_mm', 3)
     return out

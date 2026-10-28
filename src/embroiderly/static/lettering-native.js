@@ -3,11 +3,11 @@
  'use strict';
  const $=id=>document.getElementById(id), dialog=$('letteringDialog');
  const fields=['letteringWords','letteringAlign','letteringColour','nativeFont','nativeHeight','nativeWidth','nativeFabric',
-  'nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeFrame','nativeFrameWidth','nativeClassic','nativeOrnament'];
+  'nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeFrame','nativeFrameWidth','nativeClassic','nativeOrnament','nativeEnvelope','nativeEnvelopeStrength'];
  // Layout controls and the recipe keys they set; a control left at its default sends nothing.
  const layoutFields=[['nativeBaseline','baseline','straight'],['nativeLetterSpacing','letter_spacing_mm','0'],
   ['nativeLineSpacing','line_spacing_percent','100'],['nativeSequence','sequence','left'],['nativeFrame','frame','none'],
-  ['nativeFrameWidth','frame_mm','2.5'],['nativeOrnament','ornament','none']];
+  ['nativeFrameWidth','frame_mm','2.5'],['nativeOrnament','ornament','none'],['nativeEnvelope','envelope','none']];
  function layout(){const out={};
   for(const [id,key,plain] of layoutFields){const v=$(id).value;if(v!==plain)out[key]=$(id).type==='number'?Number(v):v;}
   // Curve in degrees (the circle follows the words' length). Lettering saved with a radius
@@ -18,15 +18,21 @@
   // Full circle: its size; wave: how high it rises; fixed length: the letter spacing follows from it.
   if(out.baseline==='circle')out.circle_mm=Number($('nativeCircle').value);
   if(out.baseline==='wave')out.wave_percent=Number($('nativeWave').value);
+  // Envelope: only on a straight line, with how strongly it bends the words.
+  if(out.baseline)delete out.envelope;
+  if(out.envelope)out.envelope_percent=Number($('nativeEnvelopeStrength').value);
   if($('nativeFitLength').value.trim()){out.fit_length_mm=Number($('nativeFitLength').value);delete out.letter_spacing_mm;}
   return out;}
  let savedRadius=null;
  const showRadius=()=>{const b=$('nativeBaseline').value;$('nativeCurveField').hidden=b!=='arc_over'&&b!=='arc_under';
   $('nativeCircleField').hidden=b!=='circle';$('nativeWaveField').hidden=b!=='wave';
+  $('nativeEnvelopeField').hidden=b!=='straight';$('nativeEnvelopeStrengthField').hidden=$('nativeEnvelope').value==='none';
+  $('nativeEnvelopeValue').textContent=$('nativeEnvelopeStrength').value+'%';
   $('nativeCurveValue').textContent=$('nativeCurve').value+'°';$('nativeWaveValue').textContent=$('nativeWave').value+'%';};
  $('nativeBaseline').addEventListener('input',showRadius);$('nativeBaseline').addEventListener('change',showRadius);
  $('nativeCurve').addEventListener('input',()=>{savedRadius=null;showRadius();});
  $('nativeWave').addEventListener('input',showRadius);
+ for(const id of ['nativeEnvelope','nativeEnvelopeStrength'])$(id).addEventListener('input',showRadius);
  const showFrame=()=>{$('nativeFrameWidthField').hidden=$('nativeFrame').value==='none';};
  $('nativeFrame').addEventListener('input',showFrame);$('nativeFrame').addEventListener('change',showFrame);
  // Fabric preset: the satin edge follows the fabric, as in the main studio.
@@ -52,6 +58,7 @@
   savedRadius=recipe.arc_degrees?null:recipe.arc_radius_mm||null;
   $('nativeCurve').value=recipe.arc_degrees||90;
   $('nativeCircle').value=recipe.circle_mm||60;$('nativeWave').value=recipe.wave_percent||6;
+  $('nativeEnvelopeStrength').value=recipe.envelope_percent||30;
   $('nativeFitLength').value=recipe.fit_length_mm??'';
   showRadius();showFrame();$('nativeLayout').open=layoutFields.some(([,key])=>key in recipe)||'fit_length_mm' in recipe;
   emit('layout',recipe);

@@ -23,6 +23,10 @@
 <input id="nativeCircle" type="number" min="10" max="500" step="1" value="60" title="Across the circle, inside the letters. The first line goes over the top, a second line along the bottom."></span>
 <span id="nativeWaveField" hidden><label for="nativeWave">Wave <output id="nativeWaveValue" for="nativeWave">6%</output></label>
 <input id="nativeWave" type="range" min="2" max="25" step="1" value="6" title="How high the wave rises, as a share of the words' length."></span>
+<span id="nativeEnvelopeField"><label for="nativeEnvelope">Envelope</label>
+<select id="nativeEnvelope" title="Stretch the words to fill a shape. The letters bend with it."><option value="none">None</option><option value="arch_top">Arch top</option><option value="arch_bottom">Arch bottom</option><option value="bulge">Bulge</option><option value="pinch">Pinch</option><option value="bend_up">Bend up</option><option value="grow">Grow to the right</option><option value="shrink">Shrink to the right</option></select>
+<span id="nativeEnvelopeStrengthField" hidden><label for="nativeEnvelopeStrength">Strength <output id="nativeEnvelopeValue" for="nativeEnvelopeStrength">30%</output></label>
+<input id="nativeEnvelopeStrength" type="range" min="10" max="50" step="5" value="30"></span></span>
 <span id="nativeFitLengthField"><label for="nativeFitLength">Fixed length (mm)</label>
 <input id="nativeFitLength" type="number" min="5" max="1000" step=".1" placeholder="Off" title="Spread or squeeze the letters so the words are exactly this long along the line. Leave empty for normal spacing."></span>
 <label for="nativeFrame">Frame</label>

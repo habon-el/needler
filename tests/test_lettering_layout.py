@@ -319,3 +319,48 @@ def test_wave_rises_and_falls_and_refuses_bends_that_make_letters_touch():
         ef.layout('Waves', 'graduate', 250, baseline='wave', wave_percent=25)
     with pytest.raises(ValueError):
         ef.layout('A\nB', 'graduate', 250, baseline='wave')
+
+
+def glyph_heights(svg):
+    """Each letter's label, height and middle (px), from its sewn columns."""
+    out = []
+    for label, body in re.findall(r'letter-group="glyph"[^>]*label="([^"]+)"[^>]*>(.*?)</g>', svg, re.S):
+        ys = [y for _, y in coords(' '.join(re.findall(r' d="([^"]+)"', body)))]
+        out.append((label, max(ys)-min(ys), (max(ys)+min(ys))/2))
+    return out
+
+
+@pytest.mark.parametrize('envelope', ef.ENVELOPES[1:])
+def test_envelopes_bend_the_letters_and_pass_the_release_gate(envelope):
+    body = dict(text='SALE TODAY', font='small_font', height_mm=10, available_width_mm=300, colour='#202020',
+                envelope=envelope, envelope_percent=40)
+    settings = ln.recipe(body)
+    assert settings['envelope'] == envelope and settings['envelope_percent'] == 40
+    svg = ef.layout(settings['text'], 'small_font', sl.validate(body)[2], envelope=envelope, envelope_percent=40)
+    plain = {label: (h, y) for label, h, y in glyph_heights(ef.layout('SALE TODAY', 'small_font', sl.validate(body)[2]))}
+    letters = glyph_heights(svg)
+    (first, h0, y0), (middle, h1, y1), (last, h2, y2) = letters[0], letters[len(letters)//2], letters[-1]
+    taller = lambda label, h: h/plain[label][0]
+    expect = dict(arch_top=taller(middle, h1) > 1.25, arch_bottom=taller(middle, h1) > 1.25,
+                  bulge=taller(middle, h1) > 1.25, pinch=taller(middle, h1) < .75,
+                  bend_up=abs(taller(middle, h1)-1) < .1 and y1 < y0-1/ef.PX_MM,
+                  grow=taller(first, h0) < .85 and taller(last, h2) > .95,
+                  shrink=taller(first, h0) > .95 and taller(last, h2) < .85)
+    assert expect[envelope], letters
+    with tempfile.TemporaryDirectory() as folder:
+        result = ln.build(Path(folder), settings)
+    assert result['checks_passed'], result.get('issues')
+
+
+def test_envelopes_are_checked_and_plain_lettering_keeps_its_recipe():
+    assert 'envelope' not in ln.recipe(dict(text='Hi', font='small_font', height_mm=8, colour='#202020'))
+    for body in (dict(envelope='twist'), dict(envelope='bulge', envelope_percent=80),
+                 dict(envelope='bulge', envelope_percent='lots')):
+        with pytest.raises(ValueError):
+            sl.layout_options(body)
+    for extra in (dict(baseline='arc_over', arc_degrees=90), dict(baseline='wave'), dict(classic=True)):
+        with pytest.raises(ValueError, match='envelope'):
+            ef.layout('JAM', 'graduate', 250, envelope='bulge', **extra)
+    # Two lines bend together as one block.
+    letters = glyph_heights(ef.layout('BIG\nSALE', 'graduate', 250, envelope='arch_top', envelope_percent=50))
+    assert len(letters) == 7
