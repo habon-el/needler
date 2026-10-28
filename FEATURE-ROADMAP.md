@@ -111,7 +111,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 ## 8. Lettering and monograms
 | Tool | Needler | Status | P |
 |---|---|---|---|
-| Large embroidery font library | 18 own fonts | ◐ | P3 |
+| Large embroidery font library | 30 own fonts (11 added 2026-10-28: Bangers, Damion, Fjalla One, Francois One, Grand Hotel, Leckerli One, Lilita One, Patua One, Paytone One, Sniglet, Titan One); each new font sewn as every character at its smallest, middle and largest size with no file-check failure | ✅ 2026-10-28 | |
 | TrueType conversion | own satin conversion (`satin_font.py`) | ✅ | |
 | Size-dependent underlay, density and pull | `size_profile` + fabric pull | ✅ 2026-10-24 | |
 | Auto split for wide lettering columns | big letters stay satin, sewn as split satin (staggered stitches of at most 6.85 mm, double zigzag under strokes from 8 mm) up to 12 mm wide strokes; only wider strokes, words whose satin fails a file check, and the two fonts that trace badly larger, switch to fill | ✅ 2026-10-25 | |
@@ -199,7 +199,7 @@ instructions are typed by hand, so they fall behind every new feature.
 | 12 | AI digitizer step 6: fake-Claude tests, then real runs on the person's pictures ($2 budget) | ✓ 2026-10-28 |
 | 13 | P3: templates / save as template; product colour and mockup | ✓ 2026-10-28 |
 | 14 | P3: partial, combined and overlap-free appliqué; buttonholes and basting markers | ✓ 2026-10-28 |
-| 15 | P3: lettering envelopes and elastic lettering (✓ 2026-10-28); more fonts | ◐ |
+| 15 | P3: lettering envelopes and elastic lettering; more fonts | ✓ 2026-10-28 |
 | 16 | P3: morphing (pinch, punch, twirl, wave); auto trace to vectors and magic wand | ✗ |
 | 17 | P3: multi-colour and open photo stitch; recognize stitches (machine file to objects) | ✗ |
 | 18–19 | Parked bugs (parallel agents): merging a colour on a cut-out subject fails the file check; rose gaps and flat leaves; Start does nothing over an old result; white parts dropped and white merging with pale sky; colour change unticks "I approve"; ~30 edge-speck cleanup choices; stuck on "Opening image editor…"; big script satin gaps; designs page and studio freezing Chrome | ✗ |

@@ -32,6 +32,9 @@ FONT_SOURCES = [
     # SIL Open Font License fonts from github.com/google/fonts (ofl/).
     'graduate', 'bebasneue', 'anton', 'staatliches', 'pacifico', 'lobster', 'kaushanscript',
     'alfaslabone', 'righteous', 'russoone', 'archivoblack', 'bowlbyone', 'bungee', 'passionone',
+    'bangers', 'damion', 'fjallaone',
+    'francoisone', 'grandhotel', 'leckerlione', 'lilitaone', 'patuaone',
+    'paytoneone', 'sniglet', 'titanone',
 )] + [(Path(directory), package, Path('/usr/share/doc')/package/'copyright') for directory, package in (
     ('/usr/share/fonts/truetype/lato', 'fonts-lato'),
     ('/usr/share/fonts/truetype/dejavu', 'fonts-dejavu-core'),

@@ -928,3 +928,17 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Recipe keys `envelope`, `envelope_percent` (left out when none, so old cache keys hold).
   Text page: Envelope select + Strength slider in the Shape box (hidden off a straight line).
   Claude's text tools take `envelope` / `envelope_percent`.
+
+## Eleven more fonts (added 2026-10-28)
+
+- Bangers, Damion, Fjalla One, Francois One, Grand Hotel, Leckerli One, Lilita One, Patua One,
+  Paytone One, Sniglet, Titan One (SIL OFL, github.com/google/fonts `ofl/`, licence beside each
+  file). 30 fonts in all.
+- Size range from stroke widths as before (thinnest 10% of strokes at least 0.34 mm, widest at most
+  4.2 mm, 6 mm for puff). Then a sweep built every character, eight at a time, at the smallest,
+  middle and largest satin height. Where it failed, the range was narrowed: Bangers 1.1–2.9,
+  Leckerli One 1.1–2.4 (no `~`), Patua One to 2.4, Paytone One to 2.1, Titan One to 2.1; those
+  five are fill above their range (`split_satin=False`).
+- Tried and left out because ordinary letters failed checks at normal sizes: Black Ops One,
+  Carter One, Changa One, Cookie, Courgette (its Z fails at scattered sizes), Lobster Two Bold,
+  Norican, Squada One.
