@@ -880,3 +880,20 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Colour removal (`colour_knockouts`) now treats the border's band as kept area in
   `knockout_routing.protect` / `verify`: a border on the design's edge used to fail with
   "Cannot secure a thread beside a removed area" whenever the background was left out.
+
+## Appliqué pieces together (added 2026-10-28)
+- `applique_layout.finish` runs after every colour pass has made its parts (`engine.py`), on all
+  parts styled `applique`, with three design options (`applique_partial`, `applique_combine`,
+  `applique_join`; on or off, anything else is refused).
+- Partial: a piece grows up to 1.5 mm under the parts sewn after it, staying 0.8 mm inside their far
+  edge (thin parts on top get no growth). That edge is written to the node as `applique_bare`
+  (closed pixel paths); `stitch_engine._applique` gives it no satin cover. Hidden stretches under
+  about 2.5 mm are covered anyway, and covers run 1 mm on under the part on top (`TUCK_MM`).
+  Placement and tack-down still go all round. The cutting file has the grown shape.
+- Join: an edge next to a later appliqué piece is bare too, so the later piece's cover alone sews
+  the join; in partial mode a piece does not grow under a later appliqué piece.
+- Combine: the pieces of one colour pass become one node, so placement for all, one stop,
+  tack-down for all, one stop, covers for all. Pieces of one colour never touch.
+- Release check: `applique_coverage(..., bare=)` uses the same geometry as the stitches.
+- Colour mode only; the piece layout path keeps one piece per node. Claude sets them with
+  `make_stitches.applique` (handbook row `concept:applique_pieces`).

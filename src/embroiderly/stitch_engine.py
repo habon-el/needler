@@ -327,7 +327,7 @@ def _element_blocks(node, paths, style, scale, index, min_len, start=None, lines
                     runs = tatami(shape, _float(node, 'angle', 0), spacing, 3.0, 4, min_len)
             elif method == 'applique':
                 cover = min(6.0, max(1.5, _float(node, 'applique_cover_mm', 3.0)))
-                for runs, stop in _applique(shape, cover):
+                for runs, stop in _applique(shape, cover, bare_region(_attr(node, 'applique_bare'), scale)):
                     first = len(blocks)
                     emit(fill, runs)
                     if len(blocks) > first:
@@ -397,14 +397,66 @@ def _element_blocks(node, paths, style, scale, index, min_len, start=None, lines
     return blocks
 
 
-def _applique(shape, cover):
+TUCK_MM = 1.0   # a cover runs this far on under a part sewn on top, so no raw edge shows where it ends
+
+
+def bare_region(d, scale):
+    """Where an appliqué edge needs no satin cover (attribute applique_bare: closed pixel
+    paths, even-odd), in mm; None when there is none. Its pixels' own edge counts as inside."""
+    if not d:
+        return None
+    region = fill_shape([([(x*scale, y*scale) for x, y in pts], True) for pts, _ in sg.parse_path(d)], 'evenodd')
+    return None if region.is_empty else region.buffer(.4*scale)
+
+
+def _cover_lines(ring, bare):
+    """Parts of one edge ring that get the satin cover: [(points, closed)]. Hidden stretches
+    (inside `bare`) shorter than about 2.5 mm are covered anyway; covers run TUCK_MM into
+    the longer ones."""
+    from shapely.ops import linemerge, substring, unary_union
+    line = LineString(ring)
+    if bare is None or not line.intersects(bare):
+        return [(ring, True)]
+    hidden = linemerge([g for g in getattr(line.intersection(bare), 'geoms', [line.intersection(bare)])
+                        if isinstance(g, LineString) and g.length > 0])
+    hidden = [h for h in getattr(hidden, 'geoms', [hidden]) if h.length > 2*TUCK_MM+.5]
+    if not hidden:
+        return [(ring, True)]
+    rest = line.difference(unary_union([substring(h, TUCK_MM, h.length-TUCK_MM).buffer(.01) for h in hidden]))
+    if rest.is_empty:
+        return []
+    rest = linemerge([g for g in getattr(rest, 'geoms', [rest]) if isinstance(g, LineString)])
+    return [(list(g.coords), False) for g in getattr(rest, 'geoms', [rest]) if g.length >= .5]
+
+
+def _open_cover(points, cover):
+    """Satin `cover` mm wide centred on an open edge line (partial appliqué)."""
+    import numpy as np
+    p = np.asarray(points, float)
+    edges = np.diff(p, axis=0)
+    lengths = np.linalg.norm(edges, axis=1)
+    if len(p) < 2 or np.any(lengths < 1e-6):
+        raise ValueError('Edge too short for a satin cover.')
+    normals = np.column_stack((-edges[:, 1], edges[:, 0]))/lengths[:, None]
+    at = np.vstack((normals[:1], normals[:-1]+normals[1:], normals[-1:]))
+    denom = np.ones(len(p))
+    denom[1:-1] = 1+np.sum(normals[:-1]*normals[1:], axis=1)
+    if np.any(denom < .5):
+        raise ValueError('Corner too sharp for a satin cover.')
+    at[1:-1] /= denom[1:-1, None]
+    a, b = p+at*cover/2, p-at*cover/2
+    return satin([([tuple(q) for q in a], False), ([tuple(q) for q in b], False)], .4, 0, indexed=True, split=SPLIT_MM)
+
+
+def _applique(shape, cover, bare=None):
     """Appliqué, sewn in three parts as is usual: a placement run on the edge
     (where to lay the fabric), then after a stop an open zigzag tack-down just
     inside the edge, then after a stop for trimming a satin cover `cover` mm wide
     centred on the cut edge. The inside stays unstitched: the fabric shows.
-    Returns [(runs, stop_before)]."""
+    Edges inside `bare` (mm; hidden under parts sewn on top, or covered by the next
+    piece's cover) get no cover. Several pieces share the stops. Returns [(runs, stop_before)]."""
     from .borders import satin_rails
-    if shape.buffer(-cover).is_empty:
+    if any(poly.buffer(-cover).is_empty for poly in polygons(shape)):
         raise ValueError(f'An appliqué piece must be at least {2*cover:g} mm across. Use a larger area or a fill.')
     rings = [list(r.coords) for poly in polygons(shape) for r in (poly.exterior, *poly.interiors)]
     placement = [running(ring, 2.5, .05) for ring in rings]
@@ -413,26 +465,31 @@ def _applique(shape, cover):
             for poly in polygons(inner) for r in (poly.exterior, *poly.interiors)]
     covers = []
     for ring in rings:
-        simple = list(LineString(ring).simplify(cover*.15).coords)
-        try:
-            for a, b in satin_rails(simple, cover/2):
-                covers.append(satin([([tuple(p) for p in a], False), ([tuple(p) for p in b], False)], .4, 0,
-                                    split=SPLIT_MM))
-        except ValueError:
-            # Corners too sharp for matched rails: a dense zigzag of the same width.
-            covers.append(zigzag_outline(ring, .8, cover))
+        for line, closed in _cover_lines(ring, bare):
+            simple = list(LineString(line).simplify(cover*.15).coords)
+            try:
+                if not closed:
+                    covers.append(_open_cover(simple, cover))
+                    continue
+                for a, b in satin_rails(simple, cover/2):
+                    covers.append(satin([([tuple(p) for p in a], False), ([tuple(p) for p in b], False)], .4, 0,
+                                        split=SPLIT_MM))
+            except ValueError:
+                # Corners too sharp for matched rails: a dense zigzag of the same width.
+                covers.append(zigzag_outline(line, .8, cover))
     return [(placement, False), (tack, True), (covers, True)]
 
 
-def applique_coverage(rings_px, scale, shape_px, cover=3.0):
+def applique_coverage(rings_px, scale, shape_px, cover=3.0, bare=None):
     """Where an appliqué piece really sews (placement, tack-down and the satin cover,
-    whose mitred corners reach past the edge), as a pixel mask for the release check."""
+    whose mitred corners reach past the edge), as a pixel mask for the release check.
+    bare: the piece's applique_bare attribute."""
     import cv2
     import numpy as np
     from shapely.geometry import Polygon
     polygon = Polygon(np.asarray(rings_px[0], float)*scale, [np.asarray(r, float)*scale for r in rings_px[1:]]).buffer(0)
     band = np.zeros(shape_px, np.uint8)
-    for runs, _ in _applique(polygon, cover):
+    for runs, _ in _applique(polygon, cover, bare_region(bare, scale)):
         for run in runs:
             if len(run) >= 2:
                 cv2.polylines(band, [np.rint(np.asarray(run)/scale).astype(np.int32)], False, 1, thickness=3)

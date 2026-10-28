@@ -135,6 +135,17 @@
       "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
     },
     {
+      "id": "concept:applique_pieces",
+      "tool": "Appliqué pieces together",
+      "control": "applique",
+      "does": "partial: the fabric runs about 1.5 mm on under the parts sewn on top of it, and that edge gets no satin. combine: pieces of one colour are placed, tacked down and covered together, so 2 stops in all instead of 2 per piece. join: where two appliqué pieces meet, only the later piece's satin covers the join.",
+      "use": "partial when an appliqué piece lies under stitched details (a face on a fabric head); combine when there are several pieces of one fabric; join when pieces touch, to avoid a double satin edge.",
+      "avoid": "partial when the part on top is thin (the fabric only runs under parts wide enough to hide it); combine when the person wants to lay each piece separately.",
+      "limits": "Colour mode only. Works on parts styled applique; each piece stays at least 6 mm across.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
       "id": "area:satin",
       "tool": "Satin",
       "control": "colour_styles",

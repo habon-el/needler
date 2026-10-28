@@ -26,7 +26,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   <label for="stitchDensity">Density</label>
   <select id="stitchDensity"><option value="lighter">Lighter</option><option value="normal">Normal</option><option value="denser">Denser</option></select>
   <label for="sewOrder">Sewing order</label>
-  <select id="sewOrder" title="Best look sews back to front: a part lying on another is sewn after it, even if that thread was used before. It can add colour changes."><option value="colours">Fewest colour changes</option><option value="layers">Best look (back to front)</option></select>`;
+  <select id="sewOrder" title="Best look sews back to front: a part lying on another is sewn after it, even if that thread was used before. It can add colour changes."><option value="colours">Fewest colour changes</option><option value="layers">Best look (back to front)</option></select>
+  <fieldset id="appliqueOptions" class="fabric-applique" hidden><legend>Appliqué</legend>
+  <label class="fabric-check" title="The fabric runs on under the parts sewn on it; their stitches hide that edge, so it gets no satin"><input type="checkbox" data-key="applique_partial"> Tuck under parts on top</label>
+  <label class="fabric-check" title="Pieces of one colour are placed, tacked down and covered together: two stops in all"><input type="checkbox" data-key="applique_combine"> Share stops</label>
+  <label class="fabric-check" title="Where two pieces meet, only the top piece's satin covers the join"><input type="checkbox" data-key="applique_join"> Cover joins once</label></fieldset>`;
  anchor.after(box);
  // Hoop picker (hoop-controls.js) sits with the other design-wide choices.
  const hoop=await window.hoopControls?.(studio);if(hoop)box.append(hoop);
@@ -74,6 +78,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // The design keeps the deleted fabric's values until another fabric is chosen.
   data.saved=result.saved;note.textContent='Fabric deleted.';sync();
  };
+ // Appliqué options (applique_layout.py): shown once the design has appliqué pieces.
+ const applique=$('appliqueOptions'),switches=[...applique.querySelectorAll('input')];
+ let hasApplique=false;
+ const syncApplique=()=>{const o=studio.snapshot();for(const box of switches)box.checked=o[box.dataset.key]===true;
+  applique.hidden=!hasApplique&&!switches.some(box=>box.checked)};
+ for(const box of switches)box.addEventListener('change',()=>{try{studio.apply({[box.dataset.key]:box.checked})}catch(error){(window.studioStatus||console.warn)(error.message)}syncApplique()});
+ window.addEventListener('studio:preview',e=>{hasApplique=!!e.detail?.applique;syncApplique()});
+ window.addEventListener('studio:controls',syncApplique);syncApplique();
  window.addEventListener('studio:controls',sync);window.addEventListener('studio:preview',sync);sync();
  // Clean Edit panel: size, its ±10% buttons and notes together, then the design options.
  const resize=$('canvasResize');

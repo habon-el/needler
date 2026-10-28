@@ -370,6 +370,8 @@ def digitize(source, directory, height_mm=100, colours=None):
     from .region_stitches import colour_choices, colour_hole_choices, for_colour, colour_style_refusal, split_style, FILL_STYLES
     colour_styles,colour_angles=colour_choices(settings)
     colour_holes=colour_hole_choices(settings)
+    from .applique_layout import choices as applique_choices, finish as applique_finish
+    applique_choices(settings)
     # 3D puff for every area that can hold foam; others stay flat.
     puff_all=settings.get('puff') is True
     from .stitch_engine import puff_min_mm
@@ -413,6 +415,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     for m in sewn_masks:later|=m
     here=np.zeros(2)  # where the last area ended (pixels); the design starts top left
     cut_pieces=[]     # appliqué outlines (pixel rings) for the fabric cutting file
+    applique_parts=[] # (rings, node, colour pass) finished together after all parts (applique_layout.py)
     passes=[]
     for colour in ([] if piece_layout else palette):
         key='#%02x%02x%02x'%tuple(colour)
@@ -432,7 +435,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     # Outlines per part (part_outlines.py): collected with their parts, sewn after all fills.
     from .part_outlines import choices as outline_choices, add as add_part_outline, in_order as outlines_in_order
     part_outlines=outline_choices(settings);pending_outlines=[]
-    for colour,choice,mask in passes:
+    for step,(colour,choice,mask) in enumerate(passes):
         later&=~mask.astype(bool)
         release_mask |= mask.astype(bool)
         contours,hierarchy=cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
@@ -512,11 +515,7 @@ def digitize(source, directory, height_mm=100, colours=None):
             if style=='puff' and knockout:
                 # Removed areas stay exact: no outward pull, as for flat satin.
                 node.set('{http://inkstitch.org/namespace}pull_compensation_mm','0')
-            if style=='applique':
-                cut_pieces.append(rings)
-                # The satin cover is centred on the fabric's cut edge: half of it, and its mitred corners, lie outside.
-                from .stitch_engine import applique_coverage
-                release_mask|=applique_coverage([r[:,0,:] for r in rings],scale,mask.shape)
+            if style=='applique':applique_parts.append((rings,node,step))
             if style=='puff' and not knockout:
                 # Puff satin is pulled past the edge on purpose; that band is sewn, not empty.
                 band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
@@ -545,6 +544,12 @@ def digitize(source, directory, height_mm=100, colours=None):
                 band=np.zeros_like(mask);cv2.drawContours(band,limb,-1,1,-1)
                 grow=max(1,int(math.ceil(satin_pull/scale)))
                 release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
+    if applique_parts:
+        from .stitch_engine import applique_coverage
+        for rings,bare in applique_finish(document,applique_parts,[m for *_,m in passes],scale,settings):
+            cut_pieces.append(rings)
+            # The satin cover is centred on the fabric's cut edge: half of it, and its mitred corners, lie outside.
+            release_mask|=applique_coverage([r[:,0,:] for r in rings],scale,release_mask.shape,bare=bare)
     for rings_px,spec in outlines_in_order(pending_outlines):
         objects+=add_part_outline(document,rings_px,spec,scale,release_mask,objects)
     outline_thread=settings.get('outline_colour','#202020')

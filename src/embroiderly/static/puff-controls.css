@@ -83,6 +83,10 @@
 .fabric-mine .fabric-row label, .fabric-mine .fabric-row button { flex:1; min-width:0; }
 .fabric-mine input:not([type=checkbox]) { width:100%; min-height:28px; box-sizing:border-box; }
 .fabric-mine label.fabric-check { display:flex; gap:6px; align-items:center; margin-top:6px; }
+/* Appliqué options (fabric-controls.js), under the sewing order. */
+.fabric-applique { margin:8px 0 0; padding:4px 8px 6px; border:1px solid var(--line,#ddd); border-radius:6px; font-size:12px; }
+.fabric-applique legend { padding:0 4px; }
+.fabric-applique label.fabric-check { display:flex; gap:6px; align-items:center; margin-top:4px; }
 /* Named colourways (colourway-controls.js), under the thread swatches. */
 .colourway-controls { margin-top:10px; }
 .colourway-controls select, .colourway-controls input { width:100%; min-height:28px; box-sizing:border-box; }

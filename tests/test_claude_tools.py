@@ -169,6 +169,11 @@ def test_holes_order_density_and_outlines_become_settings(tmp_path):
     assert later['outline_colour'] == 'auto'
 
 
+def test_applique_pieces_options_become_settings(tmp_path):
+    chosen = settings_from(dict(note='x', applique=dict(partial=True, combine=False, join='yes')), {}, root=tmp_path)
+    assert (chosen['applique_partial'], chosen['applique_combine']) == (True, False) and 'applique_join' not in chosen
+
+
 def test_feedback_per_colour_says_what_each_area_became():
     from embroiderly.auto_claude import per_colour
     playback = dict(colors=['#1e5ac8', '#ffcc00'], steps=[dict(t='trim'), dict(t='color_change'), dict(t='stitch')],

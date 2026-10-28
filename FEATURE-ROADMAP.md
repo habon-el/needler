@@ -31,7 +31,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Reshape, knife, split curve, break apart | Knife: drag a line across a piece to cut it into parts (each part its own piece); split at point, move points | ◐ no node reshaping of pieces | P3 |
 | Click to fill (with/without holes), turning fill, outline, centerline | Pieces panel "Click to fill": click an empty space closed by the artwork; it fills up to and 0.3 mm under the lines (gaps up to ~0.8 mm bridged), sewn first; Keep holes on/off. Auto satin, line art | ✅ 2026-10-25 | |
 | Appliqué (placement, tack-down, cover, stops) and Export cutting | area style Appliqué: placement run, stop, zigzag tack-down, stop, 3 mm satin cover; cutting shapes SVG at actual size | ✅ 2026-10-24 | |
-| Partial appliqué, combine appliqué, remove appliqué overlaps | — | ✗ | P3 |
+| Partial appliqué, combine appliqué, remove appliqué overlaps | Appliqué box in the design panel (shown when the design has appliqué): Tuck under parts on top (fabric runs 1.5 mm under later parts, no satin there), Share stops (one colour's pieces: 2 stops in all), Cover joins once; Claude sets them too | ✅ 2026-10-28 | |
 | Buttonholes, basting stitch markers | — | ✗ | P3 |
 
 ## 3. Stitch types — fills

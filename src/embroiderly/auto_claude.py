@@ -166,6 +166,15 @@ TOOLS = [
                           description='Space between fill rows and satin stitches for the whole design, on top of '
                                       'the fabric\'s own: lighter (12% wider, softer, fewer stitches), normal, denser '
                                       '(10% closer, more cover). Foam keeps its own.'),
+             applique=dict(type='object', additionalProperties=False,
+                           description='How appliqué pieces (style applique) work together; leave out to keep '
+                                       'each piece on its own with a full satin edge.',
+                           properties=dict(partial=dict(type='boolean', description='Fabric runs on under the parts '
+                                                        'sewn on top of it; that edge gets no satin.'),
+                                           combine=dict(type='boolean', description='Pieces of one colour share '
+                                                        'their two stops.'),
+                                           join=dict(type='boolean', description='Where two pieces meet, only '
+                                                     "the later piece's satin covers the join."))),
              outlines=dict(type='object', additionalProperties=False, required=['on'],
                            description='Running-stitch outlines along the edges between colour areas (colour mode), '
                                        'sewn after all fills.',
@@ -468,6 +477,11 @@ def settings_from(tool_input, options, size=None, image=None, root=None):
     for key, allowed in (('sew_order', ('colours', 'layers')), ('density', ('lighter', 'normal', 'denser'))):
         if tool_input.get(key) in allowed:
             nxt[key] = tool_input[key]
+    applique = tool_input.get('applique')
+    if isinstance(applique, dict):
+        for name in ('partial', 'combine', 'join'):
+            if isinstance(applique.get(name), bool):
+                nxt['applique_'+name] = applique[name]
     outlines = tool_input.get('outlines')
     if isinstance(outlines, dict) and isinstance(outlines.get('on'), bool):
         nxt['outlines'] = outlines['on']
@@ -540,7 +554,8 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                      'line_art', 'ink_only', 'count', 'height_mm', 'floor_mm2', 'simplify', 'smooth', 'puff',
                      'selection', 'fabric_preset', 'line_details', 'photo_style', 'hoop_id', 'border_style',
                      'border_placement', 'border_inner', 'colour_styles', 'colour_angles', 'colour_holes',
-                     'sew_order', 'density', 'outlines', 'outline_colour')}, selection_meaning='full: whole picture is stitched; anything else: only the '
+                     'sew_order', 'density', 'outlines', 'outline_colour', 'applique_partial', 'applique_combine',
+                     'applique_join')}, selection_meaning='full: whole picture is stitched; anything else: only the '
                      'saved subject cut-out is stitched and the background is left as bare fabric')
     messages = [dict(role='user', content=[picture, dict(type='text', text=
         'Here is the picture to digitize and what Needler measured:\n' + json.dumps(brief, indent=1))])]
