@@ -150,3 +150,20 @@ def test_style_per_colour_and_border_options_become_settings(tmp_path):
     assert plan['placement'] == 'outside' and plan['inner']
     off = settings_from(dict(note='x', border=dict(style='satin', line_inside=False)), chosen, root=tmp_path)
     assert off['border_inner'] == 'off' and off['border_placement'] == 'outside'
+
+
+def test_holes_order_density_and_outlines_become_settings(tmp_path):
+    offered = _settings(tmp_path)
+    assert offered['sew_order']['enum'] == ['colours', 'layers']
+    assert offered['density']['enum'] == ['lighter', 'normal', 'denser']
+    chosen = settings_from(dict(note='x', colour_holes=[dict(colour='#1E5AC8'), dict(colour='#ffcc00', up_to_mm2=4),
+                                                        dict(colour='blue')],
+                                sew_order='layers', density='lighter', outlines=dict(on=True, colour='auto')),
+                           {}, root=tmp_path)
+    assert chosen['colour_holes'] == {'#1e5ac8': 'all', '#ffcc00': 4}
+    assert (chosen['sew_order'], chosen['density'], chosen['outlines'], chosen['outline_colour']) == \
+        ('layers', 'lighter', True, 'auto')
+    later = settings_from(dict(note='x', colour_holes=[], sew_order='zigzag', outlines=dict(on=False)), chosen,
+                          root=tmp_path)
+    assert later['colour_holes'] == {} and later['sew_order'] == 'layers' and later['outlines'] is False
+    assert later['outline_colour'] == 'auto'

@@ -367,8 +367,9 @@ def digitize(source, directory, height_mm=100, colours=None):
     filled_holes=hole_choices(settings)
     from .region_stitches import angle_choices
     chosen_angles=angle_choices(settings)
-    from .region_stitches import colour_choices, for_colour, colour_style_fits, split_style, FILL_STYLES
+    from .region_stitches import colour_choices, colour_hole_choices, for_colour, colour_style_fits, split_style, FILL_STYLES
     colour_styles,colour_angles=colour_choices(settings)
+    colour_holes=colour_hole_choices(settings)
     # 3D puff for every area that can hold foam; others stay flat.
     puff_all=settings.get('puff') is True
     from .stitch_engine import puff_min_mm
@@ -454,6 +455,13 @@ def digitize(source, directory, height_mm=100, colours=None):
                 # the hole's edge; an empty hole is filled. That stitching is intended.
                 band=np.zeros_like(mask);cv2.drawContours(band,[c],-1,1,-1)
                 release_mask|=band.astype(bool);rings=[c]
+            elif len(rings)>1 and for_colour(colour_holes,choice['thread']) is not None:
+                # Holes chosen per thread colour: all of them, or those up to a size, are sewn over.
+                limit=for_colour(colour_holes,choice['thread'])
+                kept=[h for h in rings[1:] if limit!='all' and cv2.contourArea(h)*scale*scale>limit]
+                band=np.zeros_like(mask);cv2.drawContours(band,[c],-1,1,-1)
+                if kept:cv2.drawContours(band,kept,-1,0,-1)
+                release_mask|=band.astype(bool);rings=[c,*kept]
             thick=thickness_mm(rings,scale)
             wanted=for_colour(colour_styles,choice['thread']) if style is None else None
             by_colour=bool(wanted) and thick>=HAIRLINE_MM and colour_style_fits(

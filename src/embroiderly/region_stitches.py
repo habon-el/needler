@@ -111,6 +111,14 @@ def colour_choices(options):
     return styles,angles
 
 
+def colour_hole_choices(options):
+    """Thread colours whose areas sew over their holes, as the AI digitizer chooses them:
+    {'#rrggbb': 'all' or the largest hole sewn over, in mm²}. Larger holes stay open."""
+    return _thread_table(options.get('colour_holes',{}),
+                         lambda v:v=='all' or type(v) in (int,float) and 0<v<=10000,
+                         'Choose which holes to sew over for each thread colour.')
+
+
 def for_colour(table,thread):
     """table's entry for this thread: exact, else the nearest colour within a small distance,
     because the palette shifts slightly between runs (as colour merges do)."""

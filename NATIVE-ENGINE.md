@@ -850,3 +850,12 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   sewn after them, so no fabric shows between colours.
 - Claude sets them with `make_stitches.colour_styles` (style enum from `catalog()['area_styles']`),
   and the border's `placement` and `line_inside` (`border_placement`, `border_inner`).
+
+## Holes per thread colour; Claude's order, density and outlines (added 2026-10-28)
+- Option `colour_holes` (`{'#rrggbb': 'all' or mm²}`), checked by `region_stitches.colour_hole_choices`:
+  every area of that thread sews over all its holes, or only those up to the size; larger holes stay
+  open. The colour is matched as `colour_styles` are. An area's own hole choice (`area_holes`) wins.
+- Claude sets it with `make_stitches.colour_holes`, and the existing design-wide `sew_order`
+  (colours / layers), `density` (lighter / normal / denser) and `outlines` + `outline_colour`
+  (a thread or `auto`) with `make_stitches.sew_order`, `density` and `outlines`. Appliqué stays an
+  area style in `colour_styles`.

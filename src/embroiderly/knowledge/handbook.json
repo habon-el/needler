@@ -699,11 +699,12 @@
       "id": "concept:density",
       "tool": "Density",
       "does": "Space between rows of fill or satin stitches (about 0.4 mm on most fabrics).",
-      "use": "Set by the fabric; open fills and gradients are lighter by design.",
+      "use": "Set by the fabric. Lighter for soft or stretchy fabric, fewer stitches, or when a sew-out was stiff; denser when a sew-out showed fabric through the fill.",
       "avoid": "Very dense stitching on thin or stretchy fabric (puckers, holes).",
-      "limits": "Automatic from the fabric.",
+      "limits": "lighter (rows 12% further apart), normal, denser (10% closer), for the whole design on top of the fabric. Foam keeps its own.",
       "verified_by_user": false,
-      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice.",
+      "control": "density"
     },
     {
       "id": "concept:cuts",
@@ -719,21 +720,23 @@
       "id": "concept:sewing_order",
       "tool": "Sewing order",
       "does": "Colours are sewn back to front: parts enclosed by others go first, fills grow slightly under later parts so no fabric shows between them.",
-      "use": "Automatic; overlaps prevent gaps between colours.",
+      "use": "colours (default) for fewest colour changes; layers when parts lie inside other parts of a colour already used (an eye in a face) and must be sewn on top.",
       "avoid": "Expecting a light colour sewn last to fully cover a dark one.",
-      "limits": "Automatic.",
+      "limits": "colours or layers. Layers can add colour changes.",
       "verified_by_user": false,
-      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice.",
+      "control": "sew_order"
     },
     {
       "id": "concept:holes",
       "tool": "Holes",
       "does": "Holes inside an area (the inside of an O, a ring) are left unsewn so the colour behind or the fabric shows.",
-      "use": "Keep holes that are part of the art; tiny holes can be sewn over.",
+      "use": "Keep holes that are part of the art. Sew over tiny holes that only add cuts, or holes holding a colour sewn later anyway.",
       "avoid": "Satin on areas with holes (use tatami or offset fill).",
-      "limits": "Per area.",
+      "limits": "Per thread colour: all holes, or only those up to a size in mm². Parts inside a hole that sew earlier are covered.",
       "verified_by_user": false,
-      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice.",
+      "control": "colour_holes"
     },
     {
       "id": "concept:direction",
@@ -752,9 +755,10 @@
       "does": "Outlines between parts can be one thread colour or a darker shade of each part's thread.",
       "use": "Cartoons and illustrations that have dark outlines in the art.",
       "avoid": "Logos without outlines.",
-      "limits": "Adds stitches and possibly a colour.",
+      "limits": "One running-stitch outline per edge between colours, sewn after all fills; one thread colour or a darker shade of each part (auto). Adds stitches and possibly a colour.",
       "verified_by_user": false,
-      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice.",
+      "control": "outlines"
     }
   ]
 }

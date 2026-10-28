@@ -50,7 +50,10 @@ simplify. Same-colour parts that touch are already joined without cutting (branc
 - A badge or patch usually wants a satin border; a logo on a shirt usually does not.
 - Each thread colour can have its own area style and row direction (colour_styles), as the handbook \
 describes. Use them where the art asks for it (gradient for a sky, satin for lettering, a different \
-direction for neighbouring colours); the automatic choice is good for most areas.
+direction for neighbouring colours); the automatic choice is good for most areas. A big solid colour on a \
+patch or jacket can be appliqué (colour_styles) when the person can cut and lay fabric.
+- Cartoons with dark outlines in the art want outlines; tiny holes that cause cuts can be sewn over \
+(colour_holes); density and sewing order stay as they are unless the fabric, the person or a sew-out asks.
 - recent_sewouts (if any) are what the person saw on real fabric: correct for those first.
 - If the person asks to keep the background, it must be stitched: use colour mode (line_art and black_lines leave the background as bare fabric).
 - Pictures are often screenshots. Buttons, arrows, page dots, captions, watermarks or app frames are not part of the art: remove them with erase on your first attempt, and check the drawing that they are gone. With the whole picture stitched, an erase box is filled with the colour around it, so draw it just around the item.
@@ -132,6 +135,31 @@ TOOLS = [
                                                                       description='Row direction in degrees, 0 = '
                                                                                   'horizontal; leave out for the '
                                                                                   'automatic one.')))),
+             colour_holes=dict(type='array', maxItems=8,
+                               description='Sew over the holes inside every area of a thread colour (colour mode): '
+                                           'stitches run straight across, so no gap or extra cut opens at a tiny '
+                                           'hole. Parts inside a hole that sew earlier are covered. Replaces earlier '
+                                           'choices; [] keeps every hole open.',
+                               items=dict(type='object', additionalProperties=False, required=['colour'],
+                                          properties=dict(colour=dict(type='string', pattern='^#[0-9a-fA-F]{6}$'),
+                                                          up_to_mm2=dict(type='number', minimum=.1, maximum=10000,
+                                                                         description='Only holes up to this size are '
+                                                                                     'sewn over; leave out for all.')))),
+             sew_order=dict(type='string', enum=['colours', 'layers'],
+                            description='colours (default): one pass per thread colour, fewest colour changes. '
+                                        'layers: back to front, a part lying inside another is sewn after it even '
+                                        'if its thread was used before (more colour changes, cleaner overlaps).'),
+             density=dict(type='string', enum=['lighter', 'normal', 'denser'],
+                          description='Space between fill rows and satin stitches for the whole design, on top of '
+                                      'the fabric\'s own: lighter (12% wider, softer, fewer stitches), normal, denser '
+                                      '(10% closer, more cover). Foam keeps its own.'),
+             outlines=dict(type='object', additionalProperties=False, required=['on'],
+                           description='Running-stitch outlines along the edges between colour areas (colour mode), '
+                                       'sewn after all fills.',
+                           properties=dict(on=dict(type='boolean'),
+                                           colour=dict(type='string', pattern='^(#[0-9a-fA-F]{6}|auto)$',
+                                                       description='One thread colour, or auto: a darker shade of '
+                                                                   'each part\'s own thread (default #202020).'))),
              keep_background=dict(type='boolean', description='true: stitch the whole picture, background included '
                                   '(clears any saved subject cut-out). false: keep the current subject selection.'),
              erase=dict(type='array', maxItems=12, description='Boxes to remove from the picture before stitching '
@@ -377,6 +405,23 @@ def settings_from(tool_input, options, size=None, image=None, root=None):
                 nxt['colour_styles'][colour.lower()] = item['style']
             if type(item.get('angle')) in (int, float) and -180 <= item['angle'] <= 180:
                 nxt['colour_angles'][colour.lower()] = item['angle']
+    if isinstance(tool_input.get('colour_holes'), list):
+        nxt['colour_holes'] = {}
+        for item in tool_input['colour_holes'][:8]:
+            colour = item.get('colour') if isinstance(item, dict) else None
+            if not (isinstance(colour, str) and len(colour) == 7 and colour[0] == '#'):
+                continue
+            limit = item.get('up_to_mm2')
+            nxt['colour_holes'][colour.lower()] = limit if type(limit) in (int, float) and 0 < limit <= 10000 else 'all'
+    for key, allowed in (('sew_order', ('colours', 'layers')), ('density', ('lighter', 'normal', 'denser'))):
+        if tool_input.get(key) in allowed:
+            nxt[key] = tool_input[key]
+    outlines = tool_input.get('outlines')
+    if isinstance(outlines, dict) and isinstance(outlines.get('on'), bool):
+        nxt['outlines'] = outlines['on']
+        colour = outlines.get('colour')
+        if colour == 'auto' or isinstance(colour, str) and len(colour) == 7 and colour[0] == '#':
+            nxt['outline_colour'] = colour.lower()
     if tool_input.get('line_details') in ('off', 'light', 'all'):
         nxt['line_details'] = tool_input['line_details']
     fabric = next((f for f in lists['fabrics'] if f['id'] == tool_input.get('fabric')), None)
@@ -442,7 +487,8 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                  parsed_request=wish, current_settings={k: options.get(k) for k in (
                      'line_art', 'ink_only', 'count', 'height_mm', 'floor_mm2', 'simplify', 'smooth', 'puff',
                      'selection', 'fabric_preset', 'line_details', 'photo_style', 'hoop_id', 'border_style',
-                     'border_placement', 'border_inner', 'colour_styles', 'colour_angles')}, selection_meaning='full: whole picture is stitched; anything else: only the '
+                     'border_placement', 'border_inner', 'colour_styles', 'colour_angles', 'colour_holes',
+                     'sew_order', 'density', 'outlines', 'outline_colour')}, selection_meaning='full: whole picture is stitched; anything else: only the '
                      'saved subject cut-out is stitched and the background is left as bare fabric')
     messages = [dict(role='user', content=[picture, dict(type='text', text=
         'Here is the picture to digitize and what Needler measured:\n' + json.dumps(brief, indent=1))])]

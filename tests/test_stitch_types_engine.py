@@ -109,3 +109,19 @@ def test_style_and_direction_chosen_per_thread_colour(tmp_path):
                 {'colour_angles': {'#1e5ac8': 400}}):
         with pytest.raises(ValueError):
             colour_choices(bad)
+
+
+def test_holes_sewn_over_per_thread_colour(tmp_path):
+    from embroiderly.region_stitches import colour_hole_choices
+    # The yellow square is a 225 mm² hole in the blue ring.
+    open_payload, _ = design(tmp_path/'open', {})
+    payload, _ = design(tmp_path/'all', {'colour_holes': {'#1e5ac8': 'all'}})
+    assert payload['stitch_count'] > open_payload['stitch_count'] + 50
+    assert checked_bytes(tmp_path/'all'/'out', 'dst')
+    # Only holes up to the size are sewn over.
+    big, _ = design(tmp_path/'big', {'colour_holes': {'#1e5ac8': 300}})
+    small, _ = design(tmp_path/'small', {'colour_holes': {'#1e5ac8': 20}})
+    assert big['stitch_count'] == payload['stitch_count'] and small['stitch_count'] == open_payload['stitch_count']
+    for bad in ({'colour_holes': {'#1e5ac8': 0}}, {'colour_holes': {'#1e5ac8': 'some'}}, {'colour_holes': []}):
+        with pytest.raises(ValueError):
+            colour_hole_choices(bad)
