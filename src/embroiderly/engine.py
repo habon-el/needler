@@ -367,7 +367,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     filled_holes=hole_choices(settings)
     from .region_stitches import angle_choices
     chosen_angles=angle_choices(settings)
-    from .region_stitches import colour_choices, colour_hole_choices, for_colour, colour_style_fits, split_style, FILL_STYLES
+    from .region_stitches import colour_choices, colour_hole_choices, for_colour, colour_style_refusal, split_style, FILL_STYLES
     colour_styles,colour_angles=colour_choices(settings)
     colour_holes=colour_hole_choices(settings)
     # 3D puff for every area that can hold foam; others stay flat.
@@ -428,7 +428,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     sequence=sew_choices(settings)
     if sequence and not piece_layout:
         passes=hand_passes(passes,sequence)
-    sewn_parts=[]
+    sewn_parts=[];area_report=[]
     # Outlines per part (part_outlines.py): collected with their parts, sewn after all fills.
     from .part_outlines import choices as outline_choices, add as add_part_outline, in_order as outlines_in_order
     part_outlines=outline_choices(settings);pending_outlines=[]
@@ -464,14 +464,21 @@ def digitize(source, directory, height_mm=100, colours=None):
                 release_mask|=band.astype(bool);rings=[c,*kept]
             thick=thickness_mm(rings,scale)
             wanted=for_colour(colour_styles,choice['thread']) if style is None else None
-            by_colour=bool(wanted) and thick>=HAIRLINE_MM and colour_style_fits(
-                wanted,rings,scale,thick,(puff_min_mm(foam_mm),PUFF_TO_MM),SMALL_SATIN_MM)
+            refused=('Thinner than one thread: sewn as a running line.' if thick<HAIRLINE_MM else colour_style_refusal(
+                wanted,rings,scale,thick,(puff_min_mm(foam_mm),PUFF_TO_MM),SMALL_SATIN_MM)) if wanted else ''
+            by_colour=bool(wanted) and not refused
             if by_colour:style=wanted
+            # What each part became, for the AI digitizer's feedback per colour.
+            area=dict(thread=choice['thread'],mm2=round(float(cv2.contourArea(c)-sum(cv2.contourArea(h) for h in rings[1:]))*scale*scale,1),
+                      width_mm=round(thick,1),style=style)
+            if refused:area.update(asked=wanted,refused=refused)
+            area_report.append(area)
             if style is None and puff_all and puff_min_mm(foam_mm)<=thick<=PUFF_TO_MM:
                 style='puff'
             if style is None and thick<HAIRLINE_MM:
                 # Thinner than one thread: no satin forms; a run around its edge sews the line.
                 add_hairline(document,c[:,0,:],choice['thread'],objects,closed=True);objects+=1
+                area['style']='running line'
                 continue
             # Long bands become satin; thin limbs of thick areas are split off as satin (sewn after the body).
             stroke=style is None and not knockout and SMALL_SATIN_MM<thick<=STROKE_SATIN_MM and stroke_like(rings,scale,thick)
@@ -526,6 +533,8 @@ def digitize(source, directory, height_mm=100, colours=None):
                     band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
                     grow=max(1,int(math.ceil(satin_pull/scale)))
                     release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
+            area['style']=style or ('satin' if node.get('{http://inkstitch.org/namespace}fill_method')=='auto_satin' else
+                                    'tatami with satin tips' if limbs else 'tatami')
             if knockout:
                 # Removed areas stay exact: keep stitches inside by the file rounding.
                 node.set('{http://inkstitch.org/namespace}edge_inset_mm',str(GRID_ROUNDING_MM))
@@ -723,6 +732,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     if edit_report:payload['stitch_edits']=edit_report
     if cut_pieces:payload['applique']={'pieces':len(cut_pieces),'cut_file':'applique-cut.svg'}
     # Parts in the order they are sewn, for moving one earlier or later (sew_sequence.py).
+    payload['areas']=area_report
     payload['sew_parts']=[e.get('id')[6:] for e in document.iter('path') if (e.get('id') or '').startswith('piece-')] if piece_layout else sewn_parts
     (directory/'playback.json').write_text(json.dumps(payload))
     from .release_gate import record_context

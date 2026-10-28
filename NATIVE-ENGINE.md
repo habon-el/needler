@@ -859,3 +859,14 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   (colours / layers), `density` (lighter / normal / denser) and `outlines` + `outline_colour`
   (a thread or `auto`) with `make_stitches.sew_order`, `density` and `outlines`. Appliqué stays an
   area style in `colour_styles`.
+
+## Feedback per colour; Claude's plan and the person's request (added 2026-10-28)
+- The engine's playback payload has `areas`: one row per sewn area with its `thread`, `mm2`, widest part
+  (`width_mm`) and the `style` it became (`running line`, `satin`, `tatami`, `tatami with satin tips`
+  or the chosen style). When a colour's style was refused, the row also has `asked` and `refused`
+  (the reason, from `region_stitches.colour_style_refusal`).
+- `auto_claude.per_colour` sums them per thread for Claude after every attempt: areas, total and
+  largest mm², widest part, styles used, and up to three `style_refused` reasons.
+- The instructions put the person's request before every rule. `make_stitches.plan` (one line per
+  colour: what it is, style, why) is logged as `Plan:` steps and carried on each attempt; `finish`
+  adds `request` (how it was followed) and `tools_used`, shown in the Digitize-for-me result.

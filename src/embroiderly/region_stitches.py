@@ -132,13 +132,21 @@ def colour_style_fits(style,rings,scale,thick,puff_mm,satin_to_mm):
     """Whether a style chosen for a whole colour suits this area of it. Areas it does not suit keep
     the automatic choice: satin only where satin forms, puff only as wide as the foam allows, fills
     and textures only on parts wider than satin columns."""
+    return not colour_style_refusal(style,rings,scale,thick,puff_mm,satin_to_mm)
+
+
+def colour_style_refusal(style,rings,scale,thick,puff_mm,satin_to_mm):
+    """Why a style chosen for a whole colour does not suit this area of it ('' when it does)."""
     kind,_=split_style(style)
-    if kind=='satin':return not satin_reason(rings,scale)
+    if kind=='satin':return satin_reason(rings,scale)
     if kind=='raised_satin':
-        try:satin_rails(rings,scale);return True
-        except ValueError:return False
-    if kind=='puff':return puff_mm[0]<=thick<=puff_mm[1]
-    return thick>satin_to_mm
+        try:satin_rails(rings,scale);return ''
+        except ValueError as error:return str(error)
+    if kind=='puff':
+        if puff_mm[0]<=thick<=puff_mm[1]:return ''
+        return f'Puff needs parts {puff_mm[0]:g}-{puff_mm[1]:g} mm wide; this one is {thick:.1f} mm.'
+    if thick>satin_to_mm:return ''
+    return f'Fills and textures need parts wider than {satin_to_mm:g} mm; this one is {thick:.1f} mm, so it stays satin.'
 
 
 def region_id(rings):

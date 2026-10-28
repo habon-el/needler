@@ -98,8 +98,13 @@ def test_style_and_direction_chosen_per_thread_colour(tmp_path):
     assert svg.count('gradient_fill') == 1   # the blue ring only; the yellow square stays automatic
     assert checked_bytes(tmp_path/'sky'/'out', 'dst')
     # Satin does not form on a 50 mm ring: that area keeps its automatic fill instead of failing.
-    _, svg = design(tmp_path/'satin', {'colour_styles': {'#1e5ac8': 'satin'}})
+    satin, svg = design(tmp_path/'satin', {'colour_styles': {'#1e5ac8': 'satin'}})
     assert 'auto_satin' not in svg and 'satin_column' not in svg
+    # The engine says what each area became and why the chosen style was refused.
+    ring = next(a for a in satin['areas'] if a['thread'].lower() == '#1e5ac8')
+    assert ring['style'] == 'tatami' and ring['asked'] == 'satin' and 'mm wide' in ring['refused']
+    assert ring['width_mm'] > 8 and ring['mm2'] > 1000
+    assert all(not a.get('refused') for a in payload['areas'])
     _, svg = design(tmp_path/'turned', {'colour_angles': {'#1e5ac8': 90}})
     assert re.search(r':angle="90"', svg)  # the namespace prefix depends on earlier tests
     # An area's own choice wins over its colour's.

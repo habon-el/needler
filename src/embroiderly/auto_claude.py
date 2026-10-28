@@ -29,9 +29,12 @@ You get the person's picture, measured facts about it, and their optional reques
 that sews cleanly at the size they want, with as few thread cuts and colour changes as the art allows, \
 and that still looks like the picture.
 
+The person's request leads. What they ask for (a style, a colour, a border, a size, a fabric, what to leave out) comes before every rule below, even when you would choose otherwise. Only what cannot sew or breaks the machine-file checks is not done; then say so and why, and do the closest thing that sews.
+
 Work like a careful human digitizer:
 - Look at the picture first. Decide what it is (light lines on dark, black ink drawing, flat-colour logo, \
 photo) and what matters in it.
+- On your first make_stitches call, give the plan: one line per thread colour (what it is in the picture, the style and why, in plain words). Give it again only when it changes.
 - Call make_stitches with the settings you choose. Needler's own engine makes the stitches and runs the \
 machine-file checks; you get the numbers back plus a drawing of the stitches. Look at that drawing \
 critically: missing parts, lost detail, blobs, too many colours, broken lines, wrong size.
@@ -46,7 +49,9 @@ hoodie is fleece, cap is cap, and so on. Unknown: keep the current one.
 - Illustrations with fine linework (faces, highlights, hatching) lose those lines in colour mode: use line_details light or all, and check the drawing that the detail came back without clutter.
 - per_colour in each result shows where the thread cuts come from. Many cuts in one colour mean it is \
 scattered in small pieces: fold it into a neighbouring colour with merge_colours, merge small details, or \
-simplify. Same-colour parts that touch are already joined without cutting (branching).
+simplify. Same-colour parts that touch are already joined without cutting (branching). per_colour also \
+says what each colour's areas became: how many, their size, the widest part, the styles used, and \
+style_refused with the reason when a style you chose did not suit some of its areas.
 - A badge or patch usually wants a satin border; a logo on a shirt usually does not.
 - Each thread colour can have its own area style and row direction (colour_styles), as the handbook \
 describes. Use them where the art asks for it (gradient for a sky, satin for lettering, a different \
@@ -57,7 +62,7 @@ patch or jacket can be appliqué (colour_styles) when the person can cut and lay
 - recent_sewouts (if any) are what the person saw on real fabric: correct for those first.
 - If the person asks to keep the background, it must be stitched: use colour mode (line_art and black_lines leave the background as bare fabric).
 - Pictures are often screenshots. Buttons, arrows, page dots, captions, watermarks or app frames are not part of the art: remove them with erase on your first attempt, and check the drawing that they are gone. With the whole picture stitched, an erase box is filled with the colour around it, so draw it just around the item.
-- When you are satisfied, or out of attempts, call finish with the attempt to keep.
+- When you are satisfied, or out of attempts, call finish with the attempt to keep, how you followed the request (or what you could not do and why), and the tools you used.
 
 Every make_stitches call costs the person money and about 5 to 60 seconds, so do not try settings \
 that cannot help. Write the note and summary fields for a beginner: short, plain words, no jargon. \
@@ -70,6 +75,14 @@ TOOLS = [
                      'Settings you leave out keep their previous value.',
          input_schema=dict(type='object', additionalProperties=False, required=['note'], properties=dict(
              note=dict(type='string', description='One short sentence for the person: what you are trying and why.'),
+             plan=dict(type='array', maxItems=8, description='Your plan, one line per thread colour; required on '
+                       'the first call, then only when it changes.',
+                       items=dict(type='object', additionalProperties=False, required=['colour', 'what', 'style', 'why'],
+                                  properties=dict(colour=dict(type='string', pattern='^#[0-9a-fA-F]{6}$'),
+                                                  what=dict(type='string', description='What it is in the picture, '
+                                                            'a few words (sky, lettering, outline).'),
+                                                  style=dict(type='string', description='How it is sewn, plain words.'),
+                                                  why=dict(type='string', description='Why, a few plain words.')))),
              mode=dict(type='string', enum=['colour', 'line_art', 'black_lines', 'photo_lines'],
                        description='colour: fills and satin per colour area. line_art: light lines on a dark '
                                    'background become running stitches; the background stays empty. black_lines: '
@@ -176,6 +189,11 @@ TOOLS = [
          input_schema=dict(type='object', additionalProperties=False, required=['attempt', 'summary'], properties=dict(
              attempt=dict(type='integer', minimum=1, description='The attempt number to keep.'),
              summary=dict(type='string', description='Two or three plain sentences: what you made and why.'),
+             request=dict(type='string', description='One plain sentence: how you followed the person\'s request, '
+                                                     'or what you could not do and why. Leave out when there was none.'),
+             tools_used=dict(type='array', maxItems=10, items=dict(type='string'),
+                             description='The tools you used, in plain words (satin border, gradient fill, holes '
+                                         'sewn over, merged colours).'),
              check=dict(type='array', items=dict(type='string'), maxItems=4,
                         description='Specific things the person should look at before sewing, if any.'),
          ))),
@@ -321,14 +339,48 @@ class Spend:
 
 
 def per_colour(playback):
-    """[{colour, cuts}] per thread, from the sewn steps."""
+    """Per thread colour: its cuts and what its areas became (count, sizes, widest part, styles
+    used, and why a style chosen for the colour was refused), from the sewn steps and the engine."""
     colours, counts, thread = playback.get('colors', []), {}, 0
     for step in playback.get('steps', []):
         if step['t'] == 'color_change':
             thread += 1
         elif step['t'] == 'trim' and thread < len(colours):
             counts[colours[thread]] = counts.get(colours[thread], 0) + 1
-    return [dict(colour=c, cuts=counts.get(c, 0)) for c in dict.fromkeys(colours)]
+    areas = {}
+    for area in playback.get('areas', []):
+        areas.setdefault(area['thread'].lower(), []).append(area)
+    report = []
+    for colour in dict.fromkeys(colours):
+        row, own = dict(colour=colour, cuts=counts.get(colour, 0)), areas.get(colour.lower(), [])
+        if own:
+            styles, refused = {}, {}
+            for area in own:
+                styles[area['style']] = styles.get(area['style'], 0) + 1
+                if area.get('refused'):
+                    refused.setdefault((area['asked'], area['refused']), []).append(area)
+            row.update(areas=len(own), area_mm2=round(sum(a['mm2'] for a in own), 1),
+                       largest_mm2=max(a['mm2'] for a in own), widest_mm=max(a['width_mm'] for a in own),
+                       styles_used=styles)
+            if refused:
+                row['style_refused'] = [dict(style=asked, areas=len(parts), why=why)
+                                        for (asked, why), parts in list(refused.items())[:3]]
+        report.append(row)
+    return report
+
+
+def plan_lines(plan):
+    """Claude's plan as short lines for the person: 'Sky (#88aadd): gradient fill - soft blend'."""
+    lines = []
+    for item in plan[:8]:
+        if not isinstance(item, dict):
+            continue
+        what, style, why = (str(item.get(k) or '').strip()[:80] for k in ('what', 'style', 'why'))
+        if what and style:
+            colour = str(item.get('colour') or '')[:7]
+            lines.append(f"{what[0].upper() + what[1:]}{f' ({colour})' if colour else ''}: {style}" +
+                         (f' - {why}' if why else ''))
+    return lines
 
 
 def recent_sewouts(work, limit=5):
@@ -492,7 +544,7 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                      'saved subject cut-out is stitched and the background is left as bare fabric')
     messages = [dict(role='user', content=[picture, dict(type='text', text=
         'Here is the picture to digitize and what Needler measured:\n' + json.dumps(brief, indent=1))])]
-    attempts, finish = [], None
+    attempts, finish, plan = [], None, []
     while finish is None:
         problem = spend.room()
         if problem:
@@ -527,12 +579,17 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                                     content=f'No attempts left. Call finish with one of attempts 1-{len(attempts)}.'))
                 continue
             log('Claude: ' + data['note'][:240])
+            if isinstance(data.get('plan'), list) and data['plan']:
+                plan = plan_lines(data['plan'])
+                for line in plan:
+                    log('Plan: ' + line)
             options = settings_from(data, options, size, pixels, root)
             number = len(attempts) + 1
             log(f'Attempt {number}: making stitches…')
             result, options = attempt(options)
             result.update(options=options, number=number, kind=('line_art' if options.get('line_art') else
                                                                'ink' if options.get('ink_only') else 'logo'))
+            result['plan'] = plan
             attempts.append(result)
             if result.get('error'):
                 log(f'Attempt {number}: ' + result['error'][:240])

@@ -97,7 +97,7 @@ def test_the_handbook_covers_every_tool_claude_can_meet():
         assert f'border:{style}' in rows, style
     # Every make_stitches setting is explained by at least one row.
     controls = {r.get('control') for r in rows.values()}
-    assert set(offered) - {'note'} <= controls, set(offered) - {'note'} - controls
+    assert set(offered) - {'note', 'plan'} <= controls, set(offered) - {'note', 'plan'} - controls
     for row in rows.values():
         assert all(isinstance(row[k], str) and row[k].strip() for k in ('tool', 'does', 'use', 'avoid', 'limits'))
     text = handbook()
@@ -167,3 +167,53 @@ def test_holes_order_density_and_outlines_become_settings(tmp_path):
                           root=tmp_path)
     assert later['colour_holes'] == {} and later['sew_order'] == 'layers' and later['outlines'] is False
     assert later['outline_colour'] == 'auto'
+
+
+def test_feedback_per_colour_says_what_each_area_became():
+    from embroiderly.auto_claude import per_colour
+    playback = dict(colors=['#1e5ac8', '#ffcc00'], steps=[dict(t='trim'), dict(t='color_change'), dict(t='stitch')],
+                    areas=[dict(thread='#1E5AC8', mm2=900.0, width_mm=20.0, style='tatami', asked='satin',
+                                refused='Satin is for parts up to 8 mm wide; this one is 20.0 mm.'),
+                           dict(thread='#1e5ac8', mm2=12.5, width_mm=3.0, style='satin'),
+                           dict(thread='#ffcc00', mm2=40.0, width_mm=6.2, style='gradient')])
+    blue, yellow = per_colour(playback)
+    assert blue == dict(colour='#1e5ac8', cuts=1, areas=2, area_mm2=912.5, largest_mm2=900.0, widest_mm=20.0,
+                        styles_used={'tatami': 1, 'satin': 1},
+                        style_refused=[dict(style='satin', areas=1,
+                                            why='Satin is for parts up to 8 mm wide; this one is 20.0 mm.')])
+    assert yellow['styles_used'] == {'gradient': 1} and 'style_refused' not in yellow
+    # A result from before areas were recorded still reports its cuts.
+    assert per_colour(dict(colors=['#000000'], steps=[])) == [dict(colour='#000000', cuts=0)]
+
+
+def test_claude_shows_a_plan_follows_the_request_and_names_its_tools(tmp_path):
+    from types import SimpleNamespace as N
+    from PIL import Image
+    from embroiderly import auto_claude
+    (tmp_path/'work'/'decisions').mkdir(parents=True)
+    (tmp_path/'work'/'uploads').mkdir()
+    path = tmp_path/'work'/'uploads'/'art.png'
+    Image.new('RGB', (64, 64), (30, 90, 200)).save(path)
+    usage = N(input_tokens=10, output_tokens=10, cache_creation_input_tokens=0, cache_read_input_tokens=0)
+    plan = [dict(colour='#1e5ac8', what='sky', style='gradient fill', why='you asked for a soft sky')]
+    replies = iter([
+        [N(type='tool_use', id='a', name='make_stitches', input=dict(note='Gradient sky, as asked.', plan=plan))],
+        [N(type='tool_use', id='b', name='make_stitches', input=dict(note='Lighter.', density='lighter'))],
+        [N(type='tool_use', id='c', name='finish', input=dict(attempt=2, summary='A soft sky.',
+                                                              request='The sky is a gradient, as you asked.',
+                                                              tools_used=['gradient fill']))]])
+    sent = []
+
+    def create(**kwargs):
+        sent.append(kwargs)
+        return N(content=next(replies), usage=usage, stop_reason='tool_use')
+    client = N(beta=N(messages=N(create=create)))
+    log = []
+    result = dict(stitches=100, trims=0, colours=1, width_mm=50, height_mm=50, playback=dict(steps=[], colors=[]))
+    attempts, finish = auto_claude.run(dict(request='a gradient sky'), path, 'logo', {}, {}, {},
+                                       lambda o: (dict(result), o), log.append, client)
+    assert 'request leads' in sent[0]['system'][0]['text']
+    assert 'Plan: Sky (#1e5ac8): gradient fill - you asked for a soft sky' in log
+    # The plan carries to later attempts until Claude changes it.
+    assert [a['plan'] for a in attempts] == [['Sky (#1e5ac8): gradient fill - you asked for a soft sky']] * 2
+    assert finish['request'].startswith('The sky') and finish['tools_used'] == ['gradient fill']

@@ -502,7 +502,8 @@ class AutoDigitizer:
             # The last attempt is what is saved; put the chosen one back.
             self._log(job, f"Restoring attempt {best['number']}, the one to keep.")
             restored, _ = self._attempt(path, best['options'], 1.5)
-            best = {**restored, 'kind': best['kind'], 'number': best['number'], 'options': best['options']}
+            best = {**restored, 'kind': best['kind'], 'number': best['number'], 'options': best['options'],
+                    'plan': best.get('plan')}
         ok = not best.get('error') and not best.get('gate')
         job['result'] = dict(ok=ok, kind=best.get('kind', kind), facts=facts, attempts=len(attempts),
                              stitches=best.get('stitches'), trims=best.get('trims'), colours=best.get('colours'),
@@ -516,7 +517,11 @@ class AutoDigitizer:
             job['result']['puff'] = best['puff']
         if finish:
             job['result'].update(summary=str(finish.get('summary', ''))[:800],
-                                 check=[str(c)[:300] for c in finish.get('check', [])][:4])
+                                 check=[str(c)[:300] for c in finish.get('check', [])][:4],
+                                 request=str(finish.get('request') or '')[:400],
+                                 tools_used=[str(t)[:60] for t in finish.get('tools_used', [])
+                                             if isinstance(t, str)][:10],
+                                 plan=list(best.get('plan') or [])[:8])
         if job.get('claude_usd') is not None:
             job['result']['claude_usd'] = job['claude_usd']
         job['state'] = 'done' if ok else 'needs_review'
