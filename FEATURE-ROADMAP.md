@@ -187,6 +187,25 @@ instructions are typed by hand, so they fall behind every new feature.
 | 5 | The person's request leads: Claude shows a short plan (what each colour is, the style and why), follows the request, and says which tools it used | ✗ |
 | 6 | Scripted tests with a fake Claude (free), then real runs on the person's own pictures within a $2 test budget | ✗ |
 
+## Session plan (read this first each session; tick the row when it is pushed)
+
+| Session | Work | Status |
+|---|---|---|
+| 7 | AI digitizer step 1 (Claude's choices from Needler's lists); "remove the background" fix | ✓ 2026-10-27 |
+| 8 | AI digitizer step 2 (handbook) | ✓ 2026-10-28 |
+| 9 | AI digitizer step 3, part 1: style and direction per colour; every border option (placement, line inside) | ✗ |
+| 10 | AI digitizer step 3, part 2: sewing order, density, outline colour, appliqué, holes | ✗ |
+| 11 | AI digitizer steps 4 and 5: feedback per colour; the person's request leads with a plan | ✗ |
+| 12 | AI digitizer step 6: fake-Claude tests, then real runs on the person's pictures ($2 budget) | ✗ |
+| 13 | P3: templates / save as template; product colour and mockup | ✗ |
+| 14 | P3: partial, combined and overlap-free appliqué; buttonholes and basting markers | ✗ |
+| 15 | P3: lettering envelopes and elastic lettering; more fonts | ✗ |
+| 16 | P3: morphing (pinch, punch, twirl, wave); auto trace to vectors and magic wand | ✗ |
+| 17 | P3: multi-colour and open photo stitch; recognize stitches (machine file to objects) | ✗ |
+| 18–19 | Parked bugs (parallel agents): rose gaps and flat leaves; Start does nothing over an old result; white parts dropped and white merging with pale sky; colour change unticks "I approve"; ~30 edge-speck cleanup choices; stuck on "Opening image editor…"; big script satin gaps; designs page and studio freezing Chrome | ✗ |
+
+Sessions after 12 are estimates; if a row runs long, it moves to the next session and the rows below shift.
+
 ## Build order
 
 1. **P1 engine — done 2026-10-24.** Satin auto split with staggered holes; satin spacing by column width; underlay chosen by width; underlay chosen by letter height; percentage pull compensation; closest join between same-colour areas; fabric settings reaching lettering.
