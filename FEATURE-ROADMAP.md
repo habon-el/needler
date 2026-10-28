@@ -185,7 +185,7 @@ instructions are typed by hand, so they fall behind every new feature.
 | 3 | New controls: style per colour (choice, direction), every border kind, line inside, placement, sewing order, density, outline colour, fabric, hoop, appliqué, holes | part 1 ✓ 2026-10-28: style and direction per thread colour (`colour_styles`; parts a style does not suit keep the automatic choice), border placement and line inside. part 2 ✓ 2026-10-28: holes sewn over per thread colour (all or up to a size), sewing order, density, outlines and their colour; appliqué through the style per colour |
 | 4 | Feedback per colour after each attempt: area sizes, widest part, style used, why a style was refused | ✓ 2026-10-28: the engine records what every area became (size, widest part, style, the style asked for and why it was refused); per_colour sums it per thread for Claude |
 | 5 | The person's request leads: Claude shows a short plan (what each colour is, the style and why), follows the request, and says which tools it used | ✓ 2026-10-28: the request comes before every rule in the instructions; the plan (one line per colour) shows in the steps and the result; finish says how the request was followed and the tools used |
-| 6 | Scripted tests with a fake Claude (free), then real runs on the person's own pictures within a $2 test budget | part 1 ✓ 2026-10-28: scripted runs through the real engine (every control, refusals, limits); a satin border with the background left out no longer fails. Real runs: ✗ |
+| 6 | Scripted tests with a fake Claude (free), then real runs on the person's own pictures within a $2 test budget | part 1 ✓ 2026-10-28: scripted runs through the real engine (every control, refusals, limits); a satin border with the background left out no longer fails. Real run ✓ 2026-10-28 on the rose only (to save credit; $0.19): request followed, plan and tools shown, feedback per colour used (holes sewn over, specks merged). Found: merging a colour on a cut-out subject fails the file check (stitches cross the removed background), so the fewer-cuts version could not be kept |
 
 ## Session plan (read this first each session; tick the row when it is pushed)
 
@@ -196,13 +196,13 @@ instructions are typed by hand, so they fall behind every new feature.
 | 9 | AI digitizer step 3, part 1: style and direction per colour; every border option (placement, line inside) | ✓ 2026-10-28 |
 | 10 | AI digitizer step 3, part 2: sewing order, density, outline colour, appliqué, holes | ✓ 2026-10-28 |
 | 11 | AI digitizer steps 4 and 5: feedback per colour; the person's request leads with a plan | ✓ 2026-10-28 |
-| 12 | AI digitizer step 6: fake-Claude tests, then real runs on the person's pictures ($2 budget) | ✗ |
+| 12 | AI digitizer step 6: fake-Claude tests, then real runs on the person's pictures ($2 budget) | ✓ 2026-10-28 |
 | 13 | P3: templates / save as template; product colour and mockup | ✗ |
 | 14 | P3: partial, combined and overlap-free appliqué; buttonholes and basting markers | ✗ |
 | 15 | P3: lettering envelopes and elastic lettering; more fonts | ✗ |
 | 16 | P3: morphing (pinch, punch, twirl, wave); auto trace to vectors and magic wand | ✗ |
 | 17 | P3: multi-colour and open photo stitch; recognize stitches (machine file to objects) | ✗ |
-| 18–19 | Parked bugs (parallel agents): rose gaps and flat leaves; Start does nothing over an old result; white parts dropped and white merging with pale sky; colour change unticks "I approve"; ~30 edge-speck cleanup choices; stuck on "Opening image editor…"; big script satin gaps; designs page and studio freezing Chrome | ✗ |
+| 18–19 | Parked bugs (parallel agents): merging a colour on a cut-out subject fails the file check; rose gaps and flat leaves; Start does nothing over an old result; white parts dropped and white merging with pale sky; colour change unticks "I approve"; ~30 edge-speck cleanup choices; stuck on "Opening image editor…"; big script satin gaps; designs page and studio freezing Chrome | ✗ |
 
 Sessions after 12 are estimates; if a row runs long, it moves to the next session and the rows below shift.
 
