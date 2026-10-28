@@ -130,6 +130,9 @@ def test_claude_path_uses_tools_records_spend_and_keeps_its_choice(tmp_path, mon
     reply = fake.calls[1]['messages'][2]['content'][0]
     assert reply['type'] == 'tool_result' and [c['type'] for c in reply['content']] == ['text', 'image']
     assert fake.calls[0]['model'] == 'claude-opus-5-5' and fake.calls[0]['fallbacks'] == 'default'
+    # The tools sent carry Needler's own lists (test_claude_tools.py checks them in full).
+    offered = fake.calls[0]['tools'][0]['input_schema']['properties']
+    assert 'leather' in offered['fabric']['enum'] and 'blanket' in offered['border']['properties']['style']['enum']
     spent = json.loads((tmp_path / 'work/decisions/claude-spend.json').read_text())['usd']
     assert 0 < spent < .1 and job['result']['claude_usd'] == round(spent, 4)
     assert 'ANTHROPIC' not in json.dumps(job)

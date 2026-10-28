@@ -87,10 +87,10 @@ TOOLS = [
              puff=dict(type='boolean', description='3D puff: raise parts 3-6 mm wide (2-6 mm on 2 mm foam) as satin over foam '
                                                    '(colour mode). The machine stops so foam can be placed.'),
              foam_mm=dict(type='number', enum=[2, 3], description='Puff foam thickness (default 3).'),
-             fabric=dict(type='string', enum=['twill', 'cotton', 'denim', 'stretch_knit', 'pique', 'fleece', 'towel',
-                                              'satin_silk', 'nylon', 'cap'],
-                         description='Fabric preset: sets density, pull compensation, underlay and tie-offs for the '
-                                     'fabric it will be sewn on (default twill).'),
+             fabric=dict(type='string', description='Fabric it will be sewn on: sets density, pull compensation, '
+                                                    'underlay and tie-offs (default twill).'),
+             hoop=dict(type='string', description='Hoop it will be sewn in. Choose one only when the person names '
+                                                  'their machine or hoop.'),
              line_details=dict(type='string', enum=['off', 'light', 'all'],
                                description='Mixed mode (colour mode): thin lines the fills lose are sewn on top as '
                                            'running stitches. light: light lines only (highlights, a white face on '
@@ -102,11 +102,14 @@ TOOLS = [
                                            properties=dict(colour=dict(type='string', pattern='^#[0-9a-fA-F]{6}$'),
                                                            into=dict(type='string', pattern='^#[0-9a-fA-F]{6}$')))),
              border=dict(type='object', additionalProperties=False, required=['style'],
-                         description='Outline around the whole design: satin (1.6-6 mm wide, a clean badge edge) or '
-                                     'running (0.8-6 mm). style off removes it.',
-                         properties=dict(style=dict(type='string', enum=['off', 'running', 'satin']),
+                         description='Outline around the whole design (colour mode): satin (1.6-6 mm wide, a clean '
+                                     'badge edge), running (0.8-6 mm) or a decorative line stitch (width is the band '
+                                     'it covers). style off removes it.',
+                         properties=dict(style=dict(type='string'),
                                          width_mm=dict(type='number', minimum=.8, maximum=6),
-                                         colour=dict(type='string', pattern='^#[0-9a-fA-F]{6}$'))),
+                                         colour=dict(type='string', pattern='^#[0-9a-fA-F]{6}$'),
+                                         motif=dict(type='string', description='Shape repeated by the motif border.'),
+                                         pattern=dict(type='string', description='Shape of the pattern border.'))),
              keep_background=dict(type='boolean', description='true: stitch the whole picture, background included '
                                   '(clears any saved subject cut-out). false: keep the current subject selection.'),
              erase=dict(type='array', maxItems=12, description='Boxes to remove from the picture before stitching '
@@ -127,6 +130,53 @@ TOOLS = [
                         description='Specific things the person should look at before sewing, if any.'),
          ))),
 ]
+
+
+def catalog(root=None):
+    """Every listed choice Claude may make, read from Needler's own lists, so a style, border,
+    fabric or hoop added to the app reaches Claude with it. root adds the person's own fabrics
+    and hoops."""
+    from . import custom_fabrics, hoops
+    from .borders import OUTLINES
+    from .generation_policy import presets
+    from .region_stitches import CATALOG, VARIANTS
+    from .stitch_paths import MOTIFS, PATTERNS
+    fabrics = [dict(id=r['fabric'], name=r['label']) for r in presets()]
+    listed = [dict(id=h['id'], name=f"{g['brand']} {h['name']}", width_mm=h['width_mm'], height_mm=h['height_mm'])
+              for g in hoops.listed() for h in g['hoops']]
+    if root is not None:
+        for fabric in custom_fabrics.saved(Path(root)):
+            try:
+                custom_fabrics.check(fabric)
+            except ValueError:
+                continue
+            if isinstance(fabric.get('id'), str):
+                fabrics.append(dict(id=fabric['id'], name=fabric['name'] + ' (their own)', base=fabric['base']))
+        listed += [dict(id=h['id'], name=h['name'] + ' (their own)', width_mm=h['width_mm'], height_mm=h['height_mm'])
+                   for h in hoops.saved(Path(root)) if isinstance(h.get('id'), str)]
+    return dict(fabrics=fabrics, hoops=listed, borders=['off', 'running', 'satin', *OUTLINES],
+                motifs=list(MOTIFS), patterns=list(PATTERNS),
+                area_styles=[dict(id=k, name=n, note=t) for k, n, t in CATALOG] +
+                            [dict(id=f'{k}:{v}', name=f'{dict((c[0], c[1]) for c in CATALOG)[k]}: {n}')
+                             for k, choices in VARIANTS.items() for v, n in choices[1:]])
+
+
+def tools(root=None):
+    """TOOLS with every list filled in from catalog(root)."""
+    import copy
+    lists = catalog(root)
+    built = copy.deepcopy(TOOLS)
+    settings = built[0]['input_schema']['properties']
+    settings['fabric'].update(enum=[f['id'] for f in lists['fabrics']])
+    settings['fabric']['description'] += ' ' + '; '.join(f"{f['id']}: {f['name']}" for f in lists['fabrics']) + '.'
+    settings['hoop'].update(enum=[h['id'] for h in lists['hoops']])
+    settings['hoop']['description'] += ' Sewing field width x height: ' + '; '.join(
+        f"{h['id']}: {h['name']} {h['width_mm']:g}x{h['height_mm']:g} mm" for h in lists['hoops']) + '.'
+    border = settings['border']['properties']
+    border['style']['enum'] = lists['borders']
+    border['motif']['enum'] = lists['motifs']
+    border['pattern']['enum'] = lists['patterns']
+    return built
 
 
 def available():
@@ -214,8 +264,9 @@ def recent_sewouts(work, limit=5):
     return [dict(design=d, when=time.strftime('%Y-%m-%d', time.localtime(c)), report=r[:1200]) for d, c, r in rows]
 
 
-def settings_from(tool_input, options, size=None, image=None):
+def settings_from(tool_input, options, size=None, image=None, root=None):
     nxt = dict(options)
+    lists = catalog(root)
     if tool_input.get('keep_background') is True:
         nxt['selection'] = 'full'
         nxt.pop('rect', None)
@@ -248,17 +299,30 @@ def settings_from(tool_input, options, size=None, image=None):
                          if isinstance(m, dict) and isinstance(m.get('colour'), str) and isinstance(m.get('into'), str)
                          and m['colour'].lower() != m['into'].lower()}
     border = tool_input.get('border')
-    if isinstance(border, dict) and border.get('style') in ('off', 'running', 'satin'):
+    if isinstance(border, dict) and border.get('style') in lists['borders']:
         nxt['border_style'] = border['style']
         if border['style'] != 'off':
-            nxt['border_width'] = float(border.get('width_mm', 2.5 if border['style'] == 'satin' else 1.0))
+            nxt['border_width'] = float(border.get('width_mm', {'satin': 2.5, 'running': 1.0}.get(border['style'], 2.0)))
             if border.get('colour'):
                 nxt['border_colour'] = border['colour'].lower()
+            for key, name in (('motif', 'motifs'), ('pattern', 'patterns')):
+                if border.get(key) in lists[name]:
+                    nxt['border_' + key] = border[key]
     if tool_input.get('line_details') in ('off', 'light', 'all'):
         nxt['line_details'] = tool_input['line_details']
-    if tool_input.get('fabric'):
-        nxt['fabric_preset'] = tool_input['fabric']
+    fabric = next((f for f in lists['fabrics'] if f['id'] == tool_input.get('fabric')), None)
+    if fabric and 'base' in fabric:
+        # The person's own fabric: stored whole, as the fabric menu does, so the design keeps
+        # sewing the same if they later change or delete it.
+        from .custom_fabrics import saved
+        nxt.update(fabric_preset=fabric['base'],
+                   fabric_custom=next(f for f in saved(Path(root)) if f.get('id') == fabric['id']))
+    elif fabric:
+        nxt['fabric_preset'] = fabric['id']
         nxt.pop('fabric_custom', None)
+    hoop = next((h for h in lists['hoops'] if h['id'] == tool_input.get('hoop')), None)
+    if hoop:
+        nxt.update(hoop_id=hoop['id'], piece_hoop_mm=[hoop['width_mm'], hoop['height_mm']])
     mode = tool_input.get('mode')
     if mode:
         nxt.update(line_art=mode == 'line_art', ink_only=mode == 'black_lines')
@@ -290,6 +354,8 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
     import anthropic
     client = client or anthropic.Anthropic(max_retries=2, timeout=180)
     spend = Spend(Path(path).parent.parent / 'decisions' / 'claude-spend.json')
+    root = Path(path).parent.parent.parent
+    offered = tools(root)
     if spend.room():
         raise RuntimeError(spend.room())
     with Image.open(path) as image:
@@ -303,7 +369,7 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                  recent_sewouts=recent_sewouts(Path(path).parent.parent),
                  parsed_request=wish, current_settings={k: options.get(k) for k in (
                      'line_art', 'ink_only', 'count', 'height_mm', 'floor_mm2', 'simplify', 'smooth', 'puff',
-                     'selection', 'fabric_preset', 'line_details', 'photo_style')}, selection_meaning='full: whole picture is stitched; anything else: only the '
+                     'selection', 'fabric_preset', 'line_details', 'photo_style', 'hoop_id')}, selection_meaning='full: whole picture is stitched; anything else: only the '
                      'saved subject cut-out is stitched and the background is left as bare fabric')
     messages = [dict(role='user', content=[picture, dict(type='text', text=
         'Here is the picture to digitize and what Needler measured:\n' + json.dumps(brief, indent=1))])]
@@ -314,7 +380,7 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
             log(problem + ' Keeping the best attempt so far.')
             break
         response = client.beta.messages.create(
-            model=MODEL, max_tokens=16000, system=SYSTEM.format(attempts=MAX_ATTEMPTS), tools=TOOLS,
+            model=MODEL, max_tokens=16000, system=SYSTEM.format(attempts=MAX_ATTEMPTS), tools=offered,
             messages=messages, output_config=dict(effort='medium'), cache_control=dict(type='ephemeral'),
             betas=['server-side-fallback-2026-07-01'], fallbacks='default')
         spend.add(response.usage)
@@ -342,7 +408,7 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                                     content=f'No attempts left. Call finish with one of attempts 1-{len(attempts)}.'))
                 continue
             log('Claude: ' + data['note'][:240])
-            options = settings_from(data, options, size, pixels)
+            options = settings_from(data, options, size, pixels, root)
             number = len(attempts) + 1
             log(f'Attempt {number}: making stitches…')
             result, options = attempt(options)

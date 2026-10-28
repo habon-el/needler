@@ -180,7 +180,7 @@ instructions are typed by hand, so they fall behind every new feature.
 
 | Step | What | Status |
 |---|---|---|
-| 1 | Claude's tool choices built from Needler's own lists (area styles and their choices, borders, fabrics incl. the person's own, hoops); a test fails when a feature reaches the app but not Claude | ✗ |
+| 1 | Claude's tool choices built from Needler's own lists (area styles and their choices, borders, fabrics incl. the person's own, hoops); a test fails when a feature reaches the app but not Claude | ✓ 2026-10-27: fabrics (all 16 + the person's own), every border kind with motif/pattern, every hoop (+ own) offered and wired; area styles listed in the catalog, offered with step 3 |
 | 2 | Digitizer's handbook in `knowledge/`: per tool what it does, when to use it, when not, its limits; cached with the instructions | ✗ |
 | 3 | New controls: style per colour (choice, direction), every border kind, line inside, placement, sewing order, density, outline colour, fabric, hoop, appliqué, holes | ✗ |
 | 4 | Feedback per colour after each attempt: area sizes, widest part, style used, why a style was refused | ✗ |
