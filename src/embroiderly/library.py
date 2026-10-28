@@ -31,6 +31,9 @@ class DesignLibrary:
             columns = {row['name'] for row in db.execute('PRAGMA table_info(designs)')}
             if 'revision' not in columns:
                 db.execute('ALTER TABLE designs ADD COLUMN revision INTEGER NOT NULL DEFAULT 0')
+            if 'template' not in columns:
+                # A template is a frozen copy that new designs start from.
+                db.execute('ALTER TABLE designs ADD COLUMN template INTEGER NOT NULL DEFAULT 0')
 
     def adopt(self):
         """Index originals in place; never rename, modify or adopt derived caches."""
@@ -57,10 +60,11 @@ class DesignLibrary:
 
     def list(self, view='recent'):
         self.adopt()
-        clauses = {'recent':'deleted_at IS NULL AND removed_recent=0',
-                   'all':'deleted_at IS NULL', 'trash':'deleted_at IS NOT NULL'}
+        clauses = {'recent':'deleted_at IS NULL AND removed_recent=0 AND template=0',
+                   'all':'deleted_at IS NULL AND template=0',
+                   'templates':'deleted_at IS NULL AND template=1', 'trash':'deleted_at IS NOT NULL'}
         if view not in clauses:
-            raise ValueError('Choose Recent, All designs or Trash.')
+            raise ValueError('Choose Recent, All designs, Templates or Trash.')
         with self.settings.connection() as db:
             rows = [dict(row) for row in db.execute('SELECT * FROM designs WHERE ' + clauses[view])]
         for row in rows:
@@ -105,10 +109,15 @@ class DesignLibrary:
                     db.execute('UPDATE designs SET opened_at=?,removed_recent=0,revision=revision+1 WHERE id=?', (now,row['id']))
             return [dict(db.execute('SELECT * FROM designs WHERE id=?',(r['id'],)).fetchone()) for r in rows]
 
-    def duplicate(self, ident, revision):
+    def duplicate(self, ident, revision, template=None):
+        """Copy a design. template=True saves it as a template, False starts a design from one."""
         row = self.get(ident)
         if row['revision'] != revision or row['deleted_at'] is not None:
             raise LibraryConflict('The design changed. Reload the library before making a copy.')
+        if template is not None and bool(row['template']) == template:
+            raise ValueError('This is already a template.' if template else 'Choose a template to start from.')
+        flag = row['template'] if template is None else int(template)
+        name = row['name'][:113] + ' (copy)' if template is None else row['name']
         source = self.uploads / row['source']
         target = self.uploads / (uuid4().hex + source.suffix)
         created = []
@@ -130,8 +139,9 @@ class DesignLibrary:
                 current = db.execute('SELECT revision,deleted_at FROM designs WHERE id=?',(ident,)).fetchone()
                 if current['revision'] != revision or current['deleted_at'] is not None:
                     raise LibraryConflict('The original changed while copying. Reload and try again.')
-                db.execute('INSERT INTO designs(id,owner_id,name,source,changed_at) VALUES(?,?,?,?,?)',
-                           (target.name,row['owner_id'],(row['name'][:113]+' (copy)'),target.name,time.time()))
+                db.execute('INSERT INTO designs(id,owner_id,name,source,changed_at,template) VALUES(?,?,?,?,?,?) '
+                           'ON CONFLICT(id) DO UPDATE SET name=excluded.name,template=excluded.template',
+                           (target.name,row['owner_id'],name,target.name,time.time(),flag))
             return self.get(target.name)
         except Exception:
             # Exact paths allocated by this operation only, never user originals.
@@ -236,11 +246,12 @@ def register_library(app, root):
         data = request.get_json(silent=True)
         if not isinstance(data,dict): return jsonify(error='Expected a design action.'),400
         try:
-            if data.get('action') == 'duplicate':
+            copies = {'duplicate':None,'save_template':True,'use_template':False}
+            if data.get('action') in copies:
                 items = data.get('items')
                 if not isinstance(items,list) or len(items) != 1 or not isinstance(items[0],dict):
-                    raise ValueError('Choose one design to duplicate.')
-                result = [library.duplicate(items[0]['id'],items[0]['revision'])]
+                    raise ValueError('Choose one design to copy.')
+                result = [library.duplicate(items[0]['id'],items[0]['revision'],copies[data['action']])]
             else:
                 result = library.change(data.get('action'),data.get('items'),data.get('name'))
             return jsonify(designs=result)

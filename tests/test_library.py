@@ -86,3 +86,27 @@ def test_failed_preview_is_an_error_not_placeholder_artwork(library):
     (lib.uploads/'flower.png').write_bytes(b'not an image')
     assert client.get('/api/library/flower.png/preview').status_code==422
     assert client.get('/api/library/flower.png/facts').status_code==422
+
+
+def test_save_as_template_and_start_a_design_from_it(library):
+    lib,client=library
+    row=lib.get('flower.png')
+    saved=client.post('/api/library/action',json={'action':'save_template','items':[item(row)]})
+    assert saved.status_code==200
+    template=saved.get_json()['designs'][0]
+    assert template['template']==1 and template['name']=='flower' and template['id']!='flower.png'
+    assert [r['id'] for r in lib.list('templates')]==[template['id']]
+    assert template['id'] not in {r['id'] for r in lib.list('all')+lib.list('recent')}
+    assert (lib.decisions/(template['source']+'.preparation.json')).read_bytes()==(lib.decisions/'flower.png.preparation.json').read_bytes()
+    # A template cannot be saved as a template again; a design is not a template to start from.
+    assert client.post('/api/library/action',json={'action':'save_template','items':[item(template)]}).status_code==400
+    assert client.post('/api/library/action',json={'action':'use_template','items':[item(row)]}).status_code==400
+    used=client.post('/api/library/action',json={'action':'use_template','items':[item(template)]}).get_json()['designs'][0]
+    assert used['template']==0 and used['name']=='flower' and used['id'] not in {'flower.png',template['id']}
+    assert {r['id'] for r in lib.list('all')}=={'flower.png',used['id']}
+    # Editing the new design never changes the template it came from.
+    (lib.decisions/(used['source']+'.preparation.json')).write_text(json.dumps({'height_mm':40,'edits':[]}))
+    assert json.loads((lib.decisions/(template['source']+'.preparation.json')).read_text())['height_mm']==80
+    lib.change('delete',[item(lib.get(template['id']))])
+    assert not lib.list('templates') and template['id'] in {r['id'] for r in lib.list('trash')}
+    assert client.get('/api/library?view=templates').status_code==200

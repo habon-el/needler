@@ -4,7 +4,7 @@
   const selected = new Set(), facts = new Map();
   let rows = [], version = 0, busy = false, renameRow, renameTrigger, toastTimer, toastDeadline, toastRemaining;
   const initial = new URLSearchParams(location.search);
-  let view = ['recent','all','trash'].includes(initial.get('view')) ? initial.get('view') : 'recent';
+  let view = ['recent','all','templates','trash'].includes(initial.get('view')) ? initial.get('view') : 'recent';
   $('librarySort').value = ['opened','changed','name','size'].includes(initial.get('sort')) ? initial.get('sort') : 'opened';
   $('librarySearch').value = initial.get('q') || '';
   const text = (tag,value,cls) => { const el=document.createElement(tag); el.textContent=value; if(cls)el.className=cls; return el; };
@@ -33,7 +33,7 @@
     $('selectionCount').textContent=`${count} selected`;
     document.querySelector('[data-bulk=restore]').hidden=view!=='trash';
     document.querySelector('[data-bulk=delete]').hidden=view==='trash';
-    document.querySelector('[data-bulk=remove_recent]').hidden=view==='trash';
+    document.querySelector('[data-bulk=remove_recent]').hidden=view==='trash'||view==='templates';
     document.querySelectorAll('.design-card').forEach(card=>{
       card.dataset.selected=String(selected.has(card.dataset.id));
       card.querySelector('input[type=checkbox]').checked=selected.has(card.dataset.id);
@@ -74,17 +74,21 @@
     const summary=text('summary','⋯');summary.setAttribute('aria-label',`Actions for ${row.name}`);
     const nav=document.createElement('nav');nav.setAttribute('aria-label',`Actions for ${row.name}`);
     if(view==='trash') nav.append(button('Restore',()=>act('restore',[row])));
+    else if(row.template) {
+      nav.append(button('Use template',()=>act('use_template',[row])),button('Edit template',()=>act('opened',[row])),
+        button('Rename',()=>rename(row,summary)),button('Delete template',()=>act('delete',[row]),'danger'));
+    }
     else {
       nav.append(button('Open',()=>act('opened',[row])),button('Rename',()=>rename(row,summary)),
-        button('Duplicate',()=>act('duplicate',[row])),button('Remove from recent',()=>act('remove_recent',[row])),
+        button('Duplicate',()=>act('duplicate',[row])),button('Save as template',()=>act('save_template',[row])),button('Remove from recent',()=>act('remove_recent',[row])),
         button('Delete design',()=>act('delete',[row]),'danger'));
     }
     menu.append(summary,nav);menu.addEventListener('toggle',()=>{if(menu.open)document.querySelectorAll('.card-menu[open]').forEach(other=>{if(other!==menu)other.open=false;});});
     el.append(menu);
     const body=document.createElement('div');body.className='card-body';
     const title=document.createElement('h2');
-    title.append(view==='trash'?text('span',row.name):button(row.name,()=>act('opened',[row])));
-    body.append(text('span','Image','card-kind'),title,text('span','Loading','card-status'),text('p','','card-facts'));
+    title.append(view==='trash'?text('span',row.name):button(row.name,()=>act(row.template?'use_template':'opened',[row])));
+    body.append(text('span',row.template?'Template':'Image','card-kind'),title,text('span','Loading','card-status'),text('p','','card-facts'));
     const opened=row.opened_at ? new Date(row.opened_at*1000).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}) : 'Not opened yet';
     body.append(text('p',view==='trash'?`${row.days_remaining} days remaining in the planned 30-day period · cleanup paused`:`Last opened: ${opened}`,'card-opened'));
     el.append(body);updateCardFacts(row,el);return el;
@@ -99,8 +103,8 @@
       return (sort==='changed'?b.changed_at-a.changed_at:(b.opened_at||0)-(a.opened_at||0))||b.changed_at-a.changed_at;
     });
     $('designGrid').replaceChildren(...filtered.map(card));
-    if(!filtered.length)$('designGrid').append(text('p',query?'No designs match your search.':view==='trash'?'Trash is empty.':view==='recent'?'No recent designs. Open All designs or start with a new image.':'No saved designs yet. Start with a new image.'));
-    $('libraryCount').textContent=`${filtered.length} of ${rows.length} designs`;
+    if(!filtered.length)$('designGrid').append(text('p',query?'No designs match your search.':view==='trash'?'Trash is empty.':view==='templates'?'No templates yet. Open a design’s ⋯ menu and choose Save as template.':view==='recent'?'No recent designs. Open All designs or start with a new image.':'No saved designs yet. Start with a new image.'));
+    $('libraryCount').textContent=`${filtered.length} of ${rows.length} ${view==='templates'?'templates':'designs'}`;
     $('librarySearchWrap').hidden=rows.length<=12 && !query;
     $('clearSearch').hidden=!query;
     $('trashNote').hidden=view!=='trash';
@@ -143,10 +147,10 @@
     busyState(true);$('libraryStatus').textContent='Saving library change…';
     try {
       const result=await api('/api/library/action',{action,items:targets.map(item),...(name?{name}:{})});
-      if(action==='opened'){location.href='/artwork/'+encodeURIComponent(targets[0].source);return true;}
+      if(action==='opened'||action==='use_template'){location.href='/artwork/'+encodeURIComponent((action==='opened'?targets[0]:result.designs[0]).source);return true;}
       document.querySelectorAll('.card-menu[open]').forEach(menu=>{menu.open=false;});
       await load();
-      $('libraryStatus').textContent=action==='delete'?'Moved to Trash. Restore it there at any time while cleanup is paused.':action==='remove_recent'?'Removed from recent. Your saved design is still in All designs.':action==='restore'?'Restored. Find it in All designs.':action==='duplicate'?'Copy saved. The original is unchanged.':'Name saved.';
+      $('libraryStatus').textContent=action==='delete'?'Moved to Trash. Restore it there at any time while cleanup is paused.':action==='remove_recent'?'Removed from recent. Your saved design is still in All designs.':action==='restore'?'Restored. Find it in All designs.':action==='duplicate'?'Copy saved. The original is unchanged.':action==='save_template'?'Saved as a template. Find it in Templates.':'Name saved.';
       if(action==='delete')undoToast(targets.length===1?`Deleted “${targets[0].name}”`:`Deleted ${targets.length} designs`,result.designs);
       document.querySelector(`[data-library-view="${view}"]`).focus();
       return true;

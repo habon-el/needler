@@ -143,7 +143,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Design information, overview | Design health | ✅ | |
 | Realistic 3D preview | 3D view | ✅ | |
 | Embroidery library, find designs, convert designs | Library | ◐ no batch convert | P3 |
-| Templates, save as template | — | ✗ | P3 |
+| Templates, save as template | Library "Save as template" keeps a frozen copy (picture, size, fabric, hoop, styles, colours); a Templates tab lists them; "Use template" opens a new design from one, and editing it never changes the template; Edit, Rename, Delete template | ✅ 2026-10-28 | |
 | Send to machine (wireless / USB) | — | — | |
 | Cross Stitch, Quilter, cutwork, trapunto, stumpwork, bling, sequins | — | — (separate products) | |
 
