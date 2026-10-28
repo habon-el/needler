@@ -669,15 +669,17 @@ def digitize(source, directory, height_mm=100, colours=None):
     knockout_cuts=0
     if settings.get('colour_knockouts'):
         from .knockout_routing import protect, verify
-        knockout_cuts=protect(pattern,alpha,scale,origin)
+        # A border is requested stitching on the design's edge: its band is not a removed area.
+        kept=alpha|coverage(border,alpha.shape) if border else alpha
+        knockout_cuts=protect(pattern,kept,scale,origin)
     if settings.get('colour_knockouts'):
         from tempfile import TemporaryDirectory
         # Failed validation must not replace a customer's last machine files.
         with TemporaryDirectory(prefix='knockout-check-',dir=directory) as temporary:
             checked=Path(temporary)
             written=write_pair(pattern,checked/'design.pes',checked/'design.dst',{'version':6},repair_spacing=True)
-            verify(emb.EmbPattern(str(checked/'design.pes')),alpha,scale,origin)
-            verify(emb.EmbPattern(str(checked/'design.dst')),alpha,scale,origin)
+            verify(emb.EmbPattern(str(checked/'design.pes')),kept,scale,origin)
+            verify(emb.EmbPattern(str(checked/'design.dst')),kept,scale,origin)
             for name in ('design.pes','design.dst'):(checked/name).replace(directory/name)
     else:
         written=write_pair(pattern,directory/'design.pes',directory/'design.dst',{'version':6},repair_spacing=True)

@@ -870,3 +870,13 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - The instructions put the person's request before every rule. `make_stitches.plan` (one line per
   colour: what it is, style, why) is logged as `Plan:` steps and carried on each attempt; `finish`
   adds `request` (how it was followed) and `tools_used`, shown in the Digitize-for-me result.
+
+## Scripted Claude tests; border with a removed background (added 2026-10-28)
+- `tests/test_auto_digitize.py` `_ScriptedClaude` plays a script of tool calls through the real job
+  runner and engine: every new control in one run (plan, satin border with line inside, style and
+  direction per colour, holes, outlines in auto colour, lighter density, layer order), a refused
+  style and its reason, running out of attempts, a finish naming a missing attempt, a refusal and
+  the spend cap (both fall back to the rules without calling Claude again).
+- Colour removal (`colour_knockouts`) now treats the border's band as kept area in
+  `knockout_routing.protect` / `verify`: a border on the design's edge used to fail with
+  "Cannot secure a thread beside a removed area" whenever the background was left out.

@@ -150,3 +150,102 @@ def test_claude_failure_falls_back_to_rules(tmp_path, monkeypatch):
     client.post('/api/auto-digitize/badge.png', json={'use_claude': True})
     job = _wait(client, 'badge.png')
     assert job['state'] == 'done' and any('built-in rules' in s['text'] for s in job['steps'])
+
+
+class _ScriptedClaude:
+    """A fake Claude that plays a script: each turn is a tool input dict (name, input) or a stop reason."""
+    def __init__(self, turns):
+        self.turns, self.calls, self.beta = list(turns), [], self
+        self.messages = self
+
+    def create(self, **kw):
+        self.calls.append(kw)
+        turn = self.turns.pop(0) if self.turns else ('finish', {'attempt': 1, 'summary': 'Done.'})
+        if isinstance(turn, str):
+            return _Block(stop_reason=turn, content=[], usage=_Usage())
+        name, data = turn
+        return _Block(stop_reason='tool_use', usage=_Usage(),
+                      content=[_Block(type='tool_use', id=f't{len(self.calls)}', name=name, input=data)])
+
+    def replies(self):
+        """What Needler sent back for each make_stitches call: (summary dict or error text)."""
+        out = []
+        for message in self.calls[-1]['messages']:
+            if message['role'] != 'user' or not isinstance(message['content'], list):
+                continue
+            for block in message['content']:
+                if isinstance(block, dict) and block.get('type') == 'tool_result' and block['content'] != 'Finished.':
+                    content = block['content']
+                    out.append(json.loads(content[0]['text']) if isinstance(content, list) else content)
+        return out
+
+
+def _run_claude(tmp_path, monkeypatch, fake, request='', spent=None):
+    import anthropic
+    monkeypatch.setattr(anthropic, 'Anthropic', lambda **kw: fake)
+    app = create_app(tmp_path)
+    badge().save(tmp_path / 'work/uploads/badge.png')
+    if spent is not None:
+        (tmp_path / 'work/decisions/claude-spend.json').write_text(json.dumps(dict(usd=spent)))
+    client = app.test_client()
+    assert client.post('/api/auto-digitize/badge.png', json={'use_claude': True, 'request': request}).status_code == 202
+    return _wait(client, 'badge.png')
+
+
+def test_scripted_claude_uses_the_new_controls_and_its_plan_reaches_the_person(tmp_path, monkeypatch):
+    plan_rows = [dict(colour='#1d4f91', what='ring', style='automatic', why='a clean edge'),
+                 dict(colour='#f3e6d2', what='centre', style='3D puff', why='you asked for it raised'),
+                 dict(colour='#e09a1f', what='star', style='gradient fill', why='soft light')]
+    fake = _ScriptedClaude([
+        ('make_stitches', dict(note='Badge with a satin edge, as asked.', mode='colour', colours=3, height_mm=40,
+                               plan=plan_rows, border=dict(style='satin', width_mm=2.5, line_inside=True),
+                               colour_styles=[dict(colour='#f3e6d2', style='puff'),
+                                              dict(colour='#e09a1f', style='gradient', angle=30)],
+                               colour_holes=[dict(colour='#f3e6d2', up_to_mm2=5)],
+                               outlines=dict(on=True, colour='auto'), density='lighter', sew_order='layers')),
+        ('make_stitches', dict(note='The centre is too wide for puff: back to automatic.',
+                               colour_styles=[dict(colour='#e09a1f', style='gradient', angle=30)])),
+        ('finish', dict(attempt=2, summary='A badge with a satin edge and a soft star.',
+                        request='The edge is satin as you asked; the centre is too wide for puff, so it is flat.',
+                        tools_used=['satin border', 'line inside the border', 'gradient fill', 'outlines'])),
+    ])
+    job = _run_claude(tmp_path, monkeypatch, fake, request='a badge with a satin edge and a raised centre')
+    assert job['state'] == 'done', job
+    first, second = fake.replies()
+    assert 'per_colour' in first and first['file_check'] == 'passed', first
+    # Feedback per colour: the centre refused puff and said why; the star took the gradient.
+    rows = {r['colour'].lower(): r for r in first['per_colour'] if 'areas' in r}
+    centre = next(r for c, r in rows.items() if sum(abs(int(c[i:i+2], 16)-v) for i, v in zip((1, 3, 5), (243, 230, 210))) < 40)
+    assert centre['style_refused'][0]['style'] == 'puff' and 'mm wide' in centre['style_refused'][0]['why']
+    assert any('gradient' in r['styles_used'] for r in rows.values())
+    assert all(r['area_mm2'] > 0 and r['widest_mm'] > 0 for r in rows.values())
+    assert not any('style_refused' in r for r in second['per_colour'])
+    # The person sees the plan, how the request was followed and the tools used.
+    steps = [s['text'] for s in job['steps']]
+    assert 'Plan: Centre (#f3e6d2): 3D puff - you asked for it raised' in steps
+    result = job['result']
+    assert result['plan'][0] == 'Ring (#1d4f91): automatic - a clean edge' and len(result['plan']) == 3
+    assert result['request'].startswith('The edge is satin') and 'gradient fill' in result['tools_used']
+    assert 'request leads' in fake.calls[0]['system'][0]['text']
+    assert 'a raised centre' in fake.calls[0]['messages'][0]['content'][1]['text']
+
+
+def test_scripted_claude_out_of_attempts_keeps_the_best_and_a_bad_finish_is_safe(tmp_path, monkeypatch):
+    from embroiderly import auto_claude
+    monkeypatch.setattr(auto_claude, 'MAX_ATTEMPTS', 2)
+    stitch = ('make_stitches', dict(note='Try.', mode='colour', colours=3, height_mm=40))
+    fake = _ScriptedClaude([stitch, stitch, stitch, ('finish', dict(attempt=9, summary='Kept one.'))])
+    job = _run_claude(tmp_path, monkeypatch, fake)
+    assert job['state'] == 'done' and job['result']['attempts'] == 2
+    assert 'No attempts left' in fake.replies()[-1]
+    assert job['result']['plan'] == [] and job['result']['tools_used'] == []
+
+
+def test_scripted_claude_refusal_and_spend_cap_fall_back_to_the_rules(tmp_path, monkeypatch):
+    from embroiderly import auto_claude
+    job = _run_claude(tmp_path / 'refused', monkeypatch, _ScriptedClaude(['refusal']))
+    assert job['state'] == 'done' and any('declined' in s['text'] and 'built-in rules' in s['text'] for s in job['steps'])
+    fake = _ScriptedClaude([])
+    job = _run_claude(tmp_path / 'capped', monkeypatch, fake, spent=auto_claude.TOTAL_LIMIT)
+    assert job['state'] == 'done' and not fake.calls
+    assert any('limit' in s['text'] and 'built-in rules' in s['text'] for s in job['steps'])
