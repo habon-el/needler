@@ -77,5 +77,7 @@ window.hoopControls = async studio => {
  };
  fill();
  window.addEventListener('studio:controls',sync);window.addEventListener('studio:preview',sync);sync();
+ // Too big for the hoop: split into hoopings (multi-hooping.js), after the fit note is updated.
+ window.multiHooping?.(box,studio);
  return box;
 };

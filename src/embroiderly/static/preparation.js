@@ -189,6 +189,7 @@ function draw(){
       stitchLayer.paint(c,displayPlan,playback?cursor:displayPlan.steps.length,{width:canvas.width,height:canvas.height,...t,factor,threadWidth:Number($('threadVisualWidth').value),relief:$('threadRelief').checked,colourMap:colourPreviewMap,fabric:$('fabric').value,texture:$('fabricTexture').value,lightAngle:Number($('lightAngle').value),neutralLight:$('neutralLight').checked});
       window.threadPreviewUI?.sync(stitchLayer,!!playback);
       if(playback)window.RouteReview.paint(c,playback,cursor,{s:t.s,factor},$('routeArrows').checked,$('routeJumps').checked);
+      window.MultiHooping?.paint(c,t.s,factor);
       if(currentView==='wipe'){const edge=width*Number(document.getElementById('reviewWipe').value)/100;c.save();c.beginPath();c.rect(0,0,edge,height);c.clip();c.drawImage(original,0,0,width,height);c.restore();c.save();c.strokeStyle='#007fca';c.lineWidth=2/t.s;c.beginPath();c.moveTo(edge,0);c.lineTo(edge,height);c.stroke();c.restore();}
       // Needle marker is a screen overlay, not an extra stitch.
       if(playback&&cursor>0&&cursor<playback.steps.length){

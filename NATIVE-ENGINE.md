@@ -809,3 +809,22 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   `generation_policy.preset_for` checks it and returns the base row with the custom values and name;
   the engine, `apply`, lettering (`fabric_pull_extra`) and the worksheet (name, base backing) read that.
 - Choosing a listed fabric, or Claude/auto-digitize picking one, drops `fabric_custom`.
+
+## Multi-hooping (added 2026-10-27)
+- `multi_hooping.py` splits the checked PES pattern (never the plan) for a hoop field: a grid of
+  parts each at most field − 2 × 5 mm (`EDGE_MM`), at most 12 hoopings. Each seam slides within the
+  room the hoop allows, on a 0.5 mm grid, to where the fewest stitch segments cross it.
+- A stitch crossing a seam is cut on it. When the same run comes back to the seam within 3 mm
+  (`JOIN_MM`, fill rows turning) the part sews along the seam instead of cutting, unless that stitch
+  crosses a removed area. Other cut ends get a 0.6 mm back-and-forth tie-off; stitches under 0.31 mm
+  are merged; pieces under 1 mm are left out.
+- Neighbours share two running-stitch crosses (3 mm arms) at ¼ and ¾ of their seam, in their own
+  colour (#e5007e, "Alignment marks"): last in the earlier hooping, first in the later one.
+- Each hooping is written centred on its hoop under `<design>/hoopings/<w>x<h>/hooping-<n>/` with
+  its own release context: the design mask padded by (arm + edge)/scale pixels plus a square around
+  each cross, origin moved by the hooping centre and the padding. Downloads go through the same
+  `release_gate.download`, so every format is checked again. `plan.json` caches the split by source
+  digest and `VERSION`.
+- Routes: `GET /api/hoopings/<name>/<w>x<h>` (summary, `[]` when the stitches fit) and
+  `GET /hooping/<name>/<w>x<h>/<n>/<format>`. The studio (`multi-hooping.js`) asks only for current
+  stitches (visible export link) when the hoop fit note is red.

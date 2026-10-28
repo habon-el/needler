@@ -73,6 +73,10 @@
 .hoop-controls input:not([type=checkbox]) { width:100%; min-height:28px; box-sizing:border-box; }
 .hoop-controls #hoopFit[data-level=red] { color:var(--ui-danger, #b42318); }
 .hoop-controls details { margin-top:6px; font-size:12px; }
+/* Multi-hooping (multi-hooping.js): the split note in the hoop box, files under the worksheet link. */
+.hoop-controls .hoop-split p { margin:4px 0 0; }
+#workflowHoopings ol { margin:4px 0; padding-left:20px; }
+#workflowHoopings p { margin:4px 0; }
 /* My own fabric (fabric-controls.js), under the fabric menu. */
 .fabric-mine { margin-top:6px; font-size:12px; }
 .fabric-mine .fabric-row { display:flex; gap:6px; align-items:end; margin-top:4px; }

@@ -190,6 +190,37 @@ def create_app(workspace: Path | None = None) -> Flask:
             abort(404)
         from .release_gate import download
         return download(target,format)
+    def hooping_field(field):
+        # Hoop sewing field as placed, "<width>x<height>" in mm (hoops.py limits).
+        import re
+        match=re.fullmatch(r'(\d{2,4}(?:\.\d)?)x(\d{2,4}(?:\.\d)?)',field)
+        size=[float(v) for v in match.groups()] if match else []
+        if len(size)!=2 or not all(10<=v<=1000 for v in size):abort(404)
+        return size
+    @app.get('/api/hoopings/<name>/<field>')
+    def hooping_plan(name,field):
+        # Multi-hooping (multi_hooping.py): the design split for this hoop, files written and checked.
+        target=root/'work'/'inkstitch-preview'/Path(name).stem
+        if Path(name).name!=name or not (target/'playback.json').is_file():abort(404)
+        from .multi_hooping import build
+        try:
+            summary=build(target,hooping_field(field))
+        except ValueError as error:
+            return jsonify(error=str(error)),422
+        origin=json.loads((target/'playback.json').read_text()).get('origin_mm')
+        return jsonify(hoopings=summary['hoopings'],field_mm=summary['field_mm'],origin_mm=origin)
+    @app.get('/hooping/<name>/<field>/<int:n>/<format>')
+    def hooping_file(name,field,n,format):
+        from .release_gate import FORMATS, download
+        from .multi_hooping import build
+        target=root/'work'/'inkstitch-preview'/Path(name).stem
+        if format not in FORMATS or Path(name).name!=name or not (target/'playback.json').is_file():abort(404)
+        try:
+            size=hooping_field(field);count=len(build(target,size)['hoopings'])
+        except ValueError as error:
+            return jsonify(error=str(error)),422
+        if not 1<=n<=count:abort(404)
+        return download(target/'hoopings'/f'{size[0]:g}x{size[1]:g}'/f'hooping-{n}',format,f'hooping-{n}-of-{count}')
     @app.get('/worksheet/<name>')
     def design_worksheet(name):
         # Printable worksheet (worksheet.py) from the stitch plan the machine files were written from.

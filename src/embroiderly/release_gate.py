@@ -152,9 +152,9 @@ def converted_bytes(directory, fmt):
     return data
 
 
-def download(directory, fmt):
+def download(directory, fmt, name='design'):
     from flask import jsonify,send_file
     try:data=converted_bytes(directory,fmt)
     except ReleaseError as error:return jsonify(error=str(error),location=error.location,issues=getattr(error,'issues',[])),422
     return send_file(io.BytesIO(data),mimetype='application/octet-stream',as_attachment=True,
-                     download_name='design.'+fmt)
+                     download_name=name+'.'+fmt)
