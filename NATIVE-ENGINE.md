@@ -775,3 +775,14 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   minimum stitch are sewn as one; stitches stay at most 4 mm. Row spacing is rounded so a whole
   number of rows makes one repeat, with underlay.
 - Both pass the file checks on the standard test design.
+
+## Feathered fill (added 2026-10-27)
+- Area style `feather` with choices One edge / Both edges / Textured edge (`fill_method="feathered_fill"`,
+  `feather_edge` = `end` / `both` / `texture`, `stitch_fills.feathered`). Tatami rows run across the
+  area (long-side angle + 90°) so their ends make the long edge.
+- `tatami(..., ragged=(sides, depth))` pulls row ends in per sewn section (`_rag`): the two rows that
+  meet at a turn are pulled in by the same amount, so each turn becomes one tip; a single row pulled
+  alone is hidden by the turn stitch to its longer neighbour. Amount = depth × random², at most 40 %
+  of the shorter row, seeded by row index (same area, same stitches). Depths 4 / 3 / 0.8 mm
+  (`FEATHER_DEPTH_MM`). Underlay is kept depth + 0.3 mm inside the edge so it never shows between tips.
+- Passes the file checks on the standard test design.

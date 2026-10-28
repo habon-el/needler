@@ -12,7 +12,7 @@ import math
 from pathlib import Path
 from . import svg_geometry as sg
 from .stitch_fills import (STIPPLE_STITCHES, WAVE_AMPLITUDE_MM, WAVE_LENGTH_MM, contour, fill_shape, florentine, gradient,
-                           join_runs, maze, meander, radial, sculptured, spiral, star, step_fill, tatami, wave)
+                           feathered, join_runs, maze, meander, radial, sculptured, spiral, star, step_fill, tatami, wave)
 from .stitch_paths import (MOTIFS, backstitch, bean, blackwork_run, blanket, candlewick, chain, couching, dedupe,
                            enforce_min, hand_stitch, inward_side, motif_run,
                            PATTERNS, pattern_run, sculpture_run, order_runs, path_length, polygons, running, split_long, stemstitch, zigzag_outline)
@@ -277,6 +277,10 @@ def _element_blocks(node, paths, style, scale, index, min_len, start=None, lines
             elif method == 'sculptured_fill':
                 runs = sculptured(shape, _float(node, 'angle', 0), spacing, min_len,
                                   underlay=_bool(node, 'fill_underlay', True))
+            elif method == 'feathered_fill':
+                runs = feathered(shape, _float(node, 'angle', 0), spacing,
+                                 max(1.0, _float(node, 'max_stitch_length_mm', 3.0)), min_len,
+                                 underlay=_bool(node, 'fill_underlay', True), edge=_attr(node, 'feather_edge', 'end'))
             elif method == 'circular_fill':
                 runs = spiral(shape, spacing, length, min_len, tolerance=tolerance)
             elif method == 'maze_fill':

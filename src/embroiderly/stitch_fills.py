@@ -107,16 +107,17 @@ def _row_points(k, interval, forward, max_len, staggers, minimum, spacing):
 
 def tatami(shape, angle=0.0, spacing=0.4, max_len=3.0, staggers=4, minimum=0.45, start=None,
            travel_len=2.0, underlay=True, underlay_angle=None, underlay_spacing=None, underlay_inset=0.3,
-           underlay_max_len=3.0, join=True):
+           underlay_max_len=3.0, join=True, ragged=None):
     """join=False leaves separate sections as separate runs (open fills, where a
-    travel line across the area would show)."""
+    travel line across the area would show). ragged=(sides, depth) pulls row ends
+    in by a random amount (feathered fill)."""
     runs = _underlay(shape, angle, spacing, minimum, start, travel_len, underlay_angle, underlay_spacing,
                      underlay_inset, underlay_max_len) if underlay else []
     position = runs[-1][-1] if runs else start
     top_runs = []
     for piece in sorted(polygons(shape), key=lambda p: -p.area):
         top_runs.extend(_tatami_layer(piece, angle, spacing, max_len, staggers, minimum,
-                                      position, travel_len, Travel(piece), join))
+                                      position, travel_len, Travel(piece), join, ragged))
         if top_runs:
             position = top_runs[-1][-1]
     return join_runs(runs+top_runs, shape, travel_len) if join else runs+top_runs
@@ -154,7 +155,8 @@ def join_runs(runs, shape, travel_len):
     return out
 
 
-def _tatami_layer(piece, angle, spacing, max_len, staggers, minimum, start, travel_len, travel, join=True):
+def _tatami_layer(piece, angle, spacing, max_len, staggers, minimum, start, travel_len, travel, join=True,
+                  ragged=None):
     to_frame, back = _frame(angle)
     framed = affine_transform(piece, to_frame)
     rows = _rows(framed, spacing)
@@ -180,6 +182,8 @@ def _tatami_layer(piece, angle, spacing, max_len, staggers, minimum, start, trav
         _, reverse, forward = choice
         if reverse:
             section = section[::-1]
+        if ragged:
+            section = _rag(section, forward, *ragged, minimum)
         points = []
         for row, (k, interval) in enumerate(section):
             row_points = _row_points(k, interval, forward, max_len, staggers, minimum, spacing)
@@ -205,6 +209,46 @@ def _tatami_layer(piece, angle, spacing, max_len, staggers, minimum, start, trav
         runs.append(split_long(run, max_len))
         position = points[-1]
     return join_runs(runs, piece, travel_len) if join else runs
+
+
+def _rag(section, forward, sides, depth, minimum):
+    """Pull row ends in by a random share of `depth` (at most 40 % of a row): the
+    far end only ('end') or both ends ('both'). The two rows that meet at a turn
+    are pulled in together, so each turn becomes one tip. Seeded by the row index:
+    the same area always sews the same way."""
+    rows = [list(interval) for _, interval in section]
+    def pull(indexes, side, seed):
+        lengths = [rows[i][1]-rows[i][0] for i in indexes]
+        room = max(0.0, min(depth, .4*min(lengths)))
+        # Squared: most tips long, a few pulled far in, like feather barbs.
+        amount = room*random.Random(seed).random()**2
+        for i in indexes:
+            if side == 1:
+                rows[i][1] -= amount
+            else:
+                rows[i][0] += amount
+    for j in range(len(rows)):
+        # Row j leaves at its far side (right when sewn forward) and turns into row j+1.
+        leave = 1 if forward == (j % 2 == 0) else 0
+        k = section[j][0]
+        if j == 0 and (sides == 'both' or leave == 0):
+            pull([0], 1-leave, k*7919+1)
+        if sides == 'both' or leave == 1:
+            pull([j, j+1] if j+1 < len(rows) else [j], leave, k*7919+2)
+    return [(k, (a, b)) for (k, _), (a, b) in zip(section, rows) if b-a >= minimum*2]
+
+
+# Feathered fill: tatami rows across the area whose ends stop short at random.
+# 'end' feathers one edge, 'both' both edges, 'texture' roughens both edges slightly.
+FEATHER_DEPTH_MM = {'end': 4.0, 'both': 3.0, 'texture': 0.8}
+
+
+def feathered(shape, angle=0.0, spacing=0.4, max_len=3.0, minimum=0.45, start=None, underlay=True, edge='end'):
+    sides = 'end' if edge == 'end' else 'both'
+    depth = FEATHER_DEPTH_MM.get(edge, FEATHER_DEPTH_MM['end'])
+    # Underlay stays clear of the tips so it never shows between them.
+    return tatami(shape, angle, spacing, max_len, 4, minimum, start, underlay=underlay,
+                  underlay_inset=depth+.3, ragged=(sides, depth))
 
 
 def _to_frame_points(points, m):

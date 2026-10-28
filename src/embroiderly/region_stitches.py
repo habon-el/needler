@@ -28,6 +28,7 @@ CATALOG=[
     ('elastic','Elastic','Repeats that stretch to follow the shape · open fill'),
     ('embossed','Embossed','Tatami + diamond overlay · experimental texture'),
     ('sculptured','Sculptured','Tatami with needle holes in a diamond lattice'),
+    ('feather','Feathered','Rows that end unevenly, like fur or feathers'),
     ('ripple','Ripple','Concentric circular waves'),
     ('maze','Maze','One line winding like a labyrinth · open fill'),
     ('star','Star','Star-shaped spiral from the centre · open fill'),
@@ -44,6 +45,7 @@ OPEN_FILLS=('blackwork_fill','candlewick_fill','lacework')   # whole-area patter
 VARIANTS={
     'motif':[('diamond','Diamonds'),('heart','Hearts'),('star','Stars'),('scale','Scales'),('circle','Circles')],
     'elastic':[('diamond','Diamonds'),('heart','Hearts'),('star','Stars'),('scale','Scales'),('circle','Circles')],
+    'feather':[('end','One edge'),('both','Both edges'),('texture','Textured edge')],
     'stipple':[('run','Single run'),('backstitch','Backstitch'),('stemstitch','Stemstitch')],
 }
 
@@ -331,6 +333,12 @@ def apply_style(document,node,rings,scale,kind):
         shade.set('style',f'fill:{darker(colour,.7)};fill-rule:evenodd;stroke:none')
         shade.set(NS+'fill_method','gradient_fill');shade.set(NS+'angle',f'{fill_angle(rings)+90:.1f}')
         shade.set(NS+'fill_underlay','false');shade.set(NS+'gradient_open_spacing_mm','2.4')
+        return
+    if kind=='feather':
+        # Rows run across the area, so their uneven ends make the long edge (stitch_fills.feathered).
+        from .fill_shaping import angle as fill_angle
+        node.set(NS+'fill_method','feathered_fill');node.set(NS+'angle',f'{fill_angle(rings)+90:.1f}')
+        node.set(NS+'feather_edge',pattern)
         return
     if kind=='sculptured':
         from .fill_shaping import angle as fill_angle
