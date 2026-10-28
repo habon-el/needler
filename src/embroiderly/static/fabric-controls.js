@@ -1,6 +1,8 @@
 /* Fabric presets: one menu that sets density, pull compensation, underlay and
    tie-offs for the fabric (generation_policy.py). The value lives in the
-   preparation options like every other setting. */
+   preparation options like every other setting. "My own fabric" saves a listed
+   fabric with the user's own values (custom_fabrics.py); the chosen one is copied
+   into the options as fabric_custom. */
 document.addEventListener('DOMContentLoaded', async () => {
  'use strict';
  const $=id=>document.getElementById(id), studio=window.embroideryStudio;
@@ -12,6 +14,15 @@ document.addEventListener('DOMContentLoaded', async () => {
  box.innerHTML=`<label for="fabricPreset">Fabric</label>
   <select id="fabricPreset">${data.fabrics.map(f=>`<option value="${f.id}">${f.label}</option>`).join('')}</select>
   <p class="muted" id="fabricAdvice"></p>
+  <details id="fabricMine" class="fabric-mine"><summary>My own fabric</summary>
+  <label>Name<input id="fabricName" maxlength="40" placeholder="For example: Thick hoodie"></label>
+  <div class="fabric-row"><label title="Gap between fill rows">Fill spacing mm<input id="fabricRow" type="number" min="0.25" max="1" step="0.01"></label>
+  <label title="Gap between satin stitches">Satin spacing mm<input id="fabricSatin" type="number" min="0.25" max="0.8" step="0.01"></label></div>
+  <div class="fabric-row"><label title="How much wider satins are sewn, each side, so the fabric pulling in leaves them the right width">Pull mm<input id="fabricPull" type="number" min="0" max="0.6" step="0.01"></label>
+  <label>Longest stitch mm<input id="fabricLong" type="number" min="2" max="7" step="0.1"></label></div>
+  <label class="fabric-check"><input type="checkbox" id="fabricUnder"> Underlay under fills</label>
+  <div class="fabric-row"><button type="button" id="fabricSave">Save fabric</button><button type="button" id="fabricDelete" hidden>Delete</button></div>
+  <p class="muted" id="fabricNote" role="status"></p></details>
   <label for="stitchDensity">Density</label>
   <select id="stitchDensity"><option value="lighter">Lighter</option><option value="normal">Normal</option><option value="denser">Denser</option></select>
   <label for="sewOrder">Sewing order</label>
@@ -19,18 +30,50 @@ document.addEventListener('DOMContentLoaded', async () => {
  anchor.after(box);
  // Hoop picker (hoop-controls.js) sits with the other design-wide choices.
  const hoop=await window.hoopControls?.(studio);if(hoop)box.append(hoop);
- const select=$('fabricPreset'),advice=$('fabricAdvice');
+ const select=$('fabricPreset'),advice=$('fabricAdvice'),note=$('fabricNote');
+ data.saved=data.saved||[];
+ const fill=()=>{
+  select.replaceChildren(...data.fabrics.map(f=>new Option(f.label,f.id)));
+  const mine=[...data.saved],used=studio.snapshot().fabric_custom;
+  // A design keeps its own fabric after the saved one is deleted.
+  if(used&&!mine.some(f=>f.id===used.id))mine.push(used);
+  if(mine.length){const g=document.createElement('optgroup');g.label='My fabrics';g.append(...mine.map(f=>new Option(f.name,f.id)));select.append(g)}
+ };
+ const base=id=>data.fabrics.find(x=>x.id===id);
+ const mineFor=id=>data.saved.find(f=>f.id===id)||(studio.snapshot().fabric_custom?.id===id?studio.snapshot().fabric_custom:null);
+ const field={row_spacing_mm:'fabricRow',satin_spacing_mm:'fabricSatin',satin_pull_mm:'fabricPull',max_stitch_length_mm:'fabricLong'};
+ // The form starts from the chosen fabric; a saved fabric is edited in place.
+ let filledFor=null;
+ const prefill=()=>{filledFor=select.value;const mine=mineFor(select.value),f=mine||base(select.value)||base(data.default);
+  $('fabricName').value=mine?mine.name:'';for(const [k,id] of Object.entries(field))$(id).value=f[k];$('fabricUnder').checked=f.fill_underlay!==false;
+  $('fabricSave').textContent=mine?'Save changes':'Save fabric';$('fabricDelete').hidden=!data.saved.some(x=>x.id===select.value)};
  // Short hint; the full advice is on hover.
- const describe=()=>{const f=data.fabrics.find(x=>x.id===select.value);
+ const describe=()=>{const mine=mineFor(select.value),f=mine?base(mine.base):data.fabrics.find(x=>x.id===select.value);
   advice.textContent=!f?'':f.backing?'Backing: '+f.backing+(f.topping?' · Topping: '+f.topping:''):'Stabilizer: '+f.stabilizer.split(/[;.]/)[0].trim();
   advice.title=f?f.stabilizer:''};
  const density=$('stitchDensity');
  const order=$('sewOrder');
- const sync=()=>{select.value=studio.snapshot().fabric_preset||data.default;density.value=studio.snapshot().density||'normal';order.value=studio.snapshot().sew_order||'colours';describe()};
+ const sync=()=>{const o=studio.snapshot();fill();select.value=o.fabric_custom?.id||o.fabric_preset||data.default;if(select.value!==filledFor)prefill();density.value=studio.snapshot().density||'normal';order.value=studio.snapshot().sew_order||'colours';describe()};
  order.addEventListener('change',()=>{try{studio.apply({sew_order:order.value})}catch(error){sync();(window.studioStatus||console.warn)(error.message)}});
  // Adjust stitch spacing for the whole design (generation_policy.DENSITY).
  density.addEventListener('change',()=>{try{studio.apply({density:density.value})}catch(error){sync();(window.studioStatus||console.warn)(error.message)}});
- select.addEventListener('change',()=>{describe();try{studio.apply({fabric_preset:select.value})}catch(error){sync();(window.studioStatus||console.warn)(error.message)}});
+ const choose=()=>{const mine=mineFor(select.value);
+  try{studio.apply(mine?{fabric_preset:mine.base,fabric_custom:mine}:{fabric_preset:select.value,fabric_custom:undefined})}catch(error){(window.studioStatus||console.warn)(error.message)}sync()};
+ select.addEventListener('change',()=>{note.textContent='';choose()});
+ $('fabricMine').addEventListener('toggle',()=>{if($('fabricMine').open)prefill()});
+ $('fabricSave').onclick=async()=>{
+  const mine=mineFor(select.value),body={name:$('fabricName').value,base:mine?mine.base:select.value,fill_underlay:$('fabricUnder').checked,...(mine?{id:mine.id}:{})};
+  for(const [k,id] of Object.entries(field))body[k]=Number($(id).value);
+  const result=await fetch('/api/fabrics',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json()).catch(()=>({error:'Fabric not saved. Try again.'}));
+  if(result.error){note.textContent=result.error;return}
+  data.saved=result.saved;fill();select.value=result.fabric.id;note.textContent=`Saved “${result.fabric.name}”.`;choose();prefill();
+ };
+ $('fabricDelete').onclick=async()=>{
+  const result=await fetch('/api/fabrics/'+encodeURIComponent(select.value),{method:'DELETE'}).then(r=>r.json()).catch(()=>({error:'Fabric not deleted. Try again.'}));
+  if(result.error){note.textContent=result.error;return}
+  // The design keeps the deleted fabric's values until another fabric is chosen.
+  data.saved=result.saved;note.textContent='Fabric deleted.';sync();
+ };
  window.addEventListener('studio:controls',sync);window.addEventListener('studio:preview',sync);sync();
  // Clean Edit panel: size, its ±10% buttons and notes together, then the design options.
  const resize=$('canvasResize');

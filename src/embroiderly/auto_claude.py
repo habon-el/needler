@@ -258,6 +258,7 @@ def settings_from(tool_input, options, size=None, image=None):
         nxt['line_details'] = tool_input['line_details']
     if tool_input.get('fabric'):
         nxt['fabric_preset'] = tool_input['fabric']
+        nxt.pop('fabric_custom', None)
     mode = tool_input.get('mode')
     if mode:
         nxt.update(line_art=mode == 'line_art', ink_only=mode == 'black_lines')

@@ -175,9 +175,14 @@ button{{font:inherit;padding:8px 16px;border:1px solid #1c1c1c;background:#1c1c1
 </body></html>'''
 
 
-def fabric_info(preset):
-    """The fabric preset's name, backing and topping, for the worksheet."""
+def fabric_info(preset, custom=None):
+    """The fabric preset's name, backing and topping, for the worksheet; a custom fabric
+    shows its own name with its base fabric's backing."""
     from .generation_policy import presets
+    if isinstance(custom, dict) and custom.get('name'):
+        preset = custom.get('base', preset)
     row = next((r for r in presets() if r['fabric'] == preset), None)
+    if row and isinstance(custom, dict) and custom.get('name'):
+        row = dict(row, label=custom['name'])
     return dict(label=row.get('label', preset), backing=row.get('backing'), topping=row.get('topping'),
                 stabilizer=row.get('stabilizer', '')) if row else {}

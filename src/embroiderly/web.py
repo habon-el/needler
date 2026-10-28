@@ -50,9 +50,30 @@ def create_app(workspace: Path | None = None) -> Flask:
     def fabrics():
         # Fabric presets for the fabric menu (generation_policy).
         from .generation_policy import presets, DEFAULT
+        from .custom_fabrics import saved as saved_fabrics
         return jsonify(default=DEFAULT, fabrics=[dict(id=r['fabric'], label=r.get('label', r['fabric']),
                                                       stabilizer=r.get('stabilizer', ''), backing=r.get('backing'),
-                                                      topping=r.get('topping')) for r in presets()])
+                                                      topping=r.get('topping'),
+                                                      **{k: r.get(k, d) for k, d in (('row_spacing_mm', .4), ('satin_spacing_mm', .4),
+                                                         ('satin_pull_mm', .1), ('fill_underlay', True), ('max_stitch_length_mm', 3.0))})
+                                                 for r in presets()],
+                       saved=saved_fabrics(root))
+    @app.post('/api/fabrics')
+    def fabric_save():
+        # Custom fabric settings (custom_fabrics.py): add one, or replace it by id.
+        from .custom_fabrics import save
+        try:
+            fabric, kept = save(root, request.get_json(silent=True))
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+        return jsonify(fabric=fabric, saved=kept)
+    @app.delete('/api/fabrics/<fabric_id>')
+    def fabric_delete(fabric_id):
+        from .custom_fabrics import delete
+        try:
+            return jsonify(saved=delete(root, fabric_id))
+        except ValueError as error:
+            return jsonify(error=str(error)), 404
     @app.get('/api/hoops')
     def hoop_list():
         # Hoop menu (hoops.py): sewing fields by machine brand and the user's own hoops.
@@ -185,8 +206,9 @@ def create_app(workspace: Path | None = None) -> Flask:
             options=json.loads(metadata.read_text()).get('options',{}) if metadata.is_file() else {}
             from .hoops import find
             chosen=find(root,options.get('hoop_id')) if isinstance(options.get('hoop_id'),str) else None
+            policy=playback.get('generation_policy') or {}
             hoop=dict(name=f"{chosen['brand']} {chosen['name']}",field=options.get('piece_hoop_mm') or [chosen['width_mm'],chosen['height_mm']]) if chosen else None
-            return page(playback,'Embroidery design',fabric_info((playback.get('generation_policy') or {}).get('fabric_preset')),hoop)
+            return page(playback,'Embroidery design',fabric_info(policy.get('fabric_preset'),policy.get('fabric_custom')),hoop)
         except ValueError as error:
             abort(422,str(error))
     @app.get('/applique-cut/<name>')

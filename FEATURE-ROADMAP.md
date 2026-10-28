@@ -14,7 +14,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Tool | Needler | Status | P |
 |---|---|---|---|
 | Fabric presets (about 25 fabrics, per-fabric density, pull, underlay, backing/topping) | Fabric menu in studio and lettering, 16 fabrics (other common fabrics map to these), satin spacing and pull, backing/topping | ✅ 2026-10-24 | |
-| Custom fabric settings | — | ✗ | P3 |
+| Custom fabric settings | My own fabric under the Fabric menu (studio and lettering): a listed fabric with your own fill and satin spacing, pull, longest stitch and underlay; saved for every design, and each design keeps its own copy | ✅ 2026-10-27 | |
 | Hoop list, show hoop, rotate hoop, saved hoops | Edit step "Hoop": sewing fields by machine brand plus common sizes, Turn 90°, a fit note (spare room or how much too big), Show on canvas, My own hoop (save / delete); the worksheet names the chosen hoop | ✅ 2026-10-25 | |
 | Multi-hooping (add hoops, calculate, preview hoopings) | — | ✗ | P3 |
 | Product visualizer, product/fabric colour | Fabric colour, PNG mockup | ◐ | P3 |

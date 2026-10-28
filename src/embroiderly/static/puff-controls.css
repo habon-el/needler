@@ -73,6 +73,12 @@
 .hoop-controls input:not([type=checkbox]) { width:100%; min-height:28px; box-sizing:border-box; }
 .hoop-controls #hoopFit[data-level=red] { color:var(--ui-danger, #b42318); }
 .hoop-controls details { margin-top:6px; font-size:12px; }
+/* My own fabric (fabric-controls.js), under the fabric menu. */
+.fabric-mine { margin-top:6px; font-size:12px; }
+.fabric-mine .fabric-row { display:flex; gap:6px; align-items:end; margin-top:4px; }
+.fabric-mine .fabric-row label, .fabric-mine .fabric-row button { flex:1; min-width:0; }
+.fabric-mine input:not([type=checkbox]) { width:100%; min-height:28px; box-sizing:border-box; }
+.fabric-mine label.fabric-check { display:flex; gap:6px; align-items:center; margin-top:6px; }
 /* Named colourways (colourway-controls.js), under the thread swatches. */
 .colourway-controls { margin-top:10px; }
 .colourway-controls select, .colourway-controls input { width:100%; min-height:28px; box-sizing:border-box; }

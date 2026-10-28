@@ -152,10 +152,10 @@ def layout_options(body):
 def fabric_pull_extra(body):
     """Extra satin pull (mm per side) for the chosen fabric: half of how much more the
     fabric pulls than twill, at most 0.15 mm, so small letters keep open counters."""
-    if not body.get('fabric_preset') or body.get('puff') is True:
+    if not (body.get('fabric_preset') or body.get('fabric_custom')) or body.get('puff') is True:
         return 0.0
     from .generation_policy import preset_for
-    pull=float(preset_for({'fabric_preset':body['fabric_preset']}).get('satin_pull_mm',.1))
+    pull=float(preset_for({'fabric_preset':body.get('fabric_preset'),'fabric_custom':body.get('fabric_custom')}).get('satin_pull_mm',.1))
     return max(0.0,min(.15,(pull-.1)/2))
 
 

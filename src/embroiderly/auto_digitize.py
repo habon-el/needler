@@ -168,6 +168,7 @@ def plan(kind, facts, wish, image_size, saved):
         options.update(puff=True, puff_foam_mm=wish.get('foam_mm', 3))
     if wish.get('fabric'):
         options['fabric_preset'] = wish['fabric']
+        options.pop('fabric_custom', None)
     if wish.get('outlines') and kind == 'logo':
         # Add outlines: one dark running line around every colour, sewn last.
         options.update(outlines=True, outline_colour=wish.get('outline_colour', 'auto'))

@@ -49,6 +49,11 @@ def recipe(body):
     if body.get('puff') is True:
         settings['puff'] = True
         settings['puff_foam_mm'] = small_lettering.puff_foam(body)
+    elif body.get('fabric_custom'):
+        # The user's own fabric: its checked values travel with the lettering (custom_fabrics.py).
+        from .custom_fabrics import check
+        settings['fabric_custom'] = check(body['fabric_custom'])
+        settings['fabric_preset'] = settings['fabric_custom']['base']
     elif body.get('fabric_preset'):
         # Fabric preset for lettering; an unknown fabric is refused (generation_policy).
         from .generation_policy import preset_for

@@ -31,14 +31,22 @@
  $('nativeFrame').addEventListener('input',showFrame);$('nativeFrame').addEventListener('change',showFrame);
  // Fabric preset: the satin edge follows the fabric, as in the main studio.
  // A saved recipe can arrive before the list; keep its fabric until the options exist.
- let fabricWanted=null;const setFabric=value=>{fabricWanted=value;$('nativeFabric').value=value;};
+ // The user's own fabrics (custom_fabrics.py) follow the list; a recipe keeps its own copy.
+ let fabricWanted=null,mine=[];
+ const myFabrics=()=>{const select=$('nativeFabric');select.querySelector('optgroup')?.remove();if(!mine.length)return;
+  const g=document.createElement('optgroup');g.label='My fabrics';g.append(...mine.map(f=>new Option(f.name,f.id)));select.append(g);};
+ const setFabric=(value,custom)=>{if(custom&&!mine.some(f=>f.id===custom.id)){mine=[...mine,custom];myFabrics();}
+  fabricWanted=value;$('nativeFabric').value=value;};
  fetch('/api/fabrics').then(r=>r.json()).then(data=>{const select=$('nativeFabric'),kept=fabricWanted??select.value;
-  select.replaceChildren(...data.fabrics.map(f=>new Option(f.label,f.id===data.default?'':f.id)));select.value=kept;}).catch(()=>{});
+  mine=[...(data.saved||[]),...mine.filter(f=>!(data.saved||[]).some(s=>s.id===f.id))];
+  select.replaceChildren(...data.fabrics.map(f=>new Option(f.label,f.id===data.default?'':f.id)));myFabrics();select.value=kept;}).catch(()=>{});
+ const fabricChoice=()=>{const value=$('nativeFabric').value,custom=mine.find(f=>f.id===value);
+  return custom?{fabric_preset:custom.base,fabric_custom:custom}:value?{fabric_preset:value}:{};};
  const active=()=>!!window.nativeTextConfig||dialog.open;
  const emit=(name,data)=>document.dispatchEvent(new CustomEvent('lettering:'+name,{detail:data}));
  // Fabric, shape, curve and spacing of a saved recipe (the words, font and size are set by the caller).
  function applyLayout(recipe){
-  setFabric(recipe.fabric_preset||'');
+  setFabric(recipe.fabric_custom?.id||recipe.fabric_preset||'',recipe.fabric_custom);
   for(const [id,key,plain] of layoutFields)$(id).value=recipe[key]??plain;
   $('nativeClassic').checked=recipe.classic===true;
   savedRadius=recipe.arc_degrees?null:recipe.arc_radius_mm||null;
@@ -61,7 +69,7 @@
   available_width_mm:Number($('nativeWidth').value),align:$('letteringAlign').value,colour:$('letteringColour').value,
   ...layout(),
   ...(window.NativePuff?.get()?{puff:true,puff_foam_mm:window.NativePuff.foam()}:
-      $('nativeFabric').value?{fabric_preset:$('nativeFabric').value}:{})};}
+      fabricChoice())};}
  function render(data){
   result=data;const r=data.reports.dst,p=data.reports.pes;
   $('nativePreview').src=data.image;$('nativePreview').hidden=false;

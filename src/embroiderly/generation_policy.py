@@ -17,6 +17,13 @@ def presets():
 
 
 def preset_for(settings):
+    """The fabric row for these settings; a custom fabric (fabric_custom) is its base
+    fabric with the user's own values and name (custom_fabrics.py)."""
+    if (settings or {}).get('fabric_custom'):
+        from .custom_fabrics import check, LIMITS
+        custom = check(settings['fabric_custom'])
+        base = next(r for r in presets() if r['fabric'] == custom['base'])
+        return dict(base, **{k: custom[k] for k in (*LIMITS, 'fill_underlay')}, label=custom['name'], custom=custom)
     fabric = (settings or {}).get('fabric_preset', DEFAULT)
     preset = next((r for r in presets() if r['fabric'] == fabric), None)
     if preset is None:
@@ -79,6 +86,7 @@ def apply(document, settings):
     return {'fabric_preset': fabric, 'density': density, 'row_spacing_mm': preset['row_spacing_mm'],
             'satin_pull_mm': preset.get('satin_pull_mm'), 'satin_spacing_mm': preset.get('satin_spacing_mm'),
             'stabilizer': preset.get('stabilizer'), 'backing': preset.get('backing'), 'topping': preset.get('topping'),
+            'fabric_custom': preset.get('custom'),
             'min_stitch_length_mm': 0.45, 'collapse_len_mm': 0,
             'elements': count, 'trim_policy': 'conservative component cuts',
             'lock_style': 'custom: 1 -1 1 -1', 'lock_scale_mm': float(lock)}

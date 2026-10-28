@@ -798,3 +798,14 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   no underlay, two needle holes per 5 mm repeat at seeded random places (`random.Random(7)`, 9 row
   patterns), so stitches run 0.75–4.25 mm and look hand sewn but repeat exactly.
 - Both pass the file checks on the standard test design.
+
+## Custom fabric settings (added 2026-10-27)
+- `custom_fabrics.py`: a custom fabric is a listed fabric (`base`) with the user's own
+  `row_spacing_mm` 0.25–1, `satin_spacing_mm` 0.25–0.8, `satin_pull_mm` 0–0.6,
+  `max_stitch_length_mm` 2–7 and `fill_underlay`; up to 30 are kept in `work/fabrics.json`
+  (`GET/POST /api/fabrics`, `DELETE /api/fabrics/<id>`; POST with a saved id replaces it).
+- The chosen one is copied into the design settings as `fabric_custom` (with `fabric_preset` = its
+  base), so a design sews the same after the saved fabric is changed or deleted.
+  `generation_policy.preset_for` checks it and returns the base row with the custom values and name;
+  the engine, `apply`, lettering (`fabric_pull_extra`) and the worksheet (name, base backing) read that.
+- Choosing a listed fabric, or Claude/auto-digitize picking one, drops `fabric_custom`.
