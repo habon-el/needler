@@ -20,6 +20,10 @@
    for(let c=-48;c<110;c+=16){path(`M${c} 6l52 52`,1.4);path(`M${c} 58l52-52`,1.4)}
   }else if(kind==='feather'){
    for(let x=12,k=0;x<=108;x+=4,k++)path(`M${x} 58V${6+[0,14,3,22,6,1,17,9,2,26,5,12][k%12]}`,1.8);
+  }else if(kind==='globe'){
+   for(let t=-.95;t<1;t+=.1){const y=32+26*Math.tanh(.8*t*1.4)/Math.tanh(1.12);path(`M12 ${y.toFixed(1)}H108`,1.6)}
+  }else if(kind==='hand'){
+   for(let y=10,k=0;y<58;y+=8,k++){let x=12+k*3%7;while(x<104){const w=[9,4,13,6,11,5][(x+k)%6];path(`M${x} ${y}h${Math.min(w,108-x)}`,2);x+=w+3}}
   }else if(kind==='elastic'){
    for(let x=12;x<108;x+=16){const h=(t)=>32+(t?1:-1)*(8+14*Math.sin((x+8-12)*Math.PI/96));path(`M${x+8} ${h(0).toFixed(1)}L${x+16} 32L${x+8} ${h(1).toFixed(1)}L${x} 32Z`,1.6)}
   }else if(kind==='motif'||kind==='cross'){

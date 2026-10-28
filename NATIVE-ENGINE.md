@@ -786,3 +786,15 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   of the shorter row, seeded by row index (same area, same stitches). Depths 4 / 3 / 0.8 mm
   (`FEATHER_DEPTH_MM`). Underlay is kept depth + 0.3 mm inside the edge so it never shows between tips.
 - Passes the file checks on the standard test design.
+
+## Globe and hand stitch fills (added 2026-10-27)
+- Area style `globe` (`fill_method="globe_fill"`, `stitch_fills.globe`): the area is stretched out
+  from its centre in the row frame (`atanh`, per axis, over its bounding box) and filled as tatami
+  with underlay; mapped back (`tanh`), row spacing and stitch length shrink by 1 − 0.35·t² at relative
+  distance t (`GLOBE_SQUEEZE`). Rows open by 1/(1 − 0.35/2) so the thread used stays close to tatami:
+  0.48 mm apart in the middle, 0.33 at the rim for 0.4 mm tatami. The minimum stitch asked of the
+  stretched area is raised by 1/(1 − squeeze). Areas under 4 mm across fall back to tatami.
+- Area style `hand` (`fill_method="hand_fill"`, `stitch_fills.hand`): open tatami rows 0.9 mm apart,
+  no underlay, two needle holes per 5 mm repeat at seeded random places (`random.Random(7)`, 9 row
+  patterns), so stitches run 0.75–4.25 mm and look hand sewn but repeat exactly.
+- Both pass the file checks on the standard test design.

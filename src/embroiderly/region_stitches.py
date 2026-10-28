@@ -29,6 +29,8 @@ CATALOG=[
     ('embossed','Embossed','Tatami + diamond overlay · experimental texture'),
     ('sculptured','Sculptured','Tatami with needle holes in a diamond lattice'),
     ('feather','Feathered','Rows that end unevenly, like fur or feathers'),
+    ('globe','Globe','Tatami that tightens towards the edges · looks domed'),
+    ('hand','Hand stitch','Uneven stitches in open rows, like hand sewing · open fill'),
     ('ripple','Ripple','Concentric circular waves'),
     ('maze','Maze','One line winding like a labyrinth · open fill'),
     ('star','Star','Star-shaped spiral from the centre · open fill'),
@@ -340,11 +342,17 @@ def apply_style(document,node,rings,scale,kind):
         node.set(NS+'fill_method','feathered_fill');node.set(NS+'angle',f'{fill_angle(rings)+90:.1f}')
         node.set(NS+'feather_edge',pattern)
         return
+    if kind=='hand':
+        # Open rows 0.9 mm apart, no underlay (stitch_fills.hand).
+        from .fill_shaping import angle as fill_angle
+        node.set(NS+'fill_method','hand_fill');node.set(NS+'angle',f'{fill_angle(rings):.1f}')
+        node.set(NS+'row_spacing_mm','.9');node.set(NS+'fill_underlay','false')
+        return
     if kind=='sculptured':
         from .fill_shaping import angle as fill_angle
         node.set(NS+'fill_method','sculptured_fill');node.set(NS+'angle',f'{fill_angle(rings):.1f}')
         return
-    if kind in ('step','gradient','radial','wave','florentine'):
+    if kind in ('step','gradient','radial','wave','florentine','globe'):
         # Specialty fills (stitch_fills); rows run along the area's long side.
         from .fill_shaping import angle as fill_angle
         node.set(NS+'fill_method',kind+'_fill');node.set(NS+'angle',f'{fill_angle(rings):.1f}')

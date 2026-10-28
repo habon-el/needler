@@ -251,6 +251,54 @@ def feathered(shape, angle=0.0, spacing=0.4, max_len=3.0, minimum=0.45, start=No
                   underlay_inset=depth+.3, ragged=(sides, depth))
 
 
+# Globe fill: tatami seen on a dome. Rows and needle holes crowd towards the edges
+# (spacing x (1 - GLOBE_SQUEEZE) at the rim), so the middle reads as raised.
+GLOBE_SQUEEZE = 0.35
+
+
+def globe(shape, angle=0.0, spacing=0.4, max_len=3.0, minimum=0.45, start=None, underlay=True,
+          squeeze=GLOBE_SQUEEZE):
+    """The area is stretched outward from its centre so evenly spaced tatami, mapped
+    back, crowds by 1 - squeeze*t^2 at relative distance t from the centre (the
+    middle a little more open than tatami, the rim a little denser)."""
+    if shape.is_empty:
+        return []
+    to_frame, back = _frame(angle)
+    left, top, right, bottom = affine_transform(shape, to_frame).bounds
+    cx, cy, rx, ry = (left+right)/2, (top+bottom)/2, (right-left)/2, (bottom-top)/2
+    if rx < 2 or ry < 2:
+        return tatami(shape, angle, spacing, max_len, 4, minimum, start, underlay=underlay)
+    root = math.sqrt(squeeze)
+    def frame(p):
+        return (p[0]*to_frame[0]+p[1]*to_frame[1], p[0]*to_frame[2]+p[1]*to_frame[3])
+    def warp(p):
+        x, y = frame(p)
+        return back((cx+rx*math.atanh(root*max(-1.0, min(1.0, (x-cx)/rx)))/root,
+                     cy+ry*math.atanh(root*max(-1.0, min(1.0, (y-cy)/ry)))/root))
+    def unwarp(p):
+        x, y = frame(p)
+        return back((cx+rx*math.tanh(root*(x-cx)/rx)/root, cy+ry*math.tanh(root*(y-cy)/ry)/root))
+    import shapely
+    stretched = shapely.transform(shapely.segmentize(shape, .2),
+                                  lambda xy: np.array([warp(p) for p in xy]).reshape(-1, 2))
+    # Stitches shrink by up to 1 - squeeze at the rim: ask for longer ones in the stretched area.
+    # Rows open by 1/(1 - squeeze/2) so the area takes about as much thread as tatami.
+    runs = tatami(stretched, angle, spacing/(1-squeeze/2), max_len, 4, minimum/(1-squeeze),
+                  None if start is None else warp(start), underlay=underlay)
+    return [split_long([unwarp(p) for p in run], max_len) for run in runs]
+
+
+# Hand stitch fill: open rows of running stitches of uneven length (0.75-4.25 mm),
+# needle holes drawn once from a fixed seed, so it looks sewn by hand but repeats exactly.
+HAND_PITCH_MM = 5.0
+
+
+def hand(shape, angle=0.0, spacing=0.9, minimum=0.45, start=None, pitch=HAND_PITCH_MM):
+    rng = random.Random(7)
+    pattern = tuple((rng.uniform(.05, .4), rng.uniform(.55, .9)) for _ in range(9))
+    return tatami(shape, angle, spacing, pitch, pattern, minimum, start, underlay=False)
+
+
 def _to_frame_points(points, m):
     return [(p[0]*m[0]+p[1]*m[1], p[0]*m[2]+p[1]*m[3]) for p in points]
 

@@ -79,7 +79,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Satin Auto Split (random needle holes) | `stitch_satin.split_rows`, staggered, 7 mm (`satin_split_mm`) | ✅ 2026-10-24 | |
 | Automatic corners, shortening | shortening on tight curves; mitre corners, capped when sharper than about 60° (satin borders, appliqué cover) | ✅ 2026-10-24 | |
 | Textured edge, feather edge | area style Feathered: rows across the area stop short at random, on One edge (up to 4 mm), Both edges (3 mm) or a Textured edge (0.8 mm); the two rows of each turn form one tip | ✅ 2026-10-27 | |
-| 3D globe effect, hand stitch effect | — | ✗ | P3 |
+| 3D globe effect, hand stitch effect | area styles Globe (tatami whose rows and stitches crowd towards the edges, so it looks domed) and Hand stitch (open rows of uneven stitches, 0.75–4.25 mm); hand stitch border | ✅ 2026-10-27 | |
 | Tie-in / tie-off, trims, "Always tie-off & trim" | locks, trims | ✅ | |
 | Auto start and end, closest join | areas nearest-first, and each fill starts at the corner nearest the previous stitch; branching | ✅ 2026-10-24 | |
 | Remove small stitches, minimum stitch | min-stitch filter | ✅ | |
