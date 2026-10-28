@@ -182,7 +182,7 @@ instructions are typed by hand, so they fall behind every new feature.
 |---|---|---|
 | 1 | Claude's tool choices built from Needler's own lists (area styles and their choices, borders, fabrics incl. the person's own, hoops); a test fails when a feature reaches the app but not Claude | ✓ 2026-10-27: fabrics (all 16 + the person's own), every border kind with motif/pattern, every hoop (+ own) offered and wired; area styles listed in the catalog, offered with step 3 |
 | 2 | Digitizer's handbook in `knowledge/`: per tool what it does, when to use it, when not, its limits; cached with the instructions | ✓ 2026-10-28: `knowledge/handbook.json` (modes, every area style and its choices, every border, every make_stitches setting, how Needler sews) plus the fabric presets, sent as a cached system block; a test fails when a tool has no handbook row |
-| 3 | New controls: style per colour (choice, direction), every border kind, line inside, placement, sewing order, density, outline colour, fabric, hoop, appliqué, holes | ✗ |
+| 3 | New controls: style per colour (choice, direction), every border kind, line inside, placement, sewing order, density, outline colour, fabric, hoop, appliqué, holes | part 1 ✓ 2026-10-28: style and direction per thread colour (`colour_styles`; parts a style does not suit keep the automatic choice), border placement and line inside. Part 2 (session 10): sewing order, density, outline colour, appliqué, holes |
 | 4 | Feedback per colour after each attempt: area sizes, widest part, style used, why a style was refused | ✗ |
 | 5 | The person's request leads: Claude shows a short plan (what each colour is, the style and why), follows the request, and says which tools it used | ✗ |
 | 6 | Scripted tests with a fake Claude (free), then real runs on the person's own pictures within a $2 test budget | ✗ |
@@ -193,7 +193,7 @@ instructions are typed by hand, so they fall behind every new feature.
 |---|---|---|
 | 7 | AI digitizer step 1 (Claude's choices from Needler's lists); "remove the background" fix | ✓ 2026-10-27 |
 | 8 | AI digitizer step 2 (handbook) | ✓ 2026-10-28 |
-| 9 | AI digitizer step 3, part 1: style and direction per colour; every border option (placement, line inside) | ✗ |
+| 9 | AI digitizer step 3, part 1: style and direction per colour; every border option (placement, line inside) | ✓ 2026-10-28 |
 | 10 | AI digitizer step 3, part 2: sewing order, density, outline colour, appliqué, holes | ✗ |
 | 11 | AI digitizer steps 4 and 5: feedback per colour; the person's request leads with a plan | ✗ |
 | 12 | AI digitizer step 6: fake-Claude tests, then real runs on the person's pictures ($2 budget) | ✗ |

@@ -89,6 +89,50 @@ def angle_choices(options):
     return value
 
 
+FILL_STYLES=('tatami','step','gradient','shaded','radial','wave','florentine','sculptured','feather','globe','hand','contour')
+
+
+def _thread_table(value,check,message):
+    if not isinstance(value,dict) or len(value)>32 or any(
+            not isinstance(k,str) or len(k)!=7 or k[0]!='#' or any(c not in '0123456789abcdefABCDEF' for c in k[1:])
+            or not check(v) for k,v in value.items()):
+        raise ValueError(message)
+    return {k.lower():v for k,v in value.items()}
+
+
+def colour_choices(options):
+    """Style and stitch direction for every area of a thread colour, as the AI digitizer chooses
+    them: ({'#rrggbb': style}, {'#rrggbb': degrees}). A style or direction chosen for one area wins."""
+    allowed={item[0] for item in CATALOG}|{f'{base}:{v}' for base,choices in VARIANTS.items() for v,_ in choices[1:]}
+    styles=_thread_table(options.get('colour_styles',{}),lambda v:isinstance(v,str) and v in allowed,
+                         'Choose a listed stitch style for each thread colour.')
+    angles=_thread_table(options.get('colour_angles',{}),lambda v:type(v) in (int,float) and -180<=v<=180,
+                         'Enter a stitch direction from -180° to 180°.')
+    return styles,angles
+
+
+def for_colour(table,thread):
+    """table's entry for this thread: exact, else the nearest colour within a small distance,
+    because the palette shifts slightly between runs (as colour merges do)."""
+    if thread in table or not table:return table.get(thread)
+    rgb=lambda h:np.array([int(h[i:i+2],16) for i in (1,3,5)])
+    gap,key=min((int(np.abs(rgb(k)-rgb(thread)).sum()),k) for k in table)
+    return table[key] if gap<=36 else None
+
+
+def colour_style_fits(style,rings,scale,thick,puff_mm,satin_to_mm):
+    """Whether a style chosen for a whole colour suits this area of it. Areas it does not suit keep
+    the automatic choice: satin only where satin forms, puff only as wide as the foam allows, fills
+    and textures only on parts wider than satin columns."""
+    kind,_=split_style(style)
+    if kind=='satin':return not satin_reason(rings,scale)
+    if kind=='raised_satin':
+        try:satin_rails(rings,scale);return True
+        except ValueError:return False
+    if kind=='puff':return puff_mm[0]<=thick<=puff_mm[1]
+    return thick>satin_to_mm
+
+
 def region_id(rings):
     return hashlib.sha256(b'|'.join(np.asarray(r,dtype='<i4').tobytes() for r in rings)).hexdigest()[:20]
 

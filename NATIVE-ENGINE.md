@@ -837,3 +837,16 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - `auto_claude.run` sends it as a second system block with `cache_control`, so it is cached with the
   instructions across attempts and runs (about 5,200 tokens).
 - `tests/test_claude_tools.py` fails when a mode, area style, choice, border or setting has no row.
+
+## Style and direction per thread colour (added 2026-10-28)
+- Options `colour_styles` (`{'#rrggbb': area style}`) and `colour_angles` (`{'#rrggbb': degrees}`),
+  checked by `region_stitches.colour_choices`. The engine applies them to every area of that thread;
+  the colour is matched exactly, else to the nearest thread within 36 (sum of RGB differences), as
+  colour merges are, because the palette shifts slightly between runs.
+- An area's own style or direction (`region_styles`, `area_angles`) wins. Parts the colour's style
+  does not suit keep the automatic choice (`colour_style_fits`): satin only where satin forms, 3D
+  satin only on straight bands, puff only as wide as the foam allows, every other style only on parts
+  wider than `SMALL_SATIN_MM`; hairlines stay runs. Fills chosen this way still overlap the colours
+  sewn after them, so no fabric shows between colours.
+- Claude sets them with `make_stitches.colour_styles` (style enum from `catalog()['area_styles']`),
+  and the border's `placement` and `line_inside` (`border_placement`, `border_inner`).

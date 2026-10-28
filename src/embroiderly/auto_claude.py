@@ -48,6 +48,9 @@ hoodie is fleece, cap is cap, and so on. Unknown: keep the current one.
 scattered in small pieces: fold it into a neighbouring colour with merge_colours, merge small details, or \
 simplify. Same-colour parts that touch are already joined without cutting (branching).
 - A badge or patch usually wants a satin border; a logo on a shirt usually does not.
+- Each thread colour can have its own area style and row direction (colour_styles), as the handbook \
+describes. Use them where the art asks for it (gradient for a sky, satin for lettering, a different \
+direction for neighbouring colours); the automatic choice is good for most areas.
 - recent_sewouts (if any) are what the person saw on real fabric: correct for those first.
 - If the person asks to keep the background, it must be stitched: use colour mode (line_art and black_lines leave the background as bare fabric).
 - Pictures are often screenshots. Buttons, arrows, page dots, captions, watermarks or app frames are not part of the art: remove them with erase on your first attempt, and check the drawing that they are gone. With the whole picture stitched, an erase box is filled with the colour around it, so draw it just around the item.
@@ -109,7 +112,26 @@ TOOLS = [
                                          width_mm=dict(type='number', minimum=.8, maximum=6),
                                          colour=dict(type='string', pattern='^#[0-9a-fA-F]{6}$'),
                                          motif=dict(type='string', description='Shape repeated by the motif border.'),
-                                         pattern=dict(type='string', description='Shape of the pattern border.'))),
+                                         pattern=dict(type='string', description='Shape of the pattern border.'),
+                                         placement=dict(type='string', enum=['inside', 'center', 'outside'],
+                                                        description='Satin only: the band lies inside the design\'s '
+                                                                    'edge, on it (default) or outside it.'),
+                                         line_inside=dict(type='boolean',
+                                                          description='A triple-stitch line 1.2 mm inside the border, '
+                                                                      'as on badges and frames.'))),
+             colour_styles=dict(type='array', maxItems=8,
+                                description='Stitch style and direction for every area of a thread colour (colour '
+                                            'mode; thread colours from the latest result). Parts the style does not '
+                                            'suit keep the automatic choice: satin only where satin forms, puff only '
+                                            'as wide as the foam, fills and textures only on parts wider than about '
+                                            '4.5 mm. Replaces earlier choices; [] returns every colour to automatic.',
+                                items=dict(type='object', additionalProperties=False, required=['colour'],
+                                           properties=dict(colour=dict(type='string', pattern='^#[0-9a-fA-F]{6}$'),
+                                                           style=dict(type='string', description='Area style.'),
+                                                           angle=dict(type='number', minimum=-180, maximum=180,
+                                                                      description='Row direction in degrees, 0 = '
+                                                                                  'horizontal; leave out for the '
+                                                                                  'automatic one.')))),
              keep_background=dict(type='boolean', description='true: stitch the whole picture, background included '
                                   '(clears any saved subject cut-out). false: keep the current subject selection.'),
              erase=dict(type='array', maxItems=12, description='Boxes to remove from the picture before stitching '
@@ -176,6 +198,9 @@ def tools(root=None):
     border['style']['enum'] = lists['borders']
     border['motif']['enum'] = lists['motifs']
     border['pattern']['enum'] = lists['patterns']
+    style = settings['colour_styles']['items']['properties']['style']
+    style['enum'] = [s['id'] for s in lists['area_styles']]
+    style['description'] += ' ' + '; '.join(f"{s['id']}: {s['name']}" for s in lists['area_styles']) + '.'
     return built
 
 
@@ -337,6 +362,21 @@ def settings_from(tool_input, options, size=None, image=None, root=None):
             for key, name in (('motif', 'motifs'), ('pattern', 'patterns')):
                 if border.get(key) in lists[name]:
                     nxt['border_' + key] = border[key]
+            if border.get('placement') in ('inside', 'center', 'outside'):
+                nxt['border_placement'] = border['placement']
+            if 'line_inside' in border:
+                nxt['border_inner'] = 'triple' if border['line_inside'] is True else 'off'
+    if isinstance(tool_input.get('colour_styles'), list):
+        styles = {s['id'] for s in lists['area_styles']}
+        nxt['colour_styles'], nxt['colour_angles'] = {}, {}
+        for item in tool_input['colour_styles'][:8]:
+            colour = item.get('colour') if isinstance(item, dict) else None
+            if not (isinstance(colour, str) and len(colour) == 7 and colour[0] == '#'):
+                continue
+            if item.get('style') in styles:
+                nxt['colour_styles'][colour.lower()] = item['style']
+            if type(item.get('angle')) in (int, float) and -180 <= item['angle'] <= 180:
+                nxt['colour_angles'][colour.lower()] = item['angle']
     if tool_input.get('line_details') in ('off', 'light', 'all'):
         nxt['line_details'] = tool_input['line_details']
     fabric = next((f for f in lists['fabrics'] if f['id'] == tool_input.get('fabric')), None)
@@ -401,7 +441,8 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                  recent_sewouts=recent_sewouts(Path(path).parent.parent),
                  parsed_request=wish, current_settings={k: options.get(k) for k in (
                      'line_art', 'ink_only', 'count', 'height_mm', 'floor_mm2', 'simplify', 'smooth', 'puff',
-                     'selection', 'fabric_preset', 'line_details', 'photo_style', 'hoop_id')}, selection_meaning='full: whole picture is stitched; anything else: only the '
+                     'selection', 'fabric_preset', 'line_details', 'photo_style', 'hoop_id', 'border_style',
+                     'border_placement', 'border_inner', 'colour_styles', 'colour_angles')}, selection_meaning='full: whole picture is stitched; anything else: only the '
                      'saved subject cut-out is stitched and the background is left as bare fabric')
     messages = [dict(role='user', content=[picture, dict(type='text', text=
         'Here is the picture to digitize and what Needler measured:\n' + json.dumps(brief, indent=1))])]

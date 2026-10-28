@@ -49,6 +49,7 @@
     {
       "id": "area:tatami",
       "tool": "Tatami",
+      "control": "colour_styles",
       "does": "Rows of fill stitches with staggered needle holes and underlay; the standard fill.",
       "use": "Any area wider than about 8 mm, backgrounds, large shapes. The safe default.",
       "avoid": "Thin parts under about 1.5 mm wide (use satin or a line).",
@@ -59,6 +60,7 @@
     {
       "id": "area:step",
       "tool": "Step fill",
+      "control": "colour_styles",
       "does": "Tatami with needle holes stepped in a chevron, so the rows show a faint zigzag texture.",
       "use": "Large fills that look too flat, backgrounds with a subtle texture.",
       "avoid": "Small areas, where the texture cannot show.",
@@ -69,6 +71,7 @@
     {
       "id": "area:gradient",
       "tool": "Gradient",
+      "control": "colour_styles",
       "does": "Rows go from full density on one side to open spacing (1.6 mm) on the other, so the fabric shows through.",
       "use": "Fades, skies, light effects, lighter stitch count on big areas.",
       "avoid": "Areas that must look solid; dark fabric under a light thread where the open side looks dirty.",
@@ -79,6 +82,7 @@
     {
       "id": "area:shaded",
       "tool": "Shaded",
+      "control": "colour_styles",
       "does": "The area's tatami plus a gradient in a 30% darker shade across it, for depth.",
       "use": "Round or soft shapes that need shading in a flat-colour design (petals, leaves, balls).",
       "avoid": "Designs that must keep few colours: it adds one more thread.",
@@ -89,6 +93,7 @@
     {
       "id": "area:radial",
       "tool": "Radial",
+      "control": "colour_styles",
       "does": "Rays from the centre of the area outward.",
       "use": "Round shapes: suns, flower centres, buttons, eyes.",
       "avoid": "Long or irregular shapes; it falls back to tatami when rays cover under 85% of the area.",
@@ -99,6 +104,7 @@
     {
       "id": "area:wave",
       "tool": "Wave",
+      "control": "colour_styles",
       "does": "Rows that rise and fall in smooth waves.",
       "use": "Water, flags, hair, decorative backgrounds.",
       "avoid": "Small areas where the wave cannot show.",
@@ -109,6 +115,7 @@
     {
       "id": "area:florentine",
       "tool": "Florentine",
+      "control": "colour_styles",
       "does": "Rows follow the curve of the area's top edge.",
       "use": "Curved bands, arches, petals and leaves where rows should follow the shape.",
       "avoid": "Shapes with a ragged or very steep top edge.",
@@ -119,6 +126,7 @@
     {
       "id": "area:applique",
       "tool": "Appliqué",
+      "control": "colour_styles",
       "does": "A fabric piece instead of stitches: placement line, machine stop to lay the fabric, tack-down, stop to trim, then a satin edge (3 mm by default). Needler also writes a cutting file.",
       "use": "Big solid areas on patches, jackets, blankets, kids' designs; saves many stitches.",
       "avoid": "Small or thin parts (hard to cut and lay); caps and stretchy fabric.",
@@ -129,6 +137,7 @@
     {
       "id": "area:satin",
       "tool": "Satin",
+      "control": "colour_styles",
       "does": "Long smooth stitches across the shape that follow its direction; shiny and raised.",
       "use": "Narrow parts: lettering strokes, borders, stems, outlines, small shapes 1.5 to 8 mm wide.",
       "avoid": "Areas wider than 8 mm (loose, snag); very thin parts under about 1 mm.",
@@ -139,6 +148,7 @@
     {
       "id": "area:raised_satin",
       "tool": "3D satin",
+      "control": "colour_styles",
       "does": "Three satin layers stacked for a raised look, without foam.",
       "use": "Small raised accents, initials, on firm fabric.",
       "avoid": "Wide, curved or branching shapes; stretchy fabric.",
@@ -160,6 +170,7 @@
     {
       "id": "area:motif",
       "tool": "Motif",
+      "control": "colour_styles",
       "does": "Small repeated shapes sewn as running stitch across the area; open fill.",
       "use": "Light decorative fills, quilt-like textures, backgrounds where the fabric may show.",
       "avoid": "Areas that must look solid; small areas (too small for the pattern).",
@@ -177,6 +188,7 @@
     {
       "id": "area:elastic",
       "tool": "Elastic",
+      "control": "colour_styles",
       "does": "Repeated shapes that stretch to follow the area's top and bottom edges; open fill.",
       "use": "Decorative bands and curved shapes where the pattern should bend with the shape.",
       "avoid": "Solid-looking areas; small or round areas.",
@@ -194,6 +206,7 @@
     {
       "id": "area:embossed",
       "tool": "Embossed",
+      "control": "colour_styles",
       "does": "Tatami with a diamond overlay that presses a texture into it.",
       "use": "Textured solid areas: leather looks, quilted backgrounds.",
       "avoid": "Small areas; designs that need few stitches.",
@@ -204,6 +217,7 @@
     {
       "id": "area:sculptured",
       "tool": "Sculptured",
+      "control": "colour_styles",
       "does": "Tatami with needle holes placed in a diamond lattice, so a quilted pattern shows in the fill.",
       "use": "Large solid fills that should carry a subtle pattern.",
       "avoid": "Small areas, where the lattice cannot show.",
@@ -214,6 +228,7 @@
     {
       "id": "area:feather",
       "tool": "Feathered",
+      "control": "colour_styles",
       "does": "Tatami rows whose ends are uneven, like fur or feathers.",
       "use": "Animal fur, feathers, grass, soft edges that blend into the next colour.",
       "avoid": "Logos with crisp edges.",
@@ -229,6 +244,7 @@
     {
       "id": "area:globe",
       "tool": "Globe",
+      "control": "colour_styles",
       "does": "Tatami whose rows tighten towards the edges, so the area looks domed.",
       "use": "Balls, planets, eyes, round shapes that should look curved.",
       "avoid": "Flat logos.",
@@ -239,6 +255,7 @@
     {
       "id": "area:hand",
       "tool": "Hand stitch",
+      "control": "colour_styles",
       "does": "Uneven stitches in open rows, like hand sewing; open fill.",
       "use": "Hand-made, rustic or folk looks.",
       "avoid": "Areas that must cover the fabric.",
@@ -249,6 +266,7 @@
     {
       "id": "area:ripple",
       "tool": "Ripple",
+      "control": "colour_styles",
       "does": "Concentric rings spiralling from the centre outward.",
       "use": "Round shapes, water drops, targets, decorative circles.",
       "avoid": "Long thin areas.",
@@ -259,6 +277,7 @@
     {
       "id": "area:maze",
       "tool": "Maze",
+      "control": "colour_styles",
       "does": "One line winding like a labyrinth through the area; open fill.",
       "use": "Light decorative texture, quilt looks.",
       "avoid": "Areas that must look solid.",
@@ -269,6 +288,7 @@
     {
       "id": "area:star",
       "tool": "Star",
+      "control": "colour_styles",
       "does": "A star-shaped spiral from the centre; open fill.",
       "use": "Decorative round areas, festive designs.",
       "avoid": "Areas that must look solid; long areas.",
@@ -279,6 +299,7 @@
     {
       "id": "area:contour",
       "tool": "Offset fill",
+      "control": "colour_styles",
       "does": "Rows follow the area's outline inward, ring by ring, around holes.",
       "use": "Shapes where rows should echo the outline: letters with holes, frames, organic shapes.",
       "avoid": "Very large areas (many rings, many stitches).",
@@ -289,6 +310,7 @@
     {
       "id": "area:cross",
       "tool": "Cross stitch",
+      "control": "colour_styles",
       "does": "Diagonal crosses on a grid clipped to the area; open fill.",
       "use": "Cross-stitch looks, folk and pixel art.",
       "avoid": "Small or thin areas; solid coverage.",
@@ -299,6 +321,7 @@
     {
       "id": "area:stipple",
       "tool": "Stipple",
+      "control": "colour_styles",
       "does": "One meandering line through the area; open fill.",
       "use": "Quilting looks, light backgrounds, texture behind other parts.",
       "avoid": "Areas that must look solid.",
@@ -314,6 +337,7 @@
     {
       "id": "area:blackwork_fill",
       "tool": "Blackwork",
+      "control": "colour_styles",
       "does": "A lattice of straight lines every 4 mm with diagonals; open fill.",
       "use": "Traditional blackwork looks, light geometric backgrounds.",
       "avoid": "Areas that must look solid.",
@@ -324,6 +348,7 @@
     {
       "id": "area:candlewick_fill",
       "tool": "Candlewicking",
+      "control": "colour_styles",
       "does": "Raised knots in rows, 4 mm apart; open fill.",
       "use": "Vintage, quilt and cushion looks.",
       "avoid": "Small areas; solid coverage.",
@@ -334,6 +359,7 @@
     {
       "id": "area:lacework",
       "tool": "Lacework",
+      "control": "colour_styles",
       "does": "A honeycomb net with 2 mm sides; open fill.",
       "use": "Lace looks, light decorative backgrounds.",
       "avoid": "Areas that must look solid.",
@@ -503,6 +529,17 @@
       "use": "A colour scattered in many small pieces (many cuts in per_colour), near-duplicate shades.",
       "avoid": "Colours that carry meaning in the art.",
       "limits": "Up to 6 merges; replaces earlier merges.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
+      "id": "setting:colour_styles",
+      "tool": "Style and direction per colour",
+      "control": "colour_styles",
+      "does": "Sets the area style and the row direction for every area of one thread colour.",
+      "use": "When the art asks for it: gradient for a sky, satin for lettering or stems, a different row direction for neighbouring colours so they catch the light differently.",
+      "avoid": "Changing colours the automatic choice already sews well; satin or puff on wide areas.",
+      "limits": "Up to 8 colours; replaces earlier choices. Parts a style does not suit keep the automatic choice: satin only where satin forms, puff only as wide as the foam, fills and textures only on parts wider than about 4.5 mm.",
       "verified_by_user": false,
       "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
     },
@@ -701,6 +738,7 @@
     {
       "id": "concept:direction",
       "tool": "Stitch direction",
+      "control": "colour_styles",
       "does": "The angle of fill rows or satin per area (0 = horizontal).",
       "use": "Vary direction between neighbouring areas so they catch light differently; follow the shape for leaves and petals.",
       "avoid": "Rows along a very long thin area (it pulls and narrows).",

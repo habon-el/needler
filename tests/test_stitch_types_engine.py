@@ -1,5 +1,6 @@
 """New fills and outline borders, through the engine and the release gate."""
 import json
+import re
 
 import numpy as np
 import pytest
@@ -88,3 +89,23 @@ def test_chosen_stitch_direction_turns_the_rows(tmp_path):
     assert checked_bytes(tmp_path/'turned'/'out', 'dst')
     with pytest.raises(ValueError):
         angle_choices({'area_angles': {'a'*20: 400}})
+
+
+def test_style_and_direction_chosen_per_thread_colour(tmp_path):
+    from embroiderly.region_stitches import colour_choices
+    # A colour named slightly off (the palette shifts between runs) still finds its thread.
+    payload, svg = design(tmp_path/'sky', {'colour_styles': {'#205CC8': 'gradient'}})
+    assert svg.count('gradient_fill') == 1   # the blue ring only; the yellow square stays automatic
+    assert checked_bytes(tmp_path/'sky'/'out', 'dst')
+    # Satin does not form on a 50 mm ring: that area keeps its automatic fill instead of failing.
+    _, svg = design(tmp_path/'satin', {'colour_styles': {'#1e5ac8': 'satin'}})
+    assert 'auto_satin' not in svg and 'satin_column' not in svg
+    _, svg = design(tmp_path/'turned', {'colour_angles': {'#1e5ac8': 90}})
+    assert re.search(r':angle="90"', svg)  # the namespace prefix depends on earlier tests
+    # An area's own choice wins over its colour's.
+    _, svg = design(tmp_path/'own', {'region_styles': 'wave', 'colour_styles': {'#1e5ac8': 'gradient'}})
+    assert 'gradient_fill' not in svg and svg.count('wave_fill') == 2
+    for bad in ({'colour_styles': {'#1e5ac8': 'lace'}}, {'colour_styles': {'blue': 'satin'}},
+                {'colour_angles': {'#1e5ac8': 400}}):
+        with pytest.raises(ValueError):
+            colour_choices(bad)

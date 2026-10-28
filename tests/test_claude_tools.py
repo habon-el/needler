@@ -130,3 +130,23 @@ def test_the_handbook_is_sent_and_cached_with_the_instructions(tmp_path):
     instructions, book = claude.sent[0]['system']
     assert 'expert machine-embroidery digitizer' in instructions['text'] and 'cache_control' not in instructions
     assert book['text'] == handbook() and book['cache_control'] == dict(type='ephemeral')
+
+
+def test_style_per_colour_and_border_options_become_settings(tmp_path):
+    offered = _settings(tmp_path)
+    assert offered['colour_styles']['items']['properties']['style']['enum'] == [s['id'] for s in catalog()['area_styles']]
+    chosen = settings_from(dict(note='x', colour_styles=[dict(colour='#1E5AC8', style='motif:heart', angle=45),
+                                                         dict(colour='#ffcc00', angle=-30),
+                                                         dict(colour='#00ff00', style='lace')]), {}, root=tmp_path)
+    assert chosen['colour_styles'] == {'#1e5ac8': 'motif:heart'}
+    assert chosen['colour_angles'] == {'#1e5ac8': 45, '#ffcc00': -30}
+    assert settings_from(dict(note='x', colour_styles=[]), chosen, root=tmp_path)['colour_styles'] == {}
+    chosen = settings_from(dict(note='x', border=dict(style='satin', placement='outside', line_inside=True)), {},
+                           root=tmp_path)
+    assert chosen['border_placement'] == 'outside' and chosen['border_inner'] == 'triple'
+    mask = np.zeros((200, 200), bool)
+    mask[40:160, 40:160] = True
+    plan = border_plan(mask, 40, chosen)
+    assert plan['placement'] == 'outside' and plan['inner']
+    off = settings_from(dict(note='x', border=dict(style='satin', line_inside=False)), chosen, root=tmp_path)
+    assert off['border_inner'] == 'off' and off['border_placement'] == 'outside'

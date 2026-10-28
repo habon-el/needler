@@ -367,6 +367,8 @@ def digitize(source, directory, height_mm=100, colours=None):
     filled_holes=hole_choices(settings)
     from .region_stitches import angle_choices
     chosen_angles=angle_choices(settings)
+    from .region_stitches import colour_choices, for_colour, colour_style_fits, split_style, FILL_STYLES
+    colour_styles,colour_angles=colour_choices(settings)
     # 3D puff for every area that can hold foam; others stay flat.
     puff_all=settings.get('puff') is True
     from .stitch_engine import puff_min_mm
@@ -453,6 +455,10 @@ def digitize(source, directory, height_mm=100, colours=None):
                 band=np.zeros_like(mask);cv2.drawContours(band,[c],-1,1,-1)
                 release_mask|=band.astype(bool);rings=[c]
             thick=thickness_mm(rings,scale)
+            wanted=for_colour(colour_styles,choice['thread']) if style is None else None
+            by_colour=bool(wanted) and thick>=HAIRLINE_MM and colour_style_fits(
+                wanted,rings,scale,thick,(puff_min_mm(foam_mm),PUFF_TO_MM),SMALL_SATIN_MM)
+            if by_colour:style=wanted
             if style is None and puff_all and puff_min_mm(foam_mm)<=thick<=PUFF_TO_MM:
                 style='puff'
             if style is None and thick<HAIRLINE_MM:
@@ -465,7 +471,8 @@ def digitize(source, directory, height_mm=100, colours=None):
             if style is None and not knockout and not stroke and thick>SMALL_SATIN_MM and settings.get('smart_satin',True) is not False:
                 rings,limbs=thin_limbs(rings,scale)
             # Plain fills overlap the colours sewn after them and run along their long side.
-            plain=style is None and thick>SMALL_SATIN_MM and not knockout and not stroke
+            # A fill chosen for the whole colour overlaps like the automatic one, so no fabric shows between colours.
+            plain=(style is None or by_colour and split_style(style)[0] in FILL_STYLES) and thick>SMALL_SATIN_MM and not knockout and not stroke
             shaped=overlap_rings(rings,later,scale) if plain and later.any() else [rings]
             parts=[]
             for piece in shaped:
@@ -482,6 +489,8 @@ def digitize(source, directory, height_mm=100, colours=None):
             if identity in chosen_angles:
                 # Stitch direction chosen for this area replaces the automatic one.
                 node.set('{http://inkstitch.org/namespace}angle',f'{float(chosen_angles[identity]):g}')
+            elif for_colour(colour_angles,choice['thread']) is not None:
+                node.set('{http://inkstitch.org/namespace}angle',f'{float(for_colour(colour_angles,choice["thread"])):g}')
             if style=='puff':
                 node.set('{http://inkstitch.org/namespace}puff_foam_mm',f'{foam_mm:g}')
                 node.set('{http://inkstitch.org/namespace}pull_compensation_mm',puff_pull)
