@@ -58,17 +58,25 @@ document.addEventListener('DOMContentLoaded', () => {
   if(r.stitches){const b=node('button','Show the result');b.type='button';b.className='primary';b.onclick=()=>{location.href=location.pathname+'?view=stitched&auto=1'};result.append(b)}
  }
  async function poll(){
-  try{
-   const job=await fetch(api,{cache:'no-store'}).then(r=>r.json());
-   render(job);
-   if(job.state==='running'){timer=setTimeout(poll,1000);return}
-  }catch{timer=setTimeout(poll,2500);return}
+  let job;
+  try{job=await fetch(api,{cache:'no-store'}).then(r=>r.json())}catch{timer=setTimeout(poll,2500);return}
+  // A result it cannot show must not leave Start stuck as if a run were still going.
+  try{render(job)}catch(error){console.error(error)}
+  if(job.state==='running'){timer=setTimeout(poll,1000);return}
   running=false;start.disabled=false;$('autoClose').disabled=false;cover.hidden=true;start.textContent='Start again';
  }
+ const pause=ms=>new Promise(done=>setTimeout(done,ms));
+ // The studio enables every inspector button when its own preview ends; not these during a run.
+ for(const b of [start,$('autoClose')])new MutationObserver(()=>{if(running&&!b.disabled)b.disabled=true}).observe(b,{attributes:true,attributeFilter:['disabled']});
  start.onclick=async()=>{
   if(running)return;
-  if(studio.isBusy()){result.hidden=false;result.replaceChildren(node('p','Wait for the current preparation to finish, then start.','auto-problem'));return}
-  running=true;start.disabled=true;$('autoClose').disabled=true;cover.hidden=false;steps.replaceChildren();result.hidden=true;
+  running=true;start.disabled=true;$('autoClose').disabled=true;cover.hidden=false;
+  // An earlier result goes at once, so Start always visibly starts.
+  steps.replaceChildren();result.hidden=true;result.replaceChildren();cover.querySelector('span').textContent='Starting…';
+  // After opening a result the page is still preparing it: wait for that instead of refusing.
+  for(let waited=0;studio.isBusy()&&waited<600000;waited+=500){
+   cover.querySelector('span').textContent='Waiting for the current preparation to finish…';await pause(500);
+  }
   const response=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:$('autoRequest').value,use_claude:$('autoClaude').checked,
    outlines:$('autoOutline').checked,detail:Number($('autoDetail').value)})}).catch(()=>null);
   if(!response||!response.ok&&response.status!==202){
