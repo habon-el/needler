@@ -1028,3 +1028,33 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   `converted_bytes`, the single download's gate. `POST /api/library/convert` returns a zip
   (`designs-<fmt>.zip`, team-names file naming), with `not-included.txt` for designs without stitches
   or failing a check; none converted is a 422 naming why. Up to 100 designs; trashed ones refused.
+
+## Session 19 bugs: cut-out slivers, netted petals, leaves, white parts, Start, approval (added 2026-10-29)
+
+- Cut-out subject failing the file check after a colour merge (a real AI run on a rose): the merge was
+  not the cause. A sliver thinner than one fill row on the subject's edge (a one-pixel line of darker
+  red along a petal) was tacked 0.5 mm always to the right, and a lock on a path shorter than the lock
+  ran on past its end; next to the removed background both left the subject. `stitch_fills._tiny` now
+  tacks along the part's own centre line, centred on it (its pass along a thin part no longer runs a
+  quarter of its length past one end); `stitch_engine._with_locks` retraces any path a whole stitch
+  (0.3 mm) long; `assemble` skips a block shorter than one stitch. The release gate is unchanged.
+- Gaps between colours: a petal netted by darker shading is thin everywhere, so it was sewn as satin,
+  and satin columns cannot follow a net (wedges and tips stayed bare). `engine.satin_gaps`: an area at
+  least 2 mm wide and 30 mm² whose columns (`satin_font.area_columns`) cover under 90% of it is filled
+  instead, with the usual overlap under later colours. On the rose: bare subject 2.7% to 1.5%.
+- Flat leaves: `fill_shaping.leaf_halves` splits a leaf-shaped fill (principal axes at least 1.4:1,
+  12% in from its tip under 0.6 of its widest, the other end under 0.8; at least 20 mm²) along its
+  midrib; each side is its own fill node (same thread and settings), rows turned 40° from the midrib
+  the opposite way, each reaching 0.35 mm under the other. Not for chosen styles or angles, limbs or
+  colour removal. Ellipses, rectangles and circles are not leaves.
+- White parts: `colour_knockout.remove_colour` marks an enclosed part `inside` when a ring around it
+  (half its size wide, at least 1.5 mm) lies in the subject; a letter's counter is not. Digitize for me
+  (`AutoDigitizer._keep_inside`) puts those parts in `restore_parts`. In `prepare`, a colour whose parts
+  are kept is locked as one more colour (up to 8), so it never merges into a pale neighbour; it is not
+  shown as a Preserve colour tick, and merging it stays allowed.
+- Start over an earlier result (`auto-digitize.js`): Start clears the old result at once, waits for the
+  page's own preparation instead of refusing, frees itself whenever the job is no longer running (also
+  when a result cannot be shown), and stays disabled during a run although the studio re-enables
+  inspector buttons after its previews. Tested in Node with a small stand-in page.
+- A new thread colour from a swatch keeps "I approve" (`schedule(true)`); picking another swatch's exact
+  colour or dropping one swatch on another is a merge and clears it, as every other change does.
