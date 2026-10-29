@@ -65,6 +65,29 @@ def area_mm2(rings,scale):
     return (cv2.contourArea(rings[0])-sum(cv2.contourArea(r) for r in rings[1:]))*scale*scale
 
 
+SATIN_COVER=.9      # satin columns must cover this share of an area, or it is filled instead
+FILL_FROM_MM=2.0    # ... when it is at least this wide (rows of fill turn ragged below)
+
+
+def satin_gaps(rings,scale,thick):
+    """True when satin columns would leave a wide enough area visibly bare: a branched area
+    with many holes (a petal netted by darker shading) has wedges and tips no column reaches.
+    Such an area is filled. Narrow or small areas stay satin."""
+    if thick<FILL_FROM_MM or area_mm2(rings,scale)<30:return False
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    from .stitch_fills import fill_shape
+    from .satin_font import area_columns
+    shape=fill_shape([([(float(x)*scale,float(y)*scale) for x,y in r[:,0,:]],True) for r in rings if len(r)>=3],'evenodd')
+    if shape.is_empty:return False
+    columns=[]
+    for a,b,closed,_ in area_columns(shape):
+        if closed and len(a)>=3 and len(b)>=3:columns.append(Polygon(a).symmetric_difference(Polygon(b)).buffer(0))
+        elif not closed and len(a)>=2 and len(b)>=2:columns.append(Polygon(list(a)+list(b)[::-1]).buffer(0))
+    covered=unary_union(columns).intersection(shape).area if columns else 0.
+    return covered<SATIN_COVER*shape.area
+
+
 def stroke_like(rings,scale,thick):
     """A long band (its length at least four times its width): satin follows it better than rows of fill."""
     return area_mm2(rings,scale)/max(thick,.1)>=4*thick
@@ -419,7 +442,7 @@ def digitize(source, directory, height_mm=100, colours=None):
         palette=sorted(palette,key=lambda c:(-area.get(tuple(c),0),tuple(int(v) for v in c)))
     # Pixels of each included colour, in sewing order, so a fill can reach under the
     # colours sewn after it (fill_shaping.OVERLAP_MM).
-    from .fill_shaping import grown as overlap_rings, angle as fill_angle
+    from .fill_shaping import grown as overlap_rings, angle as fill_angle, leaf_halves
     sewn_masks=[];sewn_threads=[]
     for colour in ([] if piece_layout else palette):
         key='#%02x%02x%02x'%tuple(colour)
@@ -500,13 +523,24 @@ def digitize(source, directory, height_mm=100, colours=None):
                 continue
             # Long bands become satin; thin limbs of thick areas are split off as satin (sewn after the body).
             stroke=style is None and not knockout and SMALL_SATIN_MM<thick<=STROKE_SATIN_MM and stroke_like(rings,scale,thick)
+            # Satin that would leave wedges and tips bare between neighbouring colours: a fill instead.
+            gappy=style is None and not knockout and (stroke or thick<=SMALL_SATIN_MM) and satin_gaps(rings,scale,thick)
+            if gappy:stroke=False
             limbs=[]
             if style is None and not knockout and not stroke and thick>SMALL_SATIN_MM and settings.get('smart_satin',True) is not False:
                 rings,limbs=thin_limbs(rings,scale)
             # Plain fills overlap the colours sewn after them and run along their long side.
             # A fill chosen for the whole colour overlaps like the automatic one, so no fabric shows between colours.
-            plain=(style is None or by_colour and split_style(style)[0] in FILL_STYLES) and thick>SMALL_SATIN_MM and not knockout and not stroke
-            shaped=overlap_rings(rings,later,scale) if plain and later.any() else [rings]
+            plain=(style is None or by_colour and split_style(style)[0] in FILL_STYLES) and (thick>SMALL_SATIN_MM or gappy) and not knockout and not stroke
+            # A leaf or petal: its two sides angled from the midrib, so it does not sew flat.
+            own_angle=identity in chosen_angles or for_colour(colour_angles,choice['thread']) is not None
+            halves=leaf_halves(rings,mask.shape,scale) if plain and style is None and not limbs and not own_angle else None
+            if halves:
+                (first,first_angle,first_pixels),(second,second_angle,second_pixels)=halves
+                # Each side reaches under the other along the midrib, as under a later colour.
+                shaped=[g for piece in first for g in overlap_rings(piece,later|second_pixels,scale)]
+            else:
+                shaped=overlap_rings(rings,later,scale) if plain and later.any() else [rings]
             parts=[]
             for piece in shaped:
                 for ring in piece:
@@ -517,7 +551,7 @@ def digitize(source, directory, height_mm=100, colours=None):
             node=ET.SubElement(document,'path',id=f'area{objects}',d=' '.join(parts),
                 style=f'fill:{choice["thread"]};fill-rule:evenodd;stroke:none')
             if plain:
-                node.set('{http://inkstitch.org/namespace}angle',f'{fill_angle(rings):.1f}')
+                node.set('{http://inkstitch.org/namespace}angle',f'{(first_angle if halves else fill_angle(rings)):.1f}')
             apply_style(document,node,rings,scale,style or 'tatami')
             if identity in chosen_angles:
                 # Stitch direction chosen for this area replaces the automatic one.
@@ -536,7 +570,7 @@ def digitize(source, directory, height_mm=100, colours=None):
                 band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
                 grow=max(1,int(math.ceil((float(puff_pull)+.05)/scale)))
                 release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool);pull_bands.append((band,grow))
-            if style is None and (stroke or thickness_mm(rings,scale)<=SMALL_SATIN_MM) or node.get('{http://inkstitch.org/namespace}fill_method')=='auto_satin' and style=='satin':
+            if style is None and not gappy and (stroke or thickness_mm(rings,scale)<=SMALL_SATIN_MM) or node.get('{http://inkstitch.org/namespace}fill_method')=='auto_satin' and style=='satin':
                 # Narrow or small shapes are satin, as a digitizer would do them:
                 # rows of fill turn ragged and gappy below a few millimetres.
                 node.set('{http://inkstitch.org/namespace}fill_method','auto_satin')
@@ -553,6 +587,13 @@ def digitize(source, directory, height_mm=100, colours=None):
                 # Removed areas stay exact: keep stitches inside by the file rounding.
                 node.set('{http://inkstitch.org/namespace}edge_inset_mm',str(GRID_ROUNDING_MM))
             objects+=1
+            if halves:
+                # The leaf's other side: the same thread and settings, its own row angle.
+                twin_d=' '.join('M '+' L '.join(f'{x},{y}' for x,y in ring[:,0,:])+' Z' for piece in second
+                           for grown in overlap_rings(piece,later|first_pixels,scale) for ring in grown if len(ring)>=3)
+                if twin_d:
+                    twin=ET.SubElement(document,'path',{**node.attrib,'id':f'area{objects}','d':twin_d})
+                    twin.set('{http://inkstitch.org/namespace}angle',f'{second_angle:.1f}');objects+=1
             for limb in limbs:
                 # Thin limbs on top of the body's fill, same thread: satin that follows and tapers.
                 add_satin_area(document,limb,choice['thread'],objects,satin_spacing,satin_pull,knockout);objects+=1
