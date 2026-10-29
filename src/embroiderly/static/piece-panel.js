@@ -23,7 +23,7 @@
  <div class="piece-arrange" role="group" aria-label="Arrange">
  <button type="button" data-arrange="mirror:x" title="Mirror left–right">⇋ Mirror</button><button type="button" data-arrange="mirror:y" title="Mirror top–bottom">⇅ Mirror</button>
  <button type="button" data-arrange="rotate_by:-15" title="Rotate 15° to the left">↺ 15°</button><button type="button" data-arrange="rotate_by:15" title="Rotate 15° to the right">↻ 15°</button><button type="button" data-arrange="rotate_by:45" title="Rotate 45° to the right">↻ 45°</button>
- <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceSatinHere" aria-pressed="false" title="Drag a line where a thin part starts: that side becomes satin, the rest keeps its fill">〰 Satin here</button><button type="button" id="pieceWeld" title="Join the selected pieces of one thread into one piece. They must touch or overlap.">⊕ Weld</button><button type="button" id="pieceSmooth" title="Smooth the outline: removes jagged pixel steps, keeps sharp corners and the size">Smooth</button><select id="pieceSmoothStrength" aria-label="How much to smooth" title="How much to smooth"><option value="light">Light</option><option value="more">More</option></select><select id="pieceMorphKind" aria-label="Morph" title="Morph the outline around its centre"><option value="pinch">Pinch</option><option value="punch">Punch</option><option value="twirl">Twirl</option><option value="wave">Wave</option></select><label title="How strong the morph is, 10–100%">Strength %<input id="pieceMorphStrength" type="number" min="10" max="100" step="5" value="40"></label><button type="button" id="pieceMorph" title="Pinch draws the sides in, Punch bulges them out, Twirl turns the middle, Wave makes it rise and fall">Morph</button><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
+ <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="piecePoints" aria-pressed="false" title="Drag an outline point to move it; click an edge to add a point; click a point and press Delete to remove it">◇ Points</button><button type="button" id="pieceSatinHere" aria-pressed="false" title="Drag a line where a thin part starts: that side becomes satin, the rest keeps its fill">〰 Satin here</button><button type="button" id="pieceWeld" title="Join the selected pieces of one thread into one piece. They must touch or overlap.">⊕ Weld</button><button type="button" id="pieceSmooth" title="Smooth the outline: removes jagged pixel steps, keeps sharp corners and the size">Smooth</button><select id="pieceSmoothStrength" aria-label="How much to smooth" title="How much to smooth"><option value="light">Light</option><option value="more">More</option></select><select id="pieceMorphKind" aria-label="Morph" title="Morph the outline around its centre"><option value="pinch">Pinch</option><option value="punch">Punch</option><option value="twirl">Twirl</option><option value="wave">Wave</option></select><label title="How strong the morph is, 10–100%">Strength %<input id="pieceMorphStrength" type="number" min="10" max="100" step="5" value="40"></label><button type="button" id="pieceMorph" title="Pinch draws the sides in, Punch bulges them out, Twirl turns the middle, Wave makes it rise and fall">Morph</button><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
  </div>
  </fieldset>
  <fieldset id="pieceLineUp"><legend>Line up</legend><div class="piece-arrange" role="group" aria-label="Line up several pieces">
@@ -78,7 +78,7 @@
   try{const ok=await studio.pieceEdit({ids,field,value,linked:advanced?linked:true});feedback(ok?(studio.hasPlayback()?(field==='sew_order'?'Saved. Stitches follow the new sewing order.':'Saved. Stitches use the updated outline.'):'Piece saved. No current stitch plan; review the design before generating.'):'Not applied. See the workspace message; the previous piece is unchanged.')}
   catch(error){feedback(error.message)}finally{pending=false;sync()}
  }
- function choose(ids,toggle=false){if(!toggle)selected.clear();for(const id of ids){if(toggle&&selected.has(id))selected.delete(id);else selected.add(id)}studio.pieceView();document.querySelector('[data-topic="styles"]').click();sync();renderRows()}
+ function choose(ids,toggle=false){if(points)points.picked=null;if(!toggle)selected.clear();for(const id of ids){if(toggle&&selected.has(id))selected.delete(id);else selected.add(id)}studio.pieceView();document.querySelector('[data-topic="styles"]').click();sync();renderRows()}
  function sync(){
   const items=targets(),box=aggregate(items),locked=items.some(p=>p.locked),disabled=!box||locked||pending||studio.isBusy();
   properties.dataset.mode=advanced?'advanced':'simple';
@@ -100,6 +100,7 @@
   ['pieceMorph','pieceMorphKind','pieceMorphStrength'].forEach(id=>{$(id).disabled=disabled||items.some(p=>p.line)});
   const which=$('pieceTraceWhich').value;$('pieceTrace').disabled=pending||studio.isBusy()||!traceTargets().length||(!which&&disabled);
   $('pieceKnife').disabled=$('pieceSatinHere').disabled=disabled||items.length!==1||items.some(p=>p.line);
+  $('piecePoints').disabled=disabled||items.length!==1;
   properties.querySelectorAll('[data-lineup]').forEach(b=>{b.disabled=disabled||items.length<(b.dataset.lineup.startsWith('distribute')?3:2)});
   const outline=items.length&&items.every(p=>JSON.stringify(p.outline)===JSON.stringify(items[0].outline))?items[0].outline:null;
   if(!properties.contains(document.activeElement)||!document.activeElement.id.startsWith('pieceOutline')){
@@ -211,7 +212,7 @@
  const canvas=$('prepared');
  // Knife: drag a straight line across the one selected piece; release cuts it.
  // Satin here: the same drag; the narrow side becomes satin over the rest's fill.
- const knifeOn=(on,satin=false)=>{knife=on?{satin}:null;$('pieceKnife').setAttribute('aria-pressed',String(on&&!satin));$('pieceSatinHere').setAttribute('aria-pressed',String(on&&satin));if(on)feedback(satin?'Drag a line across the piece where the thin part starts.':'Drag a line across the piece to cut it.');};
+ const knifeOn=(on,satin=false)=>{knife=on?{satin}:null;if(on&&points)pointsOn(false);$('pieceKnife').setAttribute('aria-pressed',String(on&&!satin));$('pieceSatinHere').setAttribute('aria-pressed',String(on&&satin));if(on)feedback(satin?'Drag a line across the piece where the thin part starts.':'Drag a line across the piece to cut it.');};
  $('pieceKnife').onclick=()=>knifeOn(!knife||knife.satin);
  $('pieceSatinHere').onclick=()=>knifeOn(!knife||!knife.satin,true);
  const toMm=([x,y])=>[x*report.scale-report.origin_mm[0],y*report.scale-report.origin_mm[1]];
@@ -230,6 +231,48 @@
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   commit(field,line);
  },true);
+ // Points (node reshaping): drag an outline point of the one selected piece, click an edge to add a point
+ // there (and drag it), or click a point and press Delete to remove it. Release saves; the stitches rebuild.
+ let points=null,zoom=1;
+ const pointsOn=on=>{points=on?{rings:null,picked:null}:null;$('piecePoints').setAttribute('aria-pressed',String(!!on));if(on){knifeOn(false);feedback($('piecePoints').title+'.')}studio.redraw()};
+ $('piecePoints').onclick=()=>pointsOn(!points);
+ const reshape=rings=>{const p=targets()[0];points.rings=points.picked=null;commit('reshape',rings.map(r=>r.map(toMm)),[p.id])};
+ canvas.addEventListener('pointerdown',e=>{
+  if(!points||!active||e.button!==0||pending||studio.isBusy())return;
+  const items=targets();if(items.length!==1)return;const p=items[0];
+  const at=studio.piecePoint(e,canvas),reach=8/zoom,rings=p.rings.map(r=>r.map(q=>[...q]));
+  let hit=null,best=reach;
+  rings.forEach((r,i)=>r.forEach((q,j)=>{const d=Math.hypot(q[0]-at[0],q[1]-at[1]);if(d<best){best=d;hit=[i,j]}}));
+  if(!hit){
+   // The nearest edge within reach gets a new point where it was clicked.
+   let edge=null;best=reach;
+   rings.forEach((r,i)=>{for(let j=0;j<(p.line?r.length-1:r.length);j++){const a=r[j],b=r[(j+1)%r.length],dx=b[0]-a[0],dy=b[1]-a[1];
+    const t=Math.max(0,Math.min(1,((at[0]-a[0])*dx+(at[1]-a[1])*dy)/(dx*dx+dy*dy||1))),q=[a[0]+t*dx,a[1]+t*dy],d=Math.hypot(q[0]-at[0],q[1]-at[1]);if(d<best){best=d;edge=[i,j+1,q]}}});
+   if(!edge){if(points.picked){points.picked=null;studio.redraw()}return}
+   rings[edge[0]].splice(edge[1],0,edge[2]);hit=[edge[0],edge[1]];points.added=true;
+  }
+  e.stopImmediatePropagation();e.preventDefault();
+  if(p.locked){feedback('This piece is locked. Unlock it before changing it.');return}
+  Object.assign(points,{rings,drag:hit,picked:hit,moved:false});canvas.setPointerCapture(e.pointerId);
+  window.stitchRegionSelection={rings};studio.redraw();
+ },true);
+ canvas.addEventListener('pointermove',e=>{
+  if(!points?.drag)return;e.stopImmediatePropagation();
+  const at=studio.piecePoint(e,canvas),[i,j]=points.drag;points.rings[i][j]=window.snapPoint?window.snapPoint(at):at;points.moved=true;studio.redraw();
+ },true);
+ canvas.addEventListener('pointerup',e=>{
+  if(!points?.drag)return;e.stopImmediatePropagation();
+  if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
+  const changed=points.moved||points.added;points.drag=null;points.added=false;
+  if(changed)reshape(points.rings);else studio.redraw();
+ },true);
+ document.addEventListener('keydown',e=>{
+  if(!points?.picked||!active||e.isComposing||(e.key!=='Delete'&&e.key!=='Backspace')||e.target.closest?.('input,select,textarea'))return;
+  const p=targets()[0];if(!p||pending)return;e.preventDefault();
+  const [i,j]=points.picked,rings=p.rings.map(r=>r.map(q=>[...q]));
+  if(rings[i].length<=(p.line?2:3)){feedback(p.line?'A line needs at least two points.':'An outline needs at least three points.');return}
+  rings[i].splice(j,1);reshape(rings);
+ });
  // Draw a shape: rectangle / ellipse by dragging corners, freehand by dragging, polygon by clicking corners.
  const drawOn=shape=>{drawing=shape&&drawing?.shape!==shape?{shape,points:[]}:null;if(drawing){knifeOn(false);studio.pieceView();feedback(properties.querySelector(`[data-draw="${shape}"]`).title+'.')}window.stitchRegionSelection=null;sync()};
  properties.querySelectorAll('[data-draw]').forEach(b=>b.onclick=()=>drawOn(b.dataset.draw));
@@ -313,6 +356,14 @@
    // Filled spaces are sewn first (under the lines): paint them first too.
    for(const p of [...report.pieces].sort((a,b)=>(b.under?1:0)-(a.under?1:0))){if(!p.visible)continue;context.beginPath();for(const ring of p.rings){ring.forEach(([x,y],j)=>j?context.lineTo(x,y):context.moveTo(x,y));if(!p.line)context.closePath()}
     if(p.line){context.save();context.lineWidth=(p.line==='triple'?.6:.35)/report.scale;context.lineCap=context.lineJoin='round';context.strokeStyle=p.colour;context.stroke();context.restore()}else{context.fillStyle=p.colour;context.fill('evenodd')}}
+  }
+  // Points: a handle on every outline point of the piece being reshaped; the picked one filled.
+  zoom=scale;
+  const reshaping=active&&points&&targets().length===1?points.rings||targets()[0].rings:null;
+  if(reshaping){
+   context.save();const size=5/scale;context.lineWidth=1/scale;context.strokeStyle='#1c1c1c';
+   reshaping.forEach((r,i)=>r.forEach(([x,y],j)=>{context.fillStyle=points.picked&&points.picked[0]===i&&points.picked[1]===j?'#1c1c1c':'#fff';context.fillRect(x-size/2,y-size/2,size,size);context.strokeRect(x-size/2,y-size/2,size,size)}));
+   context.restore();
   }
   // The hoop: always while editing pieces, otherwise when "Show on canvas" is on (hoop-controls.js).
   if(!active&&!window.hoopShown)return;

@@ -22,11 +22,12 @@ SHAPES = ('rectangle', 'ellipse', 'polygon', 'freehand', 'line', 'freehand_line'
 MAX_DRAWN_POINTS = 2000
 MAX_COPIES = 100
 MAX_PART_POINTS = 20000
+MAX_RESHAPE_POINTS = 5000   # outline points one reshaped piece may have
 
 
 def geometry_changed(options):
     return any(item.get('matrix', IDENTITY) != IDENTITY or not item.get('visible', True) or 'source' in item
-               or item.get('cut') or 'drawn' in item for item in edits(options).values())
+               or item.get('cut') or 'drawn' in item or 'rings' in item for item in edits(options).values())
 
 
 def copy_ids(options):
@@ -78,7 +79,8 @@ def edits(options):
             raise ValueError('A copied piece must point to an original piece.')
         if 'rings' in item:
             rings = item['rings']
-            if not ('source' in item or 'drawn' in item) or not isinstance(rings, list) or not rings or any(
+            # Copies, cut parts and drawn shapes keep their own outline; a picture piece has one once its points are moved.
+            if not isinstance(rings, list) or not rings or any(
                     not isinstance(r, list) or len(r) < (2 if 'line' in item or 'line' in value.get(item.get('source'), {}) else 3) or any(
                         not isinstance(p, list) or len(p) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) for v in p)
                         for p in r) for r in rings):
@@ -117,6 +119,9 @@ def inventory(region_report, options, width, height, scale):
             # Cut parts carry their own outline (picture pixels, before any transform).
             areas.append({**source, 'id': key, 'style': styles.get(key, source['style']),
                           **({'rings': item['rings']} if 'rings' in item else {})})
+    # A picture piece whose points were moved (reshape) uses its own outline; copies made before keep the old one.
+    found = {a['id'] for a in picture}
+    areas = [{**a, 'rings': saved[a['id']]['rings']} if a['id'] in found and 'rings' in saved.get(a['id'], {}) else a for a in areas]
     # A piece the knife cut is replaced by its parts.
     areas = [a for a in areas if not saved.get(a['id'], {}).get('cut')]
     missing = set(saved)-{a['id'] for a in areas}-{k for k, v in saved.items() if v.get('cut')}
@@ -275,6 +280,8 @@ def change(options, report, command, image=None):
         # Clean vector outlines fitted to the pieces' pixel outlines (piece_trace).
         from .piece_trace import run
         return run(updated, report, selected, value)
+    if field == 'reshape':
+        return reshape(updated, report, selected, value)
     if field in ('knife', 'split_satin'):
         if any(p.get('line') for p in selected):
             raise ValueError('A stitched line cannot be cut. Delete it and draw it again.')
@@ -595,6 +602,46 @@ def knife(updated, report, selected, value, satin=False):
         updated.get('region_styles', {}).pop(p['id'], None)
     else:
         stored.setdefault(p['id'], {})['cut'] = True
+    edits(updated)
+    return updated
+
+
+def reshape(updated, report, selected, value):
+    """Node reshaping: the one selected piece takes a new outline with points moved, added or
+    deleted. value: its rings in mm on the hoop (as drawn, so the same rings, in the same order,
+    as rings_mm). The outline is stored in the piece's own picture pixels, before its transform,
+    so it keeps moving, turning and sizing as before; the piece keeps its name, style and identity."""
+    from .region_stitches import polygon
+    if len(selected) != 1:
+        raise ValueError('Select one piece to reshape.')
+    p = selected[0]
+    if not isinstance(value, list) or len(value) != len(p['rings_mm']) or any(
+            not isinstance(r, list) or len(r) < (2 if p.get('line') else 3) or any(
+                not isinstance(q, list) or len(q) != 2 or any(type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 1000 for v in q)
+                for q in r) for r in value):
+        raise ValueError('An outline needs at least three points' + (' (a line two).' if p.get('line') else '.'))
+    if sum(len(r) for r in value) > MAX_RESHAPE_POINTS:
+        raise ValueError(f'Use at most {MAX_RESHAPE_POINTS} outline points. Smooth the piece first.')
+    if p.get('line'):
+        if sum(np.linalg.norm(np.diff(np.asarray(value[0], float), axis=0), axis=1)) < 2:
+            raise ValueError('The line is too short to stitch. Keep it at least 2 mm long.')
+    else:
+        shape = polygon(value, 1)
+        if not shape.is_valid:
+            raise ValueError('The outline crosses itself. Move the point back so the edges do not cross.')
+        if any(not polygon(value[:1], 1).contains(polygon([r], 1)) for r in value[1:]):
+            raise ValueError('A hole must stay inside the piece.')
+        if shape.area < 1.0:
+            raise ValueError('The shape is too small to stitch. Keep at least 1 mm² of area.')
+    stored = updated.setdefault('piece_edits', {})
+    item = stored.setdefault(p['id'], {})
+    inverse = np.linalg.inv(matrix(item.get('matrix', IDENTITY)))
+    origin, scale = np.array(report['origin_mm']), report['scale']
+    rings = []
+    for ring in value:
+        points = (np.c_[np.asarray(ring, float), np.ones(len(ring))] @ inverse.T)[:, :2]
+        rings.append([[round(x, 2), round(y, 2)] for x, y in ((points+origin)/scale).tolist()])
+    item['rings'] = rings
     edits(updated)
     return updated
 

@@ -540,7 +540,7 @@ def register_preparation(app,root):
                 artwork={'click_fill':lambda:prepared_image.convert('RGBA'),'magic_wand':lambda:load_image(path)}.get(piece_command.get('field'))
                 options=change_pieces(options,current_report['piece_layout'],piece_command,image=artwork() if artwork else None)
                 body['save']=True
-                if piece_command['field'] in ('position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible','outline','sew_order','align','distribute','match_size','mirror_copy','circle','array','weld','smooth','morph','auto_trace'):
+                if piece_command['field'] in ('position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible','outline','sew_order','align','distribute','match_size','mirror_copy','circle','array','weld','smooth','morph','auto_trace','reshape'):
                     body['digitize']=True
             if body.get('piece_undo'):
                 body['save']=True
