@@ -313,20 +313,26 @@ def _tiny(shape, minimum):
         if len(coords) == 2 and math.dist(*coords) >= minimum:
             return [[coords[0], coords[1]]]
         center = shape.centroid
-        return [_tack((center.x, center.y), minimum)]
-    edges = [(coords[i], coords[i+1]) for i in range(len(coords)-1)]
-    a, b = max(edges, key=lambda e: math.dist(*e))
-    c, d = min(edges, key=lambda e: math.dist(*e))
-    shift = ((c[0]+d[0])/2-(a[0]+b[0])/2, (c[1]+d[1])/2-(a[1]+b[1])/2)
-    p, q = (a[0]+shift[0]/2, a[1]+shift[1]/2), (b[0]+shift[0]/2, b[1]+shift[1]/2)
+        return [_tack((center.x, center.y), minimum, *coords[:2]) if len(coords) == 2 else
+                _tack((center.x, center.y), minimum)]
+    corners = coords[:4]
+    i = max(range(4), key=lambda k: math.dist(corners[k], corners[(k+1) % 4]))
+    # The centre line along the long side: from the middle of one short side to the other.
+    p = lerp(corners[i], corners[(i+3) % 4], .5)
+    q = lerp(corners[(i+1) % 4], corners[(i+2) % 4], .5)
     if math.dist(p, q) < minimum:
-        return [_tack(lerp(p, q, .5), minimum)]
+        return [_tack(lerp(p, q, .5), minimum, p, q)]
     return [[p, q, p]]
 
 
-def _tack(point, minimum):
+def _tack(point, minimum, a=None, b=None):
+    """A stitch there and back, centred on the point along a-b (the part's long side):
+    a tack always pointing one way left a part on the edge of a cut-out subject."""
     step = minimum+.05
-    return [point, (point[0]+step, point[1]), point]
+    d = math.dist(a, b) if a is not None else 0
+    u = ((b[0]-a[0])/d, (b[1]-a[1])/d) if d > 1e-9 else (1.0, 0.0)
+    start = (point[0]-u[0]*step/2, point[1]-u[1]*step/2)
+    return [start, (start[0]+u[0]*step, start[1]+u[1]*step), start]
 
 
 def contour(shape, spacing=0.4, length=2.0, minimum=0.45, start=None, tolerance=0.1, underlay=False, angle=0.0):

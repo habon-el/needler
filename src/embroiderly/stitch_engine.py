@@ -125,11 +125,17 @@ def _along(points, distance):
     return best
 
 
+def _retraces(points, lock):
+    """A lock can retrace the path when its farthest point is a whole stitch away. Past the
+    end of a short path it would run on in a straight line, off the part."""
+    return path_length(points) >= max(lock) or math.dist(points[0], _along(points, max(lock))) >= .3
+
+
 def _with_locks(points, start_lock, end_lock):
     out = list(points)
     if start_lock:
         p = points[0]
-        if path_length(points) < max(start_lock):
+        if not _retraces(points, start_lock):
             u = _direction(points, False)
             lock = [(p[0]+u[0]*s, p[1]+u[1]*s) for s in start_lock]
         else:
@@ -140,7 +146,7 @@ def _with_locks(points, start_lock, end_lock):
     if end_lock:
         p = points[-1]
         backwards = points[::-1]
-        if path_length(points) < max(end_lock):
+        if not _retraces(backwards, end_lock):
             u = _direction(points, True)
             lock = [(p[0]+u[0]*s, p[1]+u[1]*s) for s in end_lock]
         else:
@@ -798,7 +804,9 @@ def assemble(blocks, origin, collapse):
     needle = None; colour = None; previous = None; over_foam = False
     for i, block in enumerate(blocks):
         points = enforce_min(block.points, block.min_len)
-        if len(points) < 2:
+        if len(points) < 2 or path_length(points) < .3:
+            # Shorter than one stitch (a scrap of a fill row on a one-pixel sliver): nothing
+            # to sew, and its locks would run on past it, off the part.
             continue
         follower = next((b for b in blocks[i+1:] if len(b.points) >= 2), None)
         # The first puff block always changes thread, even to the same colour:
