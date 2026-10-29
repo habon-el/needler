@@ -1058,3 +1058,34 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   inspector buttons after its previews. Tested in Node with a small stand-in page.
 - A new thread colour from a swatch keeps "I approve" (`schedule(true)`); picking another swatch's exact
   colour or dropping one swatch on another is a merge and clears it, as every other change does.
+
+## Session 20 bugs: cleanup choice, upload, script satin gaps, freezing (added 2026-10-29)
+
+- Cleanup changes: one choice, `cleanup_choice` (`cleanup_review.cleanup_choice`), instead of a
+  Keep it / Let it go pair per speck. `auto` (default) lets changes under `AUTO_DROP_MM` (0.8 mm,
+  two thread widths) go and keeps larger ones as drawn; `keep` and `drop` cover every change;
+  `review` (not offered in the studio) still asks about each one and blocks saving until decided.
+  Per-detail `cleanup_decisions` still decide their own detail; a design saved with them and no
+  choice maps to the nearest one (all keep, all drop, otherwise automatic). The report carries
+  `cleanup_choice`; Detail & mask checks shows one Small cleanup changes menu.
+- Upload: the subject model is warmed in a background thread, not inside `/upload` (a slow
+  first load or a busy model kept the page on "Opening image editor…"). With
+  `Accept: application/json` the route answers `{url}` or `{error}` (400), an unreadable picture
+  included; the Library posts with fetch, a 2-minute limit and Try again, clears the file input
+  so the same file can be picked again, and resets itself when Back restores the page.
+- Script satin gaps: `satin_font._gap_columns` adds columns for parts of a glyph no column
+  reaches (junction cuts, sharp-turn splits and trimmed twisted ends left a P's stem, an r's top,
+  a u's foot unsewn), when wider than 0.3 of the typical stroke. Each gap is traced as its own
+  shape (`area_columns(..., gaps=False)`), or along its long axis when compact, grown a little
+  into its neighbours and cleaned against the outline. Gap columns are marked `closed=None`
+  and count as the typical stroke width (size range, puff, underlay); layout leaves out those
+  shorter than `GAP_MIN_MM` (1.5 mm) at the chosen size, where the thread hides the gap and the
+  column is too short for needle points of its own. Pacifico at a 30 mm capital: the largest bare
+  core in a letter went from 36 mm² to 3 mm² (most letters under 1 mm²). Area satin
+  (`area_columns`) is unchanged unless called with `gaps=True`.
+- Freezing: `ui-language.js` relabelled the whole page on every DOM change (playback updates its
+  counter many times a second); it now relabels only added nodes, changed text and changed labels.
+  The designs page keeps its cards between renders (search no longer rebuilds every card and
+  fetches every picture again), previews are fetched by design revision and cached by the browser
+  for a day (`no-store` without it or with `rebuild`), and JPEG originals decode reduced
+  (`draft`) for the 600 px preview. Confirming the freeze is gone needs a browser.

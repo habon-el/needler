@@ -204,7 +204,7 @@ instructions are typed by hand, so they fall behind every new feature.
 | 17 | P3: multi-colour and open photo stitch; recognize stitches (machine file to objects) | ✓ 2026-10-29 |
 | 18 | P3: thread charts, node reshaping, bottom join, batch convert | ✓ 2026-10-29 |
 | 19 | Bugs: cut-out colour merge, rose gaps and flat leaves, Start over old result, white parts, colour change unticks approval | ✓ 2026-10-29 |
-| 20 | Bugs: edge-speck choices, stuck image editor, big script satin gaps, Chrome freezing | ✗ |
+| 20 | Bugs: edge-speck choices, stuck image editor, big script satin gaps, Chrome freezing | ✓ 2026-10-29 |
 
 Sessions after 12 are estimates; if a row runs long, it moves to the next session and the rows below shift.
 
