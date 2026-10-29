@@ -145,6 +145,9 @@ def remove_colour(rgb,mask,operation,physical_height,visible=None):
     boundary=np.zeros(mask.shape,bool);boundary[[0,-1],:]=True;boundary[:,[0,-1]]=True
     boundary|=cv2.dilate((~visible).astype(np.uint8),np.ones((3,3),np.uint8)).astype(bool)
     outside=set(np.unique(cc[boundary]));scale=physical_height/h;pixel_area=scale**2
+    # The subject without the background reaching the picture's edge: enclosed parts lying
+    # well inside it (a cloud in a sky) are the subject's own, not background showing through.
+    subject=mask&~(removed&np.isin(cc,list(outside)))
     parts=[];tiny=[];approved_fills=[];protected=np.zeros_like(mask);known=set();restored_pixels=0
     for i in range(1,n):
         if i in outside:continue
@@ -173,6 +176,7 @@ def remove_colour(rgb,mask,operation,physical_height,visible=None):
         if fill and not small:raise ValueError('Only reviewed small holes can be filled as specks.')
         if len(parts)>=256:raise ValueError('More than 256 enclosed parts. Use Only this area or crop closer before colour removal.')
         parts.append(dict(id=identity,bounds=[x,y,x+bw,y+bh],area_mm2=round(area_mm2,6),pixels=area,keep=keep,
+                          inside=not small and inside_subject(region,(x,y),subject,scale),
                           width_mm=round(bw*scale,4),height_mm=round(bh*scale,4),review_hole=small,filled=fill and op['cleanup'],
                           circularity=round(circularity,3),solidity=round(solidity,3),
                           colour=op['colour'],label=f'{classification} {len(parts)+1}'))
@@ -215,6 +219,23 @@ def remove_colour(rgb,mask,operation,physical_height,visible=None):
                 antialias_pixels=edge_pixels,seed_citation=seed['citation'],seed_verified=seed['verified_by_user'],
                 cleanup_note=f'Filled {filled_count} small holes you explicitly selected. {len(tiny)-filled_count} small enclosed areas were not filled; possible letter holes and uncertain texture stay open for review. Shape hints are not letter recognition. Edge smoothing pauses when small holes are present.')
     return output,result,report
+
+
+INSIDE_MM=1.5   # the subject must reach at least this far around a part (or half its size)
+
+
+def inside_subject(region,corner,subject,scale):
+    """True when a ring around the part (local mask region at corner x, y) lies in the subject:
+    a cloud in a sky. A letter's counter is not: a ring as wide as half the hole reaches past
+    the thin stroke around it into the background."""
+    reach=max(1,int(math.ceil(max(INSIDE_MM/scale,.5*math.sqrt(region.sum())))))
+    x,y=corner;h,w=subject.shape
+    x0,y0=max(0,x-reach),max(0,y-reach);x1,y1=min(w,x+region.shape[1]+reach),min(h,y+region.shape[0]+reach)
+    local=np.zeros((y1-y0,x1-x0),np.uint8);local[y-y0:y-y0+region.shape[0],x-x0:x-x0+region.shape[1]]=region
+    ring=cv2.dilate(local,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(2*reach+1,)*2)).astype(bool)&~local.astype(bool)
+    # A ring cut off by the picture's edge is not inside.
+    full=(2*reach+region.shape[1])*(2*reach+region.shape[0])
+    return bool(ring.any() and local.size==full and np.mean(subject[y0:y1,x0:x1][ring])>=.95)
 
 
 def apply_operations(rgb,mask,options,physical_height,visible=None):

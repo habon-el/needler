@@ -303,6 +303,11 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
     if np.count_nonzero(mask)<5: raise ValueError("The selection is empty. Restore or enlarge the subject.")
     k=int(number(o,"count",profile.PORTRAIT_COLOUR_DEFAULT if portrait_mode else 4,8 if portrait_mode else 2,profile.PORTRAIT_COLOUR_MAX if portrait_mode else 8))
     locks=list(dict.fromkeys(o.get("locks",[])))
+    # Parts kept from a removed colour (white clouds kept while the white background goes)
+    # are that colour's thread: kept exactly, as one more colour, never merged into a pale
+    # neighbour such as the sky.
+    for kept in dict.fromkeys(r["operation"]["colour"] for r in knockout_reports if r["restored_pixels"]):
+        if kept not in locks:locks.append(kept);k=min(k+1,8)
     if len(locks)>k: raise ValueError("Unlock colours or increase the colour count.")
     locked_rgb=[colour(c) for c in locks]
     floor=number(o,"floor_mm2",1,0,25);height=physical_height
@@ -359,7 +364,7 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
                     portrait_merges.append(dict(source='#%02x%02x%02x'%tuple(palette[i]),target='#%02x%02x%02x'%tuple(palette[j]),delta_e=distance,pixels=int(np.sum(labels==i))))
                     palette[i]=palette[j];break
     for a,b in o.get("merges",{}).items():
-        if a in locks: raise ValueError("Unlock a colour before merging it.")
+        if a in o.get("locks",[]): raise ValueError("Unlock a colour before merging it.")
         # Exact match first; otherwise the palette colour within a small distance, because
         # other settings (smoothing, colour count) shift the palette slightly between runs.
         hit=np.all(palette==colour(a),axis=1)
@@ -425,7 +430,8 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
     detail_audit=check_details(detail_source,output,detail_selected,height,detail_stages,threshold)
     from .detail_loss import groups as detail_groups
     detail_audit["mask_cleanup_changes"]=[dict(bounds=bounds,pixels=area,area_mm2=round(area*(height/h)**2,4)) for _,bounds,area in detail_groups(detail_original_mask!=detail_cleaned_mask)]
-    swatches=[dict(hex="#%02x%02x%02x"%tuple(palette[i]),pixels=int(np.sum(labels==i)),locked=i in locked_ids) for i in np.unique(labels[kept])]
+    chosen={tuple(colour(c)) for c in o.get("locks",[])}  # "Preserve colour" ticks: the person's own locks
+    swatches=[dict(hex="#%02x%02x%02x"%tuple(palette[i]),pixels=int(np.sum(labels==i)),locked=i in locked_ids and tuple(palette[i]) in chosen) for i in np.unique(labels[kept])]
     for swatch in swatches:
         swatch["match"]=match_thread(swatch["hex"])
     report=dict(colours_before=before_colours,colours_after=len(swatches),regions_before=len(before),regions_after=len(after),

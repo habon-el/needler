@@ -368,6 +368,20 @@ class AutoDigitizer:
             result['gate_detail'] = getattr(error, 'explanation', None)
         return result, options
 
+    def _keep_inside(self, path, options):
+        """Parts of the removed background colour that lie well inside the subject are the
+        subject's own (colour_knockout.inside_subject): keep them, as the Subject step's
+        part list would. Returns how many."""
+        body = self.app.test_client().post('/artwork/' + path.name, json=dict(options=options, subject_confirmed=True))
+        removals = ((body.get_json(silent=True) or {}).get('report') or {}).get('colour_knockouts') or []
+        if not removals:
+            return 0
+        ids = [p['id'] for p in removals[-1].get('parts', []) if p.get('inside') and not p.get('review_hole')]
+        if ids:
+            operation = options['colour_knockouts'][-1]
+            operation['restore_parts'] = list(dict.fromkeys([*operation.get('restore_parts', []), *ids]))
+        return len(ids)
+
     def _paint_specks(self, path, boxes, limit=200):
         """Paint edits giving each tiny unsewable detail the commonest colour just around it."""
         # Blocker boxes are in the working picture (at most 768 px), like every edit.
@@ -427,6 +441,10 @@ class AutoDigitizer:
                     options.update(patch)
                     self._log(job, f"Leaving out the plain background ({patch['colour_knockouts'][-1]['colour']}); "
                                    "say “keep the background” to stitch it.")
+                    kept = self._keep_inside(path, options)
+                    if kept:
+                        self._log(job, f"Keeping {kept} part{'s' if kept > 1 else ''} of that colour inside the design "
+                                       "(a cloud in a sky, say); they are sewn, not left out.")
             attempts, finish = [], None
             if job.get('use_claude'):
                 from . import auto_claude
