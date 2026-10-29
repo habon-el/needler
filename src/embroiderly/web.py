@@ -301,9 +301,20 @@ def create_app(workspace: Path | None = None) -> Flask:
 
     @app.post("/upload")
     def upload():
-        image = request.files.get("image")
+        # The Library sends Accept: application/json and shows errors itself; a plain
+        # form post still gets a redirect or an error page.
+        wants_json = request.headers.get("Accept") == "application/json"
+        try:
+            target = _upload(request.files.get("image"))
+        except ValueError as error:
+            if wants_json:
+                return jsonify(error=str(error)), 400
+            abort(400, str(error))
+        return jsonify(url=target) if wants_json else redirect(target)
+
+    def _upload(image):
         if not image or not image.filename:
-            abort(400, "Choose an image to analyse")
+            raise ValueError("Choose an image to analyse")
         suffix = Path(image.filename).suffix.lower()
         from .stitch_recognize import FORMATS, open_file
         if suffix in FORMATS:
@@ -312,21 +323,16 @@ def create_app(workspace: Path | None = None) -> Flask:
             image.save(source)
             try:
                 name = open_file(source, uploads, decisions)
-            except ValueError as error:
-                abort(400, str(error))
             finally:
                 source.unlink(missing_ok=True)
-            return redirect(url_for("artwork_prepare", name=name))
+            return url_for("artwork_prepare", name=name)
         if suffix not in {".png", ".jpg", ".jpeg", ".bmp", ".webp", ".svg"}:
-            abort(400, "Supported formats: PNG, JPG, BMP, WebP, SVG, or a machine file (DST, PES, JEF, EXP, VP3, ...)")
+            raise ValueError("Supported formats: PNG, JPG, BMP, WebP, SVG, or a machine file (DST, PES, JEF, EXP, VP3, ...)")
         if suffix == ".svg":
             # Vector logos are rendered by our own geometry-only reader to a
             # transparent PNG; the original SVG is kept beside it for reference.
             from .vector_raster import svg_upload
-            try:
-                rendered, source = svg_upload(image.read())
-            except ValueError as error:
-                abort(400, str(error))
+            rendered, source = svg_upload(image.read())
             name = f"{uuid4().hex}.png"
             rendered.save(uploads / name)
             (decisions / (name + ".source.svg")).write_bytes(source)
@@ -334,9 +340,17 @@ def create_app(workspace: Path | None = None) -> Flask:
             name = f"{uuid4().hex}{suffix}"
             image.save(uploads / name)
         from .preparation import load_image
+        try:
+            picture = load_image(uploads/name)
+        except Exception:
+            (uploads/name).unlink(missing_ok=True)
+            raise ValueError("This picture could not be read. Save it again as PNG or JPG and try once more.")
+        # Warm the subject model off the request: on a slow first load (or while another
+        # request holds the model) the upload used to wait, stuck on "Opening image editor…".
+        from threading import Thread
         from .subject_model import warm_image
-        warm_image(load_image(uploads/name))
-        return redirect(url_for("prepare", name=name))
+        Thread(target=warm_image, args=(picture,), daemon=True).start()
+        return url_for("prepare", name=name)
 
     @app.route('/prepare/<name>', methods=['GET', 'POST'])
     def prepare(name):

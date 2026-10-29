@@ -221,11 +221,37 @@
   $('chooseUpload').onclick=()=>{picker.accept=pictures;picker.click();};
   $('chooseMachine').onclick=()=>{picker.accept='.dst,.pes,.pec,.jef,.exp,.vp3,.xxx,.u01,.hus,.vip,.sew';picker.click();};
   $('newDesign').querySelector('input').onchange=()=>{if($('newDesign').querySelector('input').files.length)$('newDesign').requestSubmit();};
-  $('newDesign').onsubmit=event=>{
-    const file=event.currentTarget.querySelector('input').files[0];
-    if(!file||file.size>12*1024*1024){event.preventDefault();$('uploadError').textContent=file?'Choose an image smaller than 12 MB.':'Choose an image first.';return;}
-    event.currentTarget.querySelector('button').disabled=true;
-    $('uploadError').textContent=/\.(png|jpe?g|webp|bmp|svg)$/i.test(file.name)?'Opening image editor…':'Reading stitches…';
+  // Sent with fetch so a slow, failed or refused upload always ends in the editor or a clear
+  // error with Try again, never a page left on "Opening image editor…".
+  let uploading=null;
+  const uploadDone=(text,retry)=>{
+    uploading=null;$('newDesign').querySelector('button').disabled=false;$('uploadError').textContent=text;
+    if(retry){const again=document.createElement('button');again.type='button';again.textContent='Try again';again.onclick=()=>send(retry);$('uploadError').append(' ',again);}
   };
+  async function send(file){
+    if(uploading)return;
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),120000);
+    uploading=controller;$('newDesign').querySelector('button').disabled=true;
+    $('uploadError').textContent=/\.(png|jpe?g|webp|bmp|svg)$/i.test(file.name)?'Opening image editor…':'Reading stitches…';
+    const body=new FormData();body.append('image',file);
+    try{
+      const response=await fetch('/upload',{method:'POST',body,headers:{Accept:'application/json'},signal:controller.signal});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.url)throw Error(data.error||'The picture could not be opened.');
+      location.assign(data.url);
+    }catch(error){
+      uploadDone(error.name==='AbortError'?'Opening took too long.':error.message,file);
+    }finally{clearTimeout(timer);}
+  }
+  $('newDesign').onsubmit=event=>{
+    event.preventDefault();
+    const input=event.currentTarget.querySelector('input'),file=input.files[0];
+    // Cleared so choosing the same file again still starts an upload.
+    input.value='';
+    if(!file||file.size>12*1024*1024){$('uploadError').textContent=file?'Choose an image smaller than 12 MB.':'Choose an image first.';return;}
+    send(file);
+  };
+  // Back from the editor: the page may come back from the browser's cache mid-upload.
+  window.addEventListener('pageshow',event=>{if(event.persisted)uploadDone('');});
   load();
 })();

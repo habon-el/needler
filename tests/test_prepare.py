@@ -26,3 +26,38 @@ def test_upload_prepares_before_analysis_and_preserves_original(tmp_path):
     assert subject.getpixel((20,20))[3]==255
     assert subject.getpixel((90,70))[3]==0
     assert Image.open(tmp_path/'work/uploads'/original).mode=='RGB'
+
+
+def test_upload_never_waits_for_the_subject_model_and_answers_the_library_in_json(tmp_path,monkeypatch):
+    import threading
+    import embroiderly.subject_model as model
+    release=threading.Event();started=threading.Event()
+    def slow(image):
+        started.set();release.wait(20)
+    monkeypatch.setattr(model,'warm_image',slow)
+    client=create_app(tmp_path).test_client()
+    buf=BytesIO();Image.new('RGB',(40,30),'white').save(buf,format='PNG');buf.seek(0)
+    import time
+    try:
+        began=time.monotonic()
+        response=client.post('/upload',data={'image':(buf,'art.png')},headers={'Accept':'application/json'})
+        assert time.monotonic()-began<10
+        assert response.status_code==200 and response.json['url'].startswith('/prepare/')
+        assert started.wait(5)
+    finally:
+        release.set()
+    bad=client.post('/upload',data={'image':(BytesIO(b'not a picture'),'art.png')},headers={'Accept':'application/json'})
+    assert bad.status_code==400 and 'could not be read' in bad.json['error']
+    assert not any(p.suffix=='.png' and p.stat().st_size==13 for p in (tmp_path/'work/uploads').iterdir())
+    kind=client.post('/upload',data={'image':(BytesIO(b'x'),'art.txt')},headers={'Accept':'application/json'})
+    assert kind.status_code==400 and 'Supported formats' in kind.json['error']
+    assert client.post('/upload',data={'image':(BytesIO(b'x'),'art.txt')}).status_code==400
+
+
+def test_library_upload_ends_in_the_editor_or_an_error_with_try_again(tmp_path):
+    script=create_app(tmp_path).test_client().get('/static/library.js').get_data(as_text=True)
+    upload=script[script.index('let uploading=null'):script.index("window.addEventListener('pageshow'")]
+    # Timed out, refused and failed uploads all reach the error path with a retry.
+    assert 'AbortController' in upload and 'clearTimeout' in upload and "'Try again'" in upload
+    assert "Accept:'application/json'" in upload and 'location.assign(data.url)' in upload
+    assert "input.value=''" in upload and 'event.preventDefault()' in upload
