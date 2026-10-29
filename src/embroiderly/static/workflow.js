@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const extras=node('div','','workflowTextExtras');extras.append($('letteringAlign').closest('label'),$('letteringColour').closest('label'));edit.append(extras);
   const fabric=node('div','','workflowTextFabric');fabric.append(document.querySelector('label[for=nativeFabric]'),$('nativeFabric'));edit.append(fabric);
   const spacing=details('Spacing & letter order','workflowTextSpacing');
-  for(const id of ['nativeLetterSpacing','nativeLineSpacing','nativeSequence'])spacing.append(document.querySelector('label[for='+id+']'),$(id));
+  for(const id of ['nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeJoin'])spacing.append(document.querySelector('label[for='+id+']'),$(id));
   edit.append(spacing);
   const help=details('About the height','workflowTextDetails');help.append($('nativeHelp'));edit.append(help);
   expert.querySelector('summary').textContent='About these stitches';

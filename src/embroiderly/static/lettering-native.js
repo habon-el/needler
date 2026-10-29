@@ -3,10 +3,10 @@
  'use strict';
  const $=id=>document.getElementById(id), dialog=$('letteringDialog');
  const fields=['letteringWords','letteringAlign','letteringColour','nativeFont','nativeHeight','nativeWidth','nativeFabric',
-  'nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeFrame','nativeFrameWidth','nativeClassic','nativeOrnament','nativeEnvelope','nativeEnvelopeStrength'];
+  'nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeJoin','nativeFrame','nativeFrameWidth','nativeClassic','nativeOrnament','nativeEnvelope','nativeEnvelopeStrength'];
  // Layout controls and the recipe keys they set; a control left at its default sends nothing.
  const layoutFields=[['nativeBaseline','baseline','straight'],['nativeLetterSpacing','letter_spacing_mm','0'],
-  ['nativeLineSpacing','line_spacing_percent','100'],['nativeSequence','sequence','left'],['nativeFrame','frame','none'],
+  ['nativeLineSpacing','line_spacing_percent','100'],['nativeSequence','sequence','left'],['nativeJoin','join','closest'],['nativeFrame','frame','none'],
   ['nativeFrameWidth','frame_mm','2.5'],['nativeOrnament','ornament','none'],['nativeEnvelope','envelope','none']];
  function layout(){const out={};
   for(const [id,key,plain] of layoutFields){const v=$(id).value;if(v!==plain)out[key]=$(id).type==='number'?Number(v):v;}

@@ -371,6 +371,9 @@ def _frame_ring(kind, bounds, margin, radius):
     ring = [tuple(p) for p in shape.exterior.coords][:-1]
     return [p for i, p in enumerate(ring) if i == 0 or math.dist(p, ring[i-1]) > 1e-6]
 SEQUENCES = ('left', 'centre')
+# Joins: closest (each letter starts where its first stroke begins) or bottom (each letter starts
+# at its baseline on the left, the thread running there under the letter's own stitches).
+JOINS = ('closest', 'bottom')
 # Envelopes: the words stretched to fill a shape, letters bending with it (elastic lettering).
 ENVELOPES = ('none', 'arch_top', 'arch_bottom', 'bulge', 'pinch', 'bend_up', 'grow', 'shrink')
 
@@ -540,7 +543,8 @@ class LengthError(ValueError):
 def layout(text, key, scale_percent, align='left', colour='#000000', puff=False, foam_mm=3.0, fill=False,
            pull_mm=None, letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', radius_mm=None,
            sequence='left', arc_degrees=None, frame='none', frame_mm=2.5, classic=False, ornament='none',
-           circle_mm=None, wave_percent=6.0, fit_length_mm=None, envelope='none', envelope_percent=30.0):
+           circle_mm=None, wave_percent=6.0, fit_length_mm=None, envelope='none', envelope_percent=30.0,
+           join='closest'):
     """SVG of satin-column lettering; user units are CSS px (96 per inch).
     puff: letters over foam (see stitch_satin._puff_satin). Each letter has a
     placement line sewn before the stop for the foam, then a perforation line
@@ -557,9 +561,12 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
     one letter spacing chosen so the stitched line is exactly this long along its
     baseline (letter_spacing_mm is then not used). envelope: the words (every line) stretched
     to fill a shape, letters bending with it, its edges moving envelope_percent of the words'
-    height (_envelope_warp)."""
+    height (_envelope_warp). join='bottom': satin letters (not puff or fill) are entered at their
+    baseline on the left (_bottom_entry); letters with fabric between them still cut."""
     if baseline not in BASELINES or sequence not in SEQUENCES:
         raise ValueError('Choose a listed baseline and letter order.')
+    if join not in JOINS:
+        raise ValueError('Choose closest or bottom joins.')
     if envelope not in ENVELOPES:
         raise ValueError('Choose a listed envelope.')
     if envelope != 'none':
@@ -916,8 +923,26 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                 nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
                 if not puff and sewn_columns:
                     first = sewn_columns[0]
+                    start = _lerp(first[0][0], first[1][0], .5)
+                    if join == 'bottom':
+                        # The letter's foot on the left, in its own frame (the letter may be turned or bent).
+                        left = glyph_columns(font_path(key), char)[2].bounds[0]
+                        foot = place((left, 0.0))
+                        if warp is not None:
+                            import numpy as np
+                            foot = tuple(float(np.ravel(v)[0]) for v in warp(np.array([foot[0]]), np.array([foot[1]])))
+                        route = _bottom_entry(sewn_columns, foot, start)
+                        if route is not None:
+                            count += 1
+                            group.insert(0, ET.Element(f'{{{SVG_NS}}}path', {
+                                'id': f'entry{count}', 'd': _path(route),
+                                'style': f'fill:none;stroke:{colour};stroke-width:{.2/PX_MM:.3f}',
+                                f'{{{INK_NS}}}stroke_method': 'running_stitch',
+                                f'{{{INK_NS}}}running_stitch_length_mm': '1.2',
+                                f'{{{INK_NS}}}running_stitch_tolerance_mm': '0'}))
+                            start = route[0]
                     sewn_letters.append(dict(group=group, last=nodes[-1], end=previous_end,
-                                             start=_lerp(first[0][0], first[1][0], .5), columns=sewn_columns))
+                                             start=start, columns=sewn_columns))
         _join_touching(sewn_letters, colour)
     if frame_columns:
         # The frame is sewn last, around the letters, as satin halves that meet at both ends.
@@ -976,6 +1001,26 @@ def _ornament_group(root, pieces, colour, pull_mm, size_mm, zigzag_mm, count):
                 f'{{{INK_NS}}}pull_compensation_mm': f'{pull_mm:g}',
                 **{f'{{{INK_NS}}}{name}': value for name, value in profile.items()}}))
         nodes[-1].set(f'{{{INK_NS}}}trim_after', 'true')
+
+
+def _bottom_entry(columns, foot, start):
+    """Bottom join: a run from the letter's sewn area nearest its foot (baseline, left edge) to
+    where its first stroke starts, inside the letter, sewn before the strokes so they cover it.
+    The thread then arrives (and ties in) at the baseline. None when the first stroke already
+    starts there. Never over bare fabric: the run stays 0.15 mm inside the sewn columns."""
+    from shapely.geometry import Point, Polygon
+    from shapely.ops import nearest_points, unary_union
+    from .stitch_paths import Travel
+    shape = unary_union([Polygon(list(a)+list(b)[::-1]).buffer(0) for a, b in columns])
+    inner = shape.buffer(-.2/PX_MM)
+    if inner.is_empty:
+        return None
+    entry = nearest_points(inner, Point(foot))[0]
+    entry = (entry.x, entry.y)
+    if math.dist(entry, start)*PX_MM < 1.0:
+        return None
+    route = Travel(shape, inset=.15/PX_MM, slack=.05/PX_MM).route(entry, start, direct_mm=math.inf)
+    return [tuple(p) for p in route] if route else None
 
 
 def _join_touching(letters, colour):

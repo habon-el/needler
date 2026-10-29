@@ -45,7 +45,7 @@ design is safe to sew; a sample sew-out is always needed."""
 FIELDS = dict(  # tool name -> the screen's value name
     text='text', font='font', height_mm='height_mm', max_width_mm='available_width_mm', align='align',
     colour='colour', shape='baseline', curve_degrees='arc_degrees', letter_spacing_mm='letter_spacing_mm',
-    line_spacing_percent='line_spacing_percent', sequence='sequence', puff='puff', foam_mm='puff_foam_mm',
+    line_spacing_percent='line_spacing_percent', sequence='sequence', join='join', puff='puff', foam_mm='puff_foam_mm',
     fabric='fabric_preset', frame='frame', frame_mm='frame_mm', classic='classic',
     ornament='ornament', circle_mm='circle_mm', wave_percent='wave_percent', fixed_length_mm='fit_length_mm',
     envelope='envelope', envelope_percent='envelope_percent')
@@ -70,6 +70,8 @@ def tools(fonts, fabrics):
         letter_spacing_mm=dict(type='number', minimum=-2, maximum=10),
         line_spacing_percent=dict(type='number', minimum=70, maximum=250),
         sequence=dict(type='string', enum=['left', 'centre'], description='centre: sew from the middle letter out (caps).'),
+        join=dict(type='string', enum=['closest', 'bottom'],
+                  description='bottom: each letter starts at its baseline, under its own stitches; letters apart still cut.'),
         puff=dict(type='boolean', description='3D puff: satin over foam.'),
         foam_mm=dict(type='number', enum=[2, 3]),
         fabric=dict(type='string', enum=sorted(fabrics)),

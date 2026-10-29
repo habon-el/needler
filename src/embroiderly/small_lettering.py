@@ -121,6 +121,9 @@ def layout_options(body):
                  baseline=body.get('baseline','straight'),sequence=body.get('sequence','left'))
     if options['baseline'] not in embroidery_fonts.BASELINES:raise ValueError('Choose a straight or arc baseline.')
     if options['sequence'] not in embroidery_fonts.SEQUENCES:raise ValueError('Choose left to right or centre out.')
+    # Joins: closest, or bottom (each letter entered at its baseline; embroidery_fonts.JOINS).
+    options['join']=body.get('join','closest')
+    if options['join'] not in embroidery_fonts.JOINS:raise ValueError('Choose closest or bottom joins.')
     # Monogram: a satin frame around the words, and the classic three-initial layout.
     options['frame']=body.get('frame','none')
     if options['frame'] not in embroidery_fonts.FRAMES:raise ValueError('Choose a listed frame.')

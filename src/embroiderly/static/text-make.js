@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
  document.addEventListener('lettering:failed',e=>say(e.detail,true));
  // Changing the words or settings only marks the stitches as out of date.
  const later=()=>{hint.classList.remove('text-make-error');hint.textContent=made?'Words or settings changed · press Make stitches to update.':'Press Make stitches when your words are ready.'};
- for(const id of ['letteringWords','nativeFont','nativeHeight','nativeWidth','letteringAlign','letteringColour','puffOn','puffFoam','nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeFabric','nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeEnvelope','nativeEnvelopeStrength'])
+ for(const id of ['letteringWords','nativeFont','nativeHeight','nativeWidth','letteringAlign','letteringColour','puffOn','puffFoam','nativeBaseline','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeFabric','nativeLetterSpacing','nativeLineSpacing','nativeSequence','nativeJoin','nativeEnvelope','nativeEnvelopeStrength'])
   $(id)?.addEventListener(['letteringWords','nativeHeight','nativeWidth','nativeCurve','nativeCircle','nativeWave','nativeFitLength','nativeEnvelopeStrength'].includes(id)?'input':'change',later);
  // The size note is only useful once there is a measured size.
  const size=$('workflowMeasuredSize');
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
  hint.after(list);
  const targets={text:'letteringWords',font:'nativeFont',height_mm:'nativeHeight',available_width_mm:'nativeWidth',align:'letteringAlign',
   colour:'letteringColour',baseline:'nativeBaseline',arc_degrees:'nativeCurve',letter_spacing_mm:'nativeLetterSpacing',
-  line_spacing_percent:'nativeLineSpacing',sequence:'nativeSequence',fabric_preset:'nativeFabric',puff_foam_mm:'puffFoam',
+  line_spacing_percent:'nativeLineSpacing',sequence:'nativeSequence',join:'nativeJoin',fabric_preset:'nativeFabric',puff_foam_mm:'puffFoam',
   frame:'nativeFrame',frame_mm:'nativeFrameWidth',ornament:'nativeOrnament',circle_mm:'nativeCircle',wave_percent:'nativeWave',
   fit_length_mm:'nativeFitLength',envelope:'nativeEnvelope',envelope_percent:'nativeEnvelopeStrength'};
  function apply(values){

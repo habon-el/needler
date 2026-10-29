@@ -42,6 +42,8 @@
 <input id="nativeLineSpacing" type="number" min="70" max="250" step="5" value="100">
 <label for="nativeSequence">Letter order</label>
 <select id="nativeSequence"><option value="left">Left to right</option><option value="centre">Centre out (caps)</option></select>
+<label for="nativeJoin">Joins</label>
+<select id="nativeJoin" title="Bottom: each letter starts at its baseline, the thread running under its stitches. Letters apart are still cut."><option value="closest">Closest</option><option value="bottom">Bottom</option></select>
 </details>
 <button id="nativeCheck" type="button">Build &amp; check stitches</button>
 <p id="nativeStatus" role="status" aria-live="polite">Ready to build. Choose a font, size and width, then check.</p>
