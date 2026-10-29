@@ -79,3 +79,25 @@ def rank_threads(hexcode,path=CATALOGUE,brands=None,limit=3):
     indices=sorted(range(len(entries)),key=lambda i:(float(differences[i]),entries[i][3],entries[i][2],i))[:limit]
     return [dict(brand=entries[i][3],name=entries[i][1],code=entries[i][2],hex="#%02x%02x%02x"%entries[i][0],
         delta_e=round(float(differences[i]),2),method="CIEDE2000",source=source) for i in indices]
+
+def matched_threads(colours,brands=None):
+    """Real threads for colours picked from a picture (RGB triples): one chart for all of them (the
+    closest overall), a different thread for each colour. Returns (chart, [(rgb, name, code)])."""
+    target=rgb2lab(np.array(colours,dtype=float)[None]/255)[0]
+    best=None
+    for brand in (brands or CHARTS):
+        entries=chart(brand)
+        if len(entries)<len(colours):continue
+        lab=rgb2lab(np.array([e[0] for e in entries],dtype=float)[None]/255)[0]
+        differences=np.array([deltaE_ciede2000(lab,np.broadcast_to(t,lab.shape)) for t in target])
+        # The colour with the closest match picks first; each thread is used once.
+        taken,picks=set(),[None]*len(colours)
+        for i in np.argsort(differences.min(axis=1),kind='stable'):
+            j=next(int(j) for j in np.argsort(differences[i],kind='stable') if int(j) not in taken)
+            taken.add(j);picks[i]=j
+        total=float(sum(differences[i,j] for i,j in enumerate(picks)))
+        if best is None or total<best[0]:
+            best=(total,brand,[entries[j] for j in picks])
+    if best is None:
+        raise ValueError('No thread chart has enough colours.')
+    return best[1],best[2]

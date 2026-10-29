@@ -73,7 +73,7 @@ def test_several_threads_are_picked_and_each_pixel_is_a_mix_of_them():
     from embroiderly.photo_lines import threads
     rgb = _sunset()
     alpha = np.ones(rgb.shape[:2], bool)
-    colours, shares = threads(rgb, alpha, 4)
+    colours, shares, _ = threads(rgb, alpha, 4)
     assert len(colours) == len(shares) == 4 and len(set(colours)) == 4
     total = sum(shares)
     assert np.allclose(total, 1, atol=1e-4)                              # every pixel fully sewn
@@ -81,8 +81,25 @@ def test_several_threads_are_picked_and_each_pixel_is_a_mix_of_them():
     blue = max(range(4), key=lambda i: int(colours[i][5:7], 16) - int(colours[i][1:3], 16))
     assert shares[blue][200, 200] > .8 and shares[blue][20, 300] < .2
     # Open: the white highlight is left to the fabric, no thread is spent on it.
-    colours, shares = threads(rgb, alpha, 3, fabric=(255, 255, 255))
+    colours, shares, _ = threads(rgb, alpha, 3, fabric=(255, 255, 255))
     assert sum(s[50, 60] for s in shares) < .2 and '#ffffff' not in colours
+
+
+def test_the_picked_threads_are_real_threads_from_one_chart_and_mix_as_those_threads():
+    from embroiderly.photo_lines import threads
+    from embroiderly.thread_matching import CHARTS, chart
+    rgb = _sunset()
+    alpha = np.ones(rgb.shape[:2], bool)
+    colours, shares, names = threads(rgb, alpha, 4)
+    hexes = {brand: {'#%02x%02x%02x' % entry[0] for entry in chart(brand)} for brand in CHARTS}
+    (brand,) = [b for b in CHARTS if set(colours) <= hexes[b]][:1]
+    assert len(set(colours)) == 4 and all(name.startswith(brand) for name in names)
+    # The mix uses the threads' own colours: a pixel of exactly a thread's colour is sewn by it alone.
+    blue = max(range(4), key=lambda i: int(colours[i][5:7], 16) - int(colours[i][1:3], 16))
+    rgb[rgb.shape[0]*3//4:] = [int(colours[blue][i:i+2], 16) for i in (1, 3, 5)]
+    again, shares, _ = threads(rgb, alpha, 4)
+    assert colours[blue] in again and shares[again.index(colours[blue])][200, 200] > .99
+    assert np.allclose(sum(shares), 1, atol=1e-4)
 
 
 def test_open_rows_leave_light_areas_bare():
@@ -108,6 +125,13 @@ def test_multi_colour_and_open_photos_sew_and_pass_the_checks(tmp_path):
                                dict(base, photo_style='multi_colour', photo_colours=3), 2.0, True)
     assert not several.get('error') and not several.get('gate'), several
     assert several['colours'] == 3
+    # The stitches and the machine file use real chart threads, named in the playback.
+    import json
+    from embroiderly.thread_matching import CHARTS, chart
+    payload = json.loads(next((tmp_path / 'work').rglob('playback.json')).read_text())
+    named = payload['photo_lines']['thread_names']
+    brand = payload['photo_lines']['chart']
+    assert len(named) == 3 and set(payload['colors']) <= {'#%02x%02x%02x' % e[0] for e in chart(brand)}
     opened, _ = auto._attempt(tmp_path / 'work/uploads/sunset.png',
                               dict(base, photo_style='multi_colour', photo_colours=3, photo_open=True), 2.0, True)
     assert not opened.get('error') and not opened.get('gate'), opened

@@ -148,10 +148,13 @@ def _lock(run, at_end):
 
 
 def threads(rgb, alpha, count, fabric=None):
-    """count thread colours picked from the photo, the one nearest the fabric first, and each one's
-    share (0..1) of every pixel: a pixel is a mix of its two nearest colours. With a fabric colour
-    (open photo stitch) the fabric is one of the colours, but never sewn."""
+    """count threads for the photo, the one nearest the fabric first, each one's share (0..1) of
+    every pixel, and their names. The colours picked from the photo become real threads of one chart
+    (thread_matching, the closest chart overall); a pixel is a mix of its two nearest threads, in the
+    threads' own colours. With a fabric colour (open photo stitch) the fabric is one of the colours,
+    but never sewn."""
     from skimage.color import lab2rgb, rgb2lab
+    from .thread_matching import matched_threads
     lab = rgb2lab(rgb / 255.).astype(np.float32)
     inside = lab[alpha]
     paper = None if fabric is None else rgb2lab(np.array([[fabric]], float) / 255.)[0, 0].astype(np.float32)
@@ -164,8 +167,12 @@ def threads(rgb, alpha, count, fabric=None):
     cv2.setRNGSeed(0)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, .5)
     _, _, centres = cv2.kmeans(sample, count, None, criteria, 3, cv2.KMEANS_PP_CENTERS)
+    picked = np.clip(lab2rgb(centres[None].astype(float))[0] * 255, 0, 255).round()
+    brand, real = matched_threads([tuple(c) for c in picked])
+    centres = rgb2lab(np.array([[e[0] for e in real]], float) / 255.)[0].astype(np.float32)
     reference = paper if paper is not None else np.array([100, 0, 0], np.float32)
-    centres = centres[np.argsort(np.linalg.norm(centres - reference, axis=1), kind='stable')]
+    order = np.argsort(np.linalg.norm(centres - reference, axis=1), kind='stable')
+    centres, real = centres[order], [real[i] for i in order]
     palette = np.vstack([centres, paper[None]]) if paper is not None else centres
     if len(palette) == 1:
         share = np.ones(alpha.shape + (1,), np.float32)
@@ -181,9 +188,9 @@ def threads(rgb, alpha, count, fabric=None):
         share[ys, xs, near[..., 0]] = 1 - t
         share[ys, xs, near[..., 1]] += t
     share[~alpha] = 0
-    hexes = ['#%02x%02x%02x' % tuple(int(round(v)) for v in np.clip(lab2rgb(c[None, None].astype(float))[0, 0] * 255, 0, 255))
-             for c in centres]
-    return hexes, [share[:, :, i] for i in range(len(centres))]
+    hexes = ['#%02x%02x%02x' % rgb for rgb, _, _ in real]
+    names = [' '.join(v for v in (brand, code, name) if v) for _, name, code in real]
+    return hexes, [share[:, :, i] for i in range(len(centres))], names
 
 
 def _sew(plan, runs, mask, scale, to_file, row_mm):
@@ -250,7 +257,8 @@ def generate(source, directory, height_mm, options, metadata=None):
             raise ValueError(f'Choose {COLOURS[0]} to {COLOURS[1]} thread colours for the photo.')
         rgb = np.where(edited[..., None], prepared_rgb, original).astype(np.float64)
         fabric = ((20, 20, 20) if invert else (255, 255, 255)) if opened else None
-        colours, shares = threads(rgb, alpha, count, fabric)
+        colours, shares, names = threads(rgb, alpha, count, fabric)
+        named = dict(zip(colours, names))
         for index, (thread, share) in enumerate(zip(colours, shares)):
             mask = alpha & (blur(share) > SHARE)
             # Each thread at its own angle, so crossing rows mix the colours.
@@ -307,6 +315,11 @@ def generate(source, directory, height_mm, options, metadata=None):
                    generation_mode='photo colours' if several else 'photo lines',
                    photo_lines=dict(row_mm=row_mm, angle=angle, thread=used[0], threads=used, light_thread=invert,
                                     open=opened))
+    if several:
+        from .thread_matching import CHARTS
+        # The chart the threads came from: the longest chart name every thread name starts with.
+        brand = max((b for b in CHARTS if all(n.startswith(b + ' ') for n in names)), key=len)
+        payload['photo_lines'].update(chart=brand, thread_names=[named[t] for t in used])
     (directory / 'playback.json').write_text(json.dumps(payload))
     from .release_gate import record_context
     record_context(directory, alpha, scale, payload['origin_mm'])
