@@ -235,8 +235,8 @@ function draw(){
  });$('zoomValue').textContent=Math.round(zoom*100)+'%';
 }
 function point(e,canvas){const r=canvas.getBoundingClientRect(),t=transform(canvas);return [Math.max(0,Math.min(width-1,(e.clientX-r.left-t.x)/t.s)),Math.max(0,Math.min(height-1,(e.clientY-r.top-t.y)/t.s))]}
-function invalidate(){proposalVersion++;proposalBefore=proposalAfter=null;if(currentView==='proposal')currentView='prepared';colourPreviewPlan=null;colourPreviewMap={};colourPreviewImage=null;cancelAnimationFrame(colourFrame);colourFrame=0;stitchLayer.reset();queuedAction=null;stitchError='';window.dispatchEvent(new Event('studio:changed'));latest=null;selectedBounds=null;running=false;cursor=0;$('run').textContent='▶ Play';$('exportPes').hidden=$('exportDst').hidden=true;$('confirmed').checked=false;$('stitch').disabled=true;revision++;playback=null;$('colourStops').replaceChildren();transport();$('stitchLink').hidden=true;$('stitchStatus').textContent='Artwork changed. Generate again to update the stitched result.';draw()}
-function schedule(){invalidate();clearTimeout(timer);status('Preview updating…');timer=setTimeout(()=>requestPreview(),250)}
+function invalidate(keepApproval=false){proposalVersion++;proposalBefore=proposalAfter=null;if(currentView==='proposal')currentView='prepared';colourPreviewPlan=null;colourPreviewMap={};colourPreviewImage=null;cancelAnimationFrame(colourFrame);colourFrame=0;stitchLayer.reset();queuedAction=null;stitchError='';window.dispatchEvent(new Event('studio:changed'));latest=null;selectedBounds=null;running=false;cursor=0;$('run').textContent='▶ Play';$('exportPes').hidden=$('exportDst').hidden=true;if(!keepApproval)$('confirmed').checked=false;$('stitch').disabled=true;revision++;playback=null;$('colourStops').replaceChildren();transport();$('stitchLink').hidden=true;$('stitchStatus').textContent='Artwork changed. Generate again to update the stitched result.';draw()}
+function schedule(keepApproval=false){invalidate(keepApproval);clearTimeout(timer);status('Preview updating…');timer=setTimeout(()=>requestPreview(),250)}
 function colourName(hex){const a=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)),v=a.reduce((s,n)=>s+n)/3;
  if(Math.max(...a)-Math.min(...a)<25)return v<30?'Black':v<100?'Charcoal':v<190?'Grey':v<240?'Light grey':'White';
  return 'Custom thread';}
@@ -268,9 +268,12 @@ function renderPalette(palette){
    let mapped=false;for(const key of Object.keys(options.merges))if(options.merges[key]===p.hex){options.merges[key]=input.value;mapped=true}
    if(!mapped)options.merges[p.hex]=input.value;
    options.locks=options.locks.filter(c=>c!==p.hex);
-   options.interactions++;schedule();
+   // A new thread colour keeps the subject and its shapes, so "I approve" stays; picking another
+   // swatch's colour merges two areas (new shapes) and needs approving again.
+   const merged=palette.some(c=>c.hex!==p.hex&&c.hex.toLowerCase()===input.value.toLowerCase());
+   options.interactions++;schedule(!merged);
    colourPreviewPlan=previewPlan;colourPreviewMap=previewMap;colourPreviewImage=previewImage;draw();
-   $('stitchStatus').textContent='Colour preview only — previous paths retained. Approve and update stitches to regenerate/export.';
+   $('stitchStatus').textContent='Colour preview only — previous paths retained. '+(merged?'Approve and update':'Update')+' stitches to regenerate/export.';
   };
   const text=document.createElement('div');text.textContent=colourName(p.hex)+' '+p.hex;
   const label=document.createElement('label'),lock=document.createElement('input');lock.type='checkbox';lock.checked=options.locks.includes(p.hex);
