@@ -547,6 +547,8 @@ def register_preparation(app,root):
                 # Click to fill reads the prepared colours; the magic wand reads the artwork itself.
                 artwork={'click_fill':lambda:prepared_image.convert('RGBA'),'magic_wand':lambda:load_image(path)}.get(piece_command.get('field'))
                 options=change_pieces(options,current_report['piece_layout'],piece_command,image=artwork() if artwork else None)
+                # A note for the Pieces panel (auto trace: how many were left); never saved with the design.
+                piece_notice=options.pop('piece_notice',None)
                 body['save']=True
                 if piece_command['field'] in ('position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible','outline','sew_order','align','distribute','match_size','mirror_copy','circle','array','weld','smooth','morph','auto_trace','reshape'):
                     body['digitize']=True
@@ -577,6 +579,7 @@ def register_preparation(app,root):
             isolated.putalpha(Image.fromarray(subject_mask.astype(np.uint8)*255))
             response=dict(image=data_url(image),isolated=data_url(isolated),palette=palette,report=report)
             if piece_command or body.get('piece_undo'):response['options']=options
+            if piece_command and piece_notice:response['piece_notice']=piece_notice
             response['piece_blocked']=piece_blocked
             if not body.get("digitize"):
                 response.update(matching_plan(root,path,options))

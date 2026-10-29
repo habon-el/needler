@@ -2,8 +2,9 @@
 
 Auto trace replaces the selected pieces (the artwork's colour areas, as preparation found them, or
 one thread's areas) by curves fitted to their pixel outlines: corners stay sharp, the stair-steps
-between them become smooth curves, specks of holes are closed, and the area is kept. It is stored
-like Smooth (piece_weld.replace), so style, direction, holes and outline stay with the piece.
+between them become smooth curves, specks of holes are closed, and the area is kept. The new outline
+is stored in place, on the piece's own edit (as reshape stores it), so the piece keeps its id, style,
+direction, holes and outline, and tracing a whole design never uses up the copied-pieces limit.
 
 The magic wand selects the connected region of similar colour under a click in the artwork itself
 (before colour reduction), measured in the same Lab colour space preparation uses, and adds it as a
@@ -31,23 +32,38 @@ SLIVER_MM = .5         # ...and so is what is left narrower than this (the wand'
 
 
 def run(updated, report, selected, value):
-    """Auto trace the selected pieces; pieces already clean are left as they are."""
+    """Auto trace the selected pieces; pieces already clean are left as they are. Pieces whose new
+    outline does not fit in the design's outline points (piece_layout.MAX_PART_POINTS) are left too,
+    and piece_notice says how many."""
+    from . import piece_layout
     from .piece_layout import edits
-    from .piece_weld import ALREADY_MM, pixel_mm, replace, shape_of
+    from .piece_weld import ALREADY_MM, pixel_mm, shape_of
     if value is not None:
         raise ValueError('Invalid auto trace.')
     if any(p.get('line') for p in selected):
         raise ValueError('A stitched line is already a vector line. Choose filled parts to trace.')
-    changed = 0
+    stored = updated.setdefault('piece_edits', {})
+    budget = piece_layout.MAX_PART_POINTS-sum(len(r) for item in stored.values() for r in item.get('rings', []))
+    changed = left = 0
     for p in selected:
         shape = shape_of(p)
         result = traced(shape, pixel_mm(report, updated, p))
         if result.hausdorff_distance(shape) < ALREADY_MM and len(result.interiors) == len(shape.interiors):
             continue
-        replace(updated, report, p, result, f"trace:{p['id']}", p['name'])
+        rings = source_rings(updated, report, p, result)
+        # The piece's old outline points (if it had its own) make room for the new ones.
+        grows = sum(map(len, rings))-sum(len(r) for r in stored.get(p['id'], {}).get('rings', []))
+        if grows > budget:
+            left += 1
+            continue
+        budget -= grows
+        stored.setdefault(p['id'], {})['rings'] = rings
         changed += 1
     if not changed:
-        raise ValueError('These pieces are already clean outlines.')
+        raise ValueError('The design has too many outline points to trace these pieces. Trace fewer pieces.' if left
+                         else 'These pieces are already clean outlines.')
+    if left:
+        updated['piece_notice'] = f"Traced {changed} piece{'s'*(changed != 1)}; {left} left as they were: the design has too many outline points."
     edits(updated)
     return updated
 
@@ -192,10 +208,9 @@ def knock_out(updated, report, shape):
     piece's outline in place (its own rings, as reshape stores them); further parts become cut parts;
     a piece covered completely goes (piece_weld.remove)."""
     from shapely.geometry import Polygon
-    from .piece_layout import IDENTITY, matrix
+    from .piece_layout import IDENTITY
     from .piece_weld import MIN_HOLE_MM2, PER_PIECE, remove, shape_of
     stored = updated.setdefault('piece_edits', {})
-    origin, scale = np.array(report['origin_mm']), report['scale']
     for p in report['pieces']:
         if p.get('line') or not p['visible'] or p['locked']:
             continue
@@ -212,14 +227,9 @@ def knock_out(updated, report, shape):
             remove(updated, p['id'])
             continue
         item = stored.setdefault(p['id'], {})
-        inverse = np.linalg.inv(matrix(item.get('matrix', IDENTITY)))
-        def to_source(ring):
-            points = np.asarray(ring.coords[:-1], float)
-            source = ((np.c_[points, np.ones(len(points))] @ inverse.T)[:, :2]+origin)/scale
-            return [[round(x, 2), round(y, 2)] for x, y in source.tolist()]
         for index, part in enumerate(parts):
             part = Polygon(part.exterior, [h for h in part.interiors if Polygon(h).area >= MIN_HOLE_MM2]).simplify(.02)
-            rings = [to_source(r) for r in (part.exterior, *part.interiors)]
+            rings = source_rings(updated, report, p, part)
             if not index:
                 item['rings'] = rings
                 continue
@@ -229,6 +239,19 @@ def knock_out(updated, report, shape):
             for field in PER_PIECE:
                 if p['id'] in updated.get(field, {}):
                     updated[field][key] = updated[field][p['id']]
+
+
+def source_rings(updated, report, p, shape):
+    """shape (mm on the hoop) as p's own rings: picture pixels, before its transform."""
+    from .piece_layout import IDENTITY, matrix
+    inverse = np.linalg.inv(matrix(updated.get('piece_edits', {}).get(p['id'], {}).get('matrix', IDENTITY)))
+    origin, scale = np.array(report['origin_mm']), report['scale']
+    rings = []
+    for ring in (shape.exterior, *shape.interiors):
+        points = np.asarray(ring.coords[:-1], float)
+        source = ((np.c_[points, np.ones(len(points))] @ inverse.T)[:, :2]+origin)/scale
+        rings.append([[round(x, 2), round(y, 2)] for x, y in source.tolist()])
+    return rings
 
 
 def nearest_thread(rgb, report):

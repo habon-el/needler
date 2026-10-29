@@ -75,7 +75,7 @@
  async function commit(field,value,ids=[...selected]){
   if(pending||(!ids.length&&field!=='draw'&&field!=='click_fill'&&field!=='magic_wand'))return;
   pending=true;sync();feedback('Saving piece and rebuilding stitches when needed…');
-  try{const ok=await studio.pieceEdit({ids,field,value,linked:advanced?linked:true});feedback(ok?(studio.hasPlayback()?(field==='sew_order'?'Saved. Stitches follow the new sewing order.':'Saved. Stitches use the updated outline.'):'Piece saved. No current stitch plan; review the design before generating.'):'Not applied. See the workspace message; the previous piece is unchanged.')}
+  try{const ok=await studio.pieceEdit({ids,field,value,linked:advanced?linked:true});feedback(ok?(studio.hasPlayback()?(field==='sew_order'?'Saved. Stitches follow the new sewing order.':'Saved. Stitches use the updated outline.'):'Piece saved. No current stitch plan; review the design before generating.')+(studio.pieceNotice?.()?' '+studio.pieceNotice():''):'Not applied. See the workspace message; the previous piece is unchanged.')}
   catch(error){feedback(error.message)}finally{pending=false;sync()}
  }
  function choose(ids,toggle=false){if(points)points.picked=null;if(!toggle)selected.clear();for(const id of ids){if(toggle&&selected.has(id))selected.delete(id);else selected.add(id)}studio.pieceView();document.querySelector('[data-topic="styles"]').click();sync();renderRows()}

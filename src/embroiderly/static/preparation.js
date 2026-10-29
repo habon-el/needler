@@ -299,7 +299,7 @@ function metrics(r){$('borderStatus').textContent=r.border?`${r.border.style} bo
  $('maskMetrics').textContent=r.colour_knockouts?.length?'Colour removal protects the holes. General smoothing, small-area removal and mask cleanup are paused; your stored settings are unchanged.':r.mask_specks_removed+' mask specks removed; '+r.mask_holes_filled+' small holes filled; '+r.mask_boundary_pixels_changed+' boundary pixels adjusted; '+r.mask_below_floor_after+' mask regions still below the area floor. Explicit keep/drop strokes take priority.';
  $('cleanup').textContent=r.boundary_pixels_changed+' boundary pixels adjusted; '+r.isolated_subject_islands_removed+' disconnected subject islands removed; '+r.specks_reassigned+' small regions processed under '+r.cleanup_floor_mm2.toFixed(2)+' mm². '+r.interactions+' recorded editing actions. '+r.width_px+' × '+r.height_px+' working pixels at '+r.height_mm+' mm canvas height. '+r.note;
 }
-let pieceRevision=null,acceptedOptions=JSON.stringify(options);
+let pieceRevision=null,acceptedOptions=JSON.stringify(options),pieceNotice='';
 async function requestPreview(action,pieceCommand=null,restoreOptions=null){
  if(nativeMode)return window.NativeWorkspace?.action(action);
  if(action==='digitize'&&window.letteringSizeMetrics){
@@ -325,6 +325,7 @@ async function requestPreview(action,pieceCommand=null,restoreOptions=null){
    acceptedOptions=JSON.stringify(result.options||options);
   }
   if(result.options){if(pieceCommand)remember();options=result.options;syncControls()}
+  pieceNotice=pieceCommand&&result.piece_notice||'';
   if(result.piece_blocked){playback=null;running=false;cursor=0;stitchLayer.reset();$('exportPes').hidden=$('exportDst').hidden=$('stitchLink').hidden=true;$('colourStops').replaceChildren();setView('prepared');$('stitchStatus').textContent='Check the red pieces or show a piece. Nothing removed; no current stitches.'}
   latest=result;colourPreviewImage=null;await new Promise((resolve,reject)=>{prepared.onload=resolve;prepared.onerror=reject;prepared.src=result.image});
   await new Promise((resolve,reject)=>{isolated.onload=resolve;isolated.onerror=reject;isolated.src=result.isolated});
@@ -637,7 +638,7 @@ window.embroideryStudio={
  previewInfo:()=>({status:stitchLayer.status,frameMs:stitchLayer.surface?.lastFrameMs,builds:stitchLayer.surface?.builds}),
  focusReview:bounds=>{selectedBounds=bounds.slice();setView('review');const c=canvases[0],base=Math.min(c.width/width,c.height/height)*.92;zoom=Math.max(.5,Math.min(12,.75*Math.min(c.width/(Math.max(1,bounds[2]-bounds[0])*base),c.height/(Math.max(1,bounds[3]-bounds[1])*base))));panX=(width/2-(bounds[0]+bounds[2])/2)*base*zoom/c.width;panY=(height/2-(bounds[1]+bounds[3])/2)*base*zoom/c.height;if(playback)cursor=playback.steps.length;draw()},
  resultInfo,
- hasPlayback:()=>!!playback,sewParts:()=>playback?.sew_parts||[],
+ hasPlayback:()=>!!playback,pieceNotice:()=>pieceNotice,sewParts:()=>playback?.sew_parts||[],
  // Read-only view of the exported needle path for the 3D viewer.
  playbackView:()=>playback?{plan:playback,cursor,colourMap:colourPreviewMap,fabric:$('fabric').value,threadWidth:Number($('threadVisualWidth').value),lightAngle:Number($('lightAngle').value)}:null,
  seek,

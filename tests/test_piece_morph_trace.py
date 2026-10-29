@@ -126,8 +126,26 @@ def test_auto_trace_of_a_whole_thread_traces_each_piece():
     other['rings'] = [[[x+10, y] for x, y in other['rings'][0]]]
     areas = [disc(), other, box('a', 0, 0, 40, 20, RED)]
     done = apply(areas, {}, 'auto_trace', None, ['d'*20, 'f'*20])
-    assert done['piece_edits']['d'*20]['cut'] and done['piece_edits']['f'*20]['cut']
-    assert 'a'*20 not in done['piece_edits']
+    # Traced in place: the pieces keep their ids, nothing is copied.
+    assert set(done['piece_edits']) == {'d'*20, 'f'*20}
+    assert all('rings' in item and 'cut' not in item for item in done['piece_edits'].values())
+
+
+def test_auto_trace_of_more_pieces_than_the_copy_limit():
+    from embroiderly.piece_layout import MAX_COPIES
+    areas = []
+    for i in range(MAX_COPIES+20):
+        mask = np.zeros((20, 20), np.uint8)
+        cv2.circle(mask, (10, 10), 7, 1, -1)
+        contour = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[0][0][:, 0, :]
+        x, y = i % 12*20, i//12*20
+        areas.append(dict(id=f'{i:020x}', colour=BLUE, style='tatami', rings=[(contour+[x, y]).tolist()]))
+    report = inventory({'areas': areas}, {}, 240, 240, .5)
+    done = change({}, report, dict(ids=[a['id'] for a in areas], field='auto_trace', value=None))
+    pieces = inventory({'areas': areas}, done, 240, 240, .5)['pieces']
+    assert len(pieces) == len(areas) and all(turns(p) == 0 for p in pieces)
+    # The traced pieces are still the design's own; copying is not used up.
+    assert not any('source' in item or 'drawn' in item for item in done['piece_edits'].values())
 
 
 SCALE = .25
@@ -260,3 +278,36 @@ def test_magic_wand_leaves_locked_pieces_alone():
     point = [70*SCALE-report['origin_mm'][0], 70*SCALE-report['origin_mm'][1]]
     done = change(locked, report, dict(ids=[], field='magic_wand', value=dict(point=point, tolerance=60)), image=rgba)
     assert done['piece_edits']['b'*20] == locked['piece_edits']['b'*20]
+
+
+def test_auto_trace_traces_what_fits_in_the_outline_point_budget_and_says_how_many_are_left(monkeypatch):
+    import embroiderly.piece_layout as piece_layout
+    areas = [disc()]
+    for i in range(3):
+        other = disc()
+        other['id'] = f'{i+1}'*20
+        other['rings'] = [[[x+i*70, y+70] for x, y in other['rings'][0]]]
+        areas.append(other)
+    report = inventory({'areas': areas}, {}, 300, 200, .5)
+    one = len(change({}, report, dict(ids=['d'*20], field='auto_trace', value=None))['piece_edits']['d'*20]['rings'][0])
+    monkeypatch.setattr(piece_layout, 'MAX_PART_POINTS', one*2+1)
+    done = change({}, report, dict(ids=[a['id'] for a in areas], field='auto_trace', value=None))
+    assert len(done['piece_edits']) == 2
+    assert done['piece_notice'] == 'Traced 2 pieces; 2 left as they were: the design has too many outline points.'
+    monkeypatch.setattr(piece_layout, 'MAX_PART_POINTS', 5)
+    with pytest.raises(ValueError, match='too many outline points'):
+        change({}, report, dict(ids=[a['id'] for a in areas], field='auto_trace', value=None))
+
+
+def test_auto_trace_route_says_how_many_were_left_and_never_saves_the_note(tmp_path, monkeypatch):
+    import embroiderly.piece_layout as piece_layout
+    def draw(rgba):
+        cv2.circle(rgba, (120, 200), 60, (200, 30, 60, 255), -1)
+        cv2.circle(rgba, (290, 200), 60, (200, 30, 60, 255), -1)
+    client, options, body = setup(tmp_path, draw)
+    pieces = body['report']['piece_layout']['pieces']
+    assert len(pieces) == 2
+    monkeypatch.setattr(piece_layout, 'MAX_PART_POINTS', 150)
+    done = command(client, options, body, [p['id'] for p in pieces], 'auto_trace', None)
+    assert done['piece_notice'].startswith('Traced 1 piece; 1 left as they were')
+    assert 'piece_notice' not in done['options']
