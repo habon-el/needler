@@ -47,7 +47,7 @@ height_mm sets the canvas, which may include empty margins, so rescale from the 
 - 3D puff (raised satin over foam) is available in colour mode. Use it when the person asks for puff, foam, raised or 3D. Only parts as wide as the foam is thick (3 mm for 3 mm foam, 2 mm for 2 mm foam) up to 6 mm puff; wider or thinner parts stay flat, and the result tells you which threads puffed. Bold lettering and outlines puff best; big solid areas and fine detail do not. If nothing puffs, change the size so the parts that matter fall in that range, and explain.
 - Choose the fabric preset from the person's request: t-shirt is stretch_knit, polo is pique, \
 hoodie is fleece, cap is cap, and so on. Unknown: keep the current one.
-- Choose the mode by what the picture is. black_lines is only for clean black line drawings on a plain white background. Shaded black-and-white art (engravings, pencil, halftone or textured backgrounds; measured_facts.shaded) is photo_lines: black_lines turns shading into specks and a honeycomb of lines.
+- Choose the mode by what the picture is. black_lines is only for clean black line drawings on a plain white background. Shaded black-and-white art (engravings, pencil, halftone or textured backgrounds; measured_facts.shaded) is photo_lines: black_lines turns shading into specks and a honeycomb of lines. Colour photos whose colours matter (skin, sky, flowers) can be photo_colour.
 - Illustrations with fine linework (faces, highlights, hatching) lose those lines in colour mode: use line_details light or all, and check the drawing that the detail came back without clutter.
 - per_colour in each result shows where the thread cuts come from. Many cuts in one colour mean it is \
 scattered in small pieces: fold it into a neighbouring colour with merge_colours, merge small details, or \
@@ -85,19 +85,24 @@ TOOLS = [
                                                             'a few words (sky, lettering, outline).'),
                                                   style=dict(type='string', description='How it is sewn, plain words.'),
                                                   why=dict(type='string', description='Why, a few plain words.')))),
-             mode=dict(type='string', enum=['colour', 'line_art', 'black_lines', 'photo_lines'],
+             mode=dict(type='string', enum=['colour', 'line_art', 'black_lines', 'photo_lines', 'photo_colour'],
                        description='colour: fills and satin per colour area. line_art: light lines on a dark '
                                    'background become running stitches; the background stays empty. black_lines: '
                                    'black drawing on white; white stays empty. photo_lines: a photo in one thread '
                                    '(rows of zigzag whose width follows the shading; one continuous thread, few cuts) - '
-                                   'usually the best choice for real photos and portraits.'),
-             photo=dict(type='object', additionalProperties=False, description='photo_lines settings.',
+                                   'usually the best choice for real photos and portraits. photo_colour: the same '
+                                   'rows in a few thread colours, each at its own angle, mixing where they cross.'),
+             photo=dict(type='object', additionalProperties=False, description='photo_lines and photo_colour settings.',
                         properties=dict(row_mm=dict(type='number', minimum=.6, maximum=2,
                                                     description='Row spacing (default 1.0). Smaller = more detail and stitches.'),
                                         angle=dict(type='number', minimum=-180, maximum=180,
                                                    description='Row direction in degrees (default 0, horizontal).'),
                                         light_thread=dict(type='boolean',
                                                           description='Light thread on dark fabric (tones inverted).'),
+                                        colours=dict(type='integer', minimum=2, maximum=6,
+                                                     description='Thread colours for photo_colour (default 4).'),
+                                        open=dict(type='boolean', description='Open: light areas get no stitches, the '
+                                                                              'fabric shows; narrower zigzags.'),
                                         thread=dict(type='string', pattern='^#[0-9a-fA-F]{6}$'))),
              colours=dict(type='integer', minimum=2, maximum=8, description='Thread colours (colour mode).'),
              height_mm=dict(type='number', minimum=3, maximum=400, description='Canvas height in mm, margins included.'),
@@ -508,17 +513,20 @@ def settings_from(tool_input, options, size=None, image=None, root=None):
     mode = tool_input.get('mode')
     if mode:
         nxt.update(line_art=mode == 'line_art', ink_only=mode == 'black_lines')
-        if mode == 'photo_lines':
-            nxt.update(photo_style='one_colour', count=2)
+        if mode in ('photo_lines', 'photo_colour'):
+            nxt.update(photo_style='one_colour' if mode == 'photo_lines' else 'multi_colour', count=2)
         else:
             nxt.pop('photo_style', None)
     photo = tool_input.get('photo')
     if isinstance(photo, dict):
-        for key, name in (('row_mm', 'photo_row_mm'), ('angle', 'photo_angle'), ('thread', 'photo_thread')):
+        for key, name in (('row_mm', 'photo_row_mm'), ('angle', 'photo_angle'), ('thread', 'photo_thread'),
+                          ('colours', 'photo_colours')):
             if key in photo:
                 nxt[name] = photo[key]
         if 'light_thread' in photo:
             nxt['photo_light_thread'] = photo['light_thread'] is True
+        if 'open' in photo:
+            nxt['photo_open'] = photo['open'] is True
     if 'puff' in tool_input:
         nxt['puff'] = tool_input['puff'] is True
     if 'foam_mm' in tool_input:

@@ -96,7 +96,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Smooth shapes, weld | Pieces panel: ⊕ Weld joins 2+ touching or overlapping pieces of one thread into one (the first picked keeps its style); Smooth (Light / More) takes out pixel steps and small wiggles, keeping sharp corners and the size (`piece_weld.py`) | ✅ 2026-10-26 | |
 | Remove overlaps | Colour knockout; areas never stack | ✅ | |
 | Stitch edit, insert stop/trim, convert to manual | Remove stitches by area; Check stitches: Add stop here, Add cut here (tie-off and tie-in), Delete this stitch, Move this stitch (up to 3 mm) at the playback position, saved with the design and checked against 0.3–7 mm and empty fabric. Converting a whole part to hand-placed stitches is not offered | ✅ 2026-10-25 | |
-| Recognize stitches (machine file → objects) | — | ✗ | P3 |
+| Recognize stitches (machine file → objects) | Designs page "Open machine file" (DST, PES, PEC, JEF, EXP, VP3, XXX, U01, HUS, VIP, SEW): the stitches are split at every colour change, cut and jump; each block becomes a piece read from how the needle moves: a narrow band is a line (running, or triple when it goes back and forth), stitches turning back at almost every hole are satin, the rest is tatami with the file's stitch direction; fills and satins get the outline their thread covers (holes kept); thread colours and the file's sewing order are kept; up to 100 parts. Needler sews them again, so they move, copy, cut and restyle like any piece | ✅ 2026-10-29 | |
 | Morphing (pinch, punch, twirl, wave) | Pieces panel Morph: Pinch (sides cave in, corners stay), Punch (sides bulge out), Twirl (the middle turns, fading to the edge), Wave (two waves across), Strength 10–100%; several pieces morph together around one centre, holes stay, style and direction kept, stitches made again from the new outline (`piece_morph.py`) | ✅ 2026-10-29 | |
 
 ## 7. Sequencing
@@ -131,7 +131,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Colour roles fill / detail / omit, omit background | plain background left out automatically ("keep the background" sews it); details get satin or run by width and sew last (largest colour first) | ✅ 2026-10-24 | |
 | Fill vs satin vs run by width | run under 0.45 mm and for pixel-thin lines ≥ 1 mm long; satin ≤ 4.5 mm; else tatami; thin limbs split off as satin automatically; Pieces panel "Satin here": drag a line where a thin part starts, that side becomes satin over the rest's fill | ✅ 2026-10-25 | |
 | Add outlines | `engine.colour_outlines`: one branched run on every colour edge, sewn last; checkbox or "outline" in the request | ✅ 2026-10-24 | |
-| Multi-colour photo stitch, open photo stitch | photo stitch (experimental) | ◐ | P3 |
+| Multi-colour photo stitch, open photo stitch | Photo stitch: Threads 1–6; with several, the threads are picked from the photo and each pixel is a mix of its two nearest; each thread sews its own zigzag rows at its own angle, as wide as its share, so crossing rows mix the colours. Open (fabric shows): light areas get no stitches and zigzags fill at most 60% of the row; every stitch 0.3–7 mm, checked in PES and DST. The older experimental portrait stitch stays | ✅ 2026-10-29 | |
 | One-colour photo stitch | photo lines | ✅ | |
 | Auto trace to vectors, magic wand | Pieces panel Trace: 🪄 Magic wand: click the artwork, the connected area of similar colour (Tolerance 1–60, in the Lab colours preparation uses) becomes a new piece in the nearest thread of the design; Auto trace: the selected pieces, all threads or one thread become clean curves fitted to their pixel outlines, corners kept sharp, specks of holes closed, area kept (`piece_trace.py`) | ✅ 2026-10-29 | |
 
@@ -201,7 +201,7 @@ instructions are typed by hand, so they fall behind every new feature.
 | 14 | P3: partial, combined and overlap-free appliqué; buttonholes and basting markers | ✓ 2026-10-28 |
 | 15 | P3: lettering envelopes and elastic lettering; more fonts | ✓ 2026-10-28 |
 | 16 | P3: morphing (pinch, punch, twirl, wave); auto trace to vectors and magic wand | ✓ 2026-10-29 |
-| 17 | P3: multi-colour and open photo stitch; recognize stitches (machine file to objects) | ✗ |
+| 17 | P3: multi-colour and open photo stitch; recognize stitches (machine file to objects) | ✓ 2026-10-29 |
 | 18–19 | Parked bugs (parallel agents): merging a colour on a cut-out subject fails the file check; rose gaps and flat leaves; Start does nothing over an old result; white parts dropped and white merging with pale sky; colour change unticks "I approve"; ~30 edge-speck cleanup choices; stuck on "Opening image editor…"; big script satin gaps; designs page and studio freezing Chrome | ✗ |
 
 Sessions after 12 are estimates; if a row runs long, it moves to the next session and the rows below shift.

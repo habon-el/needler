@@ -967,3 +967,36 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Pieces panel: Morph select, Strength % and Morph next to Smooth; a Trace box with the Magic wand,
   Tolerance, and Auto trace for Selected pieces, All threads or one thread (locked and hidden
   pieces are left out). Not a Claude tool: like weld and smooth, these edit pieces by hand.
+
+## Multi-colour and open photo stitch (added 2026-10-29)
+
+- `photo_lines.generate` takes `photo_style` `one_colour` or `multi_colour`, `photo_colours` (2–6,
+  default 4) and `photo_open`. `engine.digitize` sends both styles there.
+- `threads`: k-means in Lab (seeded, at most 20,000 samples) on the original upload inside the
+  subject; colours ordered nearest the fabric first (white, or near black with light thread).
+  Each pixel's share: its two nearest colours, split by where it falls on the line between them,
+  so shares sum to 1. Open adds the fabric colour as an unsewn entry and keeps threads off it.
+- Each thread: its share is blurred, sewn only where it is over 15%, as `rows` with its share as the
+  darkness, at `photo_angle + i·180/n`. Rows join inside that thread's own area; otherwise tie-off,
+  cut, jump. Lightest thread first; one colour change per thread.
+- Open: one colour leaves tone under 0.18 unsewn; both modes cap the zigzag at 60% of the row.
+- Same checks as one colour: the 0.1 mm grid tidy, PES/DST readback, every stitch 0.3–7 mm, the
+  release context from the subject mask. Claude: mode `photo_colour`, `photo.colours`, `photo.open`.
+
+## Recognize stitches (added 2026-10-29)
+
+- `stitch_recognize.read`: `machine_files.read_pattern` (our DST cut convention), colour blocks from
+  pyembroidery, split at cuts, colour changes, stops and jumps of 2 mm or more (shorter jumps are
+  sewn through). Blocks of two points or fewer are dropped.
+- `pieces`: each block drawn 0.4 mm wide on a 0.1 mm grid, gaps to 1 mm closed. Narrower than
+  1.2 mm: a line (path with back-and-forth folded, simplified 0.1 mm; triple when the thread
+  covers the path more than 2.2 times, so tie-offs do not count). Else opened by 0.8 mm (travel runs go), each outer contour with its holes
+  (1 mm² or more) is a part: satin when half the holes turn back more than 150° and
+  `satin_reason` allows it, else tatami with the length-weighted axial mean stitch direction.
+  Over 100 parts is refused.
+- `open_file`: the silhouette (grey, 700 px on the long side, 2 mm margin) is the new design's
+  picture; its own pieces are saved hidden ("File outline"); every part is a drawn piece (rings in
+  picture pixels) with `region_styles`, `area_angles` and `sew_sequence` in file order. The
+  upload route takes machine files; the designs page has Open machine file. The machine file
+  itself is not kept.
+- Limit: a block that holds several objects sewn without a cut becomes one piece type.

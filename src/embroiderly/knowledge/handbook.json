@@ -47,6 +47,17 @@
       "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
     },
     {
+      "id": "mode:photo_colour",
+      "tool": "Photo in several threads",
+      "control": "mode",
+      "does": "Picks 2 to 6 thread colours from the photo; each is sewn as its own rows of zigzag, at its own angle, as wide as its share of the colour, so crossing rows mix the colours.",
+      "use": "Colour photos and portraits where one thread loses too much (skin, sky, flowers).",
+      "avoid": "Flat logos and text; small designs under about 8 cm, where the colours turn to noise.",
+      "limits": "colours 2 to 6 (default 4); more colours, more stitches and colour changes. open leaves light areas as bare fabric.",
+      "verified_by_user": false,
+      "source_note": "Digitizer's handbook for Claude, 2026-10-29: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
+    },
+    {
       "id": "area:tatami",
       "tool": "Tatami",
       "control": "colour_styles",
@@ -668,10 +679,10 @@
       "id": "setting:photo",
       "tool": "Photo row settings",
       "control": "photo",
-      "does": "Row spacing, row angle, light thread and thread colour for photo_lines.",
+      "does": "Row spacing, row angle, light thread and thread colour for photo_lines; thread count for photo_colour; open (light areas left as bare fabric, narrower zigzags) for both.",
       "use": "Finer rows for detailed faces; light_thread for light thread on dark fabric.",
       "avoid": "Rows under 0.8 mm on small designs (too dense).",
-      "limits": "row_mm 0.6 to 2, angle -180 to 180.",
+      "limits": "row_mm 0.6 to 2, angle -180 to 180, colours 2 to 6.",
       "verified_by_user": false,
       "source_note": "Digitizer's handbook for Claude, 2026-10-28: written from Needler's own engine limits (NATIVE-ENGINE.md) and general digitizing practice."
     },

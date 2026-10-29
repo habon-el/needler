@@ -199,12 +199,16 @@
   $('libraryReload').onclick=()=>{facts.clear();load();};
   document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.card-menu[open]').forEach(menu=>{menu.open=false;menu.querySelector('summary').focus();});});
   document.addEventListener('pointerdown',e=>{document.querySelectorAll('.card-menu[open]').forEach(menu=>{if(!menu.contains(e.target))menu.open=false;});});
-  $('chooseUpload').onclick=()=>$('newDesign').querySelector('input').click();
+  // One file input for both: a picture, or a machine file whose stitches become pieces (stitch_recognize.py).
+  const picker=$('newDesign').querySelector('input'),pictures=picker.accept;
+  $('chooseUpload').onclick=()=>{picker.accept=pictures;picker.click();};
+  $('chooseMachine').onclick=()=>{picker.accept='.dst,.pes,.pec,.jef,.exp,.vp3,.xxx,.u01,.hus,.vip,.sew';picker.click();};
   $('newDesign').querySelector('input').onchange=()=>{if($('newDesign').querySelector('input').files.length)$('newDesign').requestSubmit();};
   $('newDesign').onsubmit=event=>{
     const file=event.currentTarget.querySelector('input').files[0];
     if(!file||file.size>12*1024*1024){event.preventDefault();$('uploadError').textContent=file?'Choose an image smaller than 12 MB.':'Choose an image first.';return;}
-    event.currentTarget.querySelector('button').disabled=true;$('uploadError').textContent='Opening image editor…';
+    event.currentTarget.querySelector('button').disabled=true;
+    $('uploadError').textContent=/\.(png|jpe?g|webp|bmp|svg)$/i.test(file.name)?'Opening image editor…':'Reading stitches…';
   };
   load();
 })();

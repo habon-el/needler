@@ -1,4 +1,4 @@
-"""One-colour photo lines.
+"""Photo lines: one-colour and multi-colour photo stitch, closed or open.
 
 A photo is drawn with one thread in parallel rows. Each row is a zigzag whose
 width follows the darkness of the photo under it: nearly touching its
@@ -6,6 +6,12 @@ neighbours in the shadows, a thin running line in the highlights. Rows are
 joined at their ends, so a rectangular photo sews as one continuous thread.
 The tone comes from the original upload (prepared colours would posterize it);
 the prepared picture only supplies the subject mask and any painted edits.
+
+Several colours: a few threads are picked from the photo; each pixel is a mix of
+its two nearest threads, and each thread is sewn as its own rows, at its own
+angle, with the zigzag as wide as its share. Where rows of two threads cross,
+the colours mix. Open: light areas get no stitches, so the fabric shows, and
+zigzags stay narrow enough to leave fabric between the rows.
 """
 import json
 import math
@@ -41,6 +47,10 @@ STEP_MM = .45         # needle spacing along a zigzag
 RUN_MM = 2.0          # running stitch length in the highlights
 THIN_MM = .3          # narrower than this, a row is a plain running line
 LOCK_MM = .6
+COLOURS = (2, 6)      # threads in a multi-colour photo
+SHARE = .15           # a thread is sewn only where it makes at least this share of the colour
+OPEN_LIGHT = .18      # open photo stitch: lighter than this, the fabric shows
+OPEN_WIDTH = .6       # open: a zigzag fills at most this share of its row
 
 
 def tone(original, prepared_rgb, alpha, edited, invert=False):
@@ -137,6 +147,75 @@ def _lock(run, at_end):
     return []
 
 
+def threads(rgb, alpha, count, fabric=None):
+    """count thread colours picked from the photo, the one nearest the fabric first, and each one's
+    share (0..1) of every pixel: a pixel is a mix of its two nearest colours. With a fabric colour
+    (open photo stitch) the fabric is one of the colours, but never sewn."""
+    from skimage.color import lab2rgb, rgb2lab
+    lab = rgb2lab(rgb / 255.).astype(np.float32)
+    inside = lab[alpha]
+    paper = None if fabric is None else rgb2lab(np.array([[fabric]], float) / 255.)[0, 0].astype(np.float32)
+    if paper is not None:
+        # Do not spend a thread on the fabric's own colour.
+        far = np.linalg.norm(inside - paper, axis=1) > 12
+        inside = inside[far] if far.sum() >= count * 20 else inside
+    sample = np.ascontiguousarray(inside[::max(1, len(inside) // 20000)])
+    count = max(1, min(count, len(np.unique(np.round(sample), axis=0))))
+    cv2.setRNGSeed(0)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, .5)
+    _, _, centres = cv2.kmeans(sample, count, None, criteria, 3, cv2.KMEANS_PP_CENTERS)
+    reference = paper if paper is not None else np.array([100, 0, 0], np.float32)
+    centres = centres[np.argsort(np.linalg.norm(centres - reference, axis=1), kind='stable')]
+    palette = np.vstack([centres, paper[None]]) if paper is not None else centres
+    if len(palette) == 1:
+        share = np.ones(alpha.shape + (1,), np.float32)
+    else:
+        # Nearest two colours per pixel; the pixel's place on the line between them is the mix.
+        distance = np.linalg.norm(lab[:, :, None, :] - palette[None, None], axis=3)
+        near = np.argsort(distance, axis=2)[:, :, :2]
+        a, b = palette[near[..., 0]], palette[near[..., 1]]
+        span = b - a
+        t = np.clip(((lab - a) * span).sum(2) / np.maximum((span * span).sum(2), 1e-6), 0, 1)
+        share = np.zeros(alpha.shape + (len(palette),), np.float32)
+        ys, xs = np.indices(alpha.shape)
+        share[ys, xs, near[..., 0]] = 1 - t
+        share[ys, xs, near[..., 1]] += t
+    share[~alpha] = 0
+    hexes = ['#%02x%02x%02x' % tuple(int(round(v)) for v in np.clip(lab2rgb(c[None, None].astype(float))[0, 0] * 255, 0, 255))
+             for c in centres]
+    return hexes, [share[:, :, i] for i in range(len(centres))]
+
+
+def _sew(plan, runs, mask, scale, to_file, row_mm):
+    """One thread's runs: rows joined along the inside where they can, otherwise tied off and cut."""
+    previous = last_run = None
+    for run in runs:
+        joined = previous is not None and math.dist(previous, run[0]) <= max(3 * row_mm, 3.0) \
+            and _inside(mask, scale, previous, run[0])
+        if joined:
+            # Step down to the next row along the picture edge: one continuous thread.
+            gap = math.dist(previous, run[0]); parts = max(1, int(math.ceil(gap / 3.0)))
+            for k in range(1, parts + 1):
+                q = (previous[0] + (run[0][0] - previous[0]) * k / parts, previous[1] + (run[0][1] - previous[1]) * k / parts)
+                if math.dist(previous, q) >= MIN_STITCH_MM:
+                    plan.add_stitch_absolute(emb.STITCH, *to_file(q))
+        else:
+            if previous is not None:
+                for p in _lock(last_run, True):
+                    plan.add_stitch_absolute(emb.STITCH, *to_file(p))
+                plan.add_stitch_absolute(emb.TRIM, *to_file(previous))
+            plan.add_stitch_absolute(emb.JUMP, *to_file(run[0]))
+            for p in _lock(run, False)[1:]:
+                plan.add_stitch_absolute(emb.STITCH, *to_file(p))
+        for p in run[1:]:
+            plan.add_stitch_absolute(emb.STITCH, *to_file(p))
+        previous, last_run = run[-1], run
+    for p in _lock(last_run, True):
+        plan.add_stitch_absolute(emb.STITCH, *to_file(p))
+    plan.add_stitch_absolute(emb.TRIM, *to_file(previous))
+    return previous
+
+
 def generate(source, directory, height_mm, options, metadata=None):
     directory = Path(directory); directory.mkdir(parents=True, exist_ok=True)
     from PIL import Image
@@ -158,43 +237,45 @@ def generate(source, directory, height_mm, options, metadata=None):
             if edit.get('kind') != 'erase':
                 edited |= edit_brush(edit, w, h)
     invert = options.get('photo_light_thread') is True
-    thread = str(options.get('photo_thread', '#f2f2f2' if invert else '#1b1b1b')).lower()
+    several = options.get('photo_style') == 'multi_colour'
+    opened = options.get('photo_open') is True
     row_mm = float(min(2.0, max(.6, float(options.get('photo_row_mm', ROW_MM)))))
     angle = float(min(180, max(-180, float(options.get('photo_angle', 0)))))
-    dark = tone(original, prepared_rgb, alpha, edited, invert)
-    runs = rows(dark, alpha, scale, row_mm, angle)
-    if not runs:
-        raise ValueError('The photo is too small for one-colour lines; make it larger.')
-    plan = emb.EmbPattern(); plan.extras['name'] = 'Photo lines'; plan.add_thread(thread)
+    width_mm = row_mm * (OPEN_WIDTH if opened else .95)
+    blur = lambda field: cv2.GaussianBlur(field.astype(np.float32), (0, 0), max(.5, row_mm / 2 / scale))
+    layers = []
+    if several:
+        count = options.get('photo_colours', 4)
+        if type(count) is not int or not COLOURS[0] <= count <= COLOURS[1]:
+            raise ValueError(f'Choose {COLOURS[0]} to {COLOURS[1]} thread colours for the photo.')
+        rgb = np.where(edited[..., None], prepared_rgb, original).astype(np.float64)
+        fabric = ((20, 20, 20) if invert else (255, 255, 255)) if opened else None
+        colours, shares = threads(rgb, alpha, count, fabric)
+        for index, (thread, share) in enumerate(zip(colours, shares)):
+            mask = alpha & (blur(share) > SHARE)
+            # Each thread at its own angle, so crossing rows mix the colours.
+            runs = rows(share, mask, scale, row_mm, angle + index * 180 / len(colours), width_mm)
+            if runs:
+                layers.append((thread, runs, mask))
+    else:
+        thread = str(options.get('photo_thread', '#f2f2f2' if invert else '#1b1b1b')).lower()
+        dark = tone(original, prepared_rgb, alpha, edited, invert)
+        mask = alpha & (blur(dark) > OPEN_LIGHT) if opened else alpha
+        runs = rows(dark, mask, scale, row_mm, angle, width_mm)
+        if runs:
+            layers.append((thread, runs, mask))
+    if not layers:
+        raise ValueError('The photo is too small for photo lines; make it larger.')
+    plan = emb.EmbPattern(); plan.extras['name'] = 'Photo lines'
     to_file = lambda p: ((p[0] - w * scale / 2) * 10, (p[1] - h * scale / 2) * 10)
     previous = None
-    for run in runs:
-        joined = previous is not None and math.dist(previous, run[0]) <= max(3 * row_mm, 3.0) \
-            and _inside(alpha, scale, previous, run[0])
-        if joined:
-            # Step down to the next row along the picture edge: one continuous thread.
-            gap = math.dist(previous, run[0]); parts = max(1, int(math.ceil(gap / 3.0)))
-            for k in range(1, parts + 1):
-                q = (previous[0] + (run[0][0] - previous[0]) * k / parts, previous[1] + (run[0][1] - previous[1]) * k / parts)
-                if math.dist(previous, q) >= MIN_STITCH_MM:
-                    plan.add_stitch_absolute(emb.STITCH, *to_file(q))
-            body = run[1:]
-        else:
-            if previous is not None:
-                for p in _lock(last_run, True):
-                    plan.add_stitch_absolute(emb.STITCH, *to_file(p))
-                plan.add_stitch_absolute(emb.TRIM, *to_file(previous))
-            plan.add_stitch_absolute(emb.JUMP, *to_file(run[0]))
-            for p in _lock(run, False)[1:]:
-                plan.add_stitch_absolute(emb.STITCH, *to_file(p))
-            body = run[1:]
-        for p in body:
-            plan.add_stitch_absolute(emb.STITCH, *to_file(p))
-        previous, last_run = run[-1], run
-    for p in _lock(last_run, True):
-        plan.add_stitch_absolute(emb.STITCH, *to_file(p))
-    plan.add_stitch_absolute(emb.TRIM, *to_file(previous))
+    for thread, runs, mask in layers:
+        if previous is not None:
+            plan.add_stitch_absolute(emb.COLOR_CHANGE, *to_file(previous))
+        plan.add_thread(thread)
+        previous = _sew(plan, runs, mask, scale, to_file, row_mm)
     plan.add_stitch_absolute(emb.END, *to_file(previous))
+    used = [thread for thread, _, _ in layers]
     # Stitches are rounded to the 0.1 mm grid when written: drop any that collapse below the minimum.
     tidy, prior = [], None
     for x, y, flag in plan.stitches:
@@ -213,12 +294,19 @@ def generate(source, directory, height_mm, options, metadata=None):
     written = emb.EmbPattern(str(directory / 'design.pes'))
     types = {emb.STITCH: 'stitch', emb.JUMP: 'jump', emb.TRIM: 'trim', emb.COLOR_CHANGE: 'color_change',
              emb.STOP: 'color_change', emb.END: 'end'}
-    steps = [dict(x=x / 10, y=y / 10, t=types.get(f & emb.COMMAND_MASK, 'unknown'), color=thread) for x, y, f in written.stitches]
-    payload = dict(steps=steps, colors=[thread], stitch_count=audits['pes']['stitch_count'],
+    steps, index = [], 0
+    for x, y, f in written.stitches:
+        kind = types.get(f & emb.COMMAND_MASK, 'unknown')
+        index += kind == 'color_change'
+        steps.append(dict(x=x / 10, y=y / 10, t=kind, color=used[min(index, len(used) - 1)]))
+    payload = dict(steps=steps, colors=used, stitch_count=audits['pes']['stitch_count'],
                    trim_count=sum(s['t'] == 'trim' for s in steps), origin_mm=[w * scale / 2, h * scale / 2],
-                   height_mm=height_mm, thread_width_mm=THREAD_WIDTH_MM, engine='One-colour photo lines',
-                   objects=len(runs), palette_format='PES v6 custom RGB', generation_mode='photo lines',
-                   photo_lines=dict(row_mm=row_mm, angle=angle, thread=thread, light_thread=invert))
+                   height_mm=height_mm, thread_width_mm=THREAD_WIDTH_MM,
+                   engine='Multi-colour photo stitch' if several else 'One-colour photo lines',
+                   objects=sum(len(runs) for _, runs, _ in layers), palette_format='PES v6 custom RGB',
+                   generation_mode='photo colours' if several else 'photo lines',
+                   photo_lines=dict(row_mm=row_mm, angle=angle, thread=used[0], threads=used, light_thread=invert,
+                                    open=opened))
     (directory / 'playback.json').write_text(json.dumps(payload))
     from .release_gate import record_context
     record_context(directory, alpha, scale, payload['origin_mm'])

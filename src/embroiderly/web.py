@@ -304,8 +304,20 @@ def create_app(workspace: Path | None = None) -> Flask:
         if not image or not image.filename:
             abort(400, "Choose an image to analyse")
         suffix = Path(image.filename).suffix.lower()
+        from .stitch_recognize import FORMATS, open_file
+        if suffix in FORMATS:
+            # A machine file: its stitches become pieces of a new design (stitch_recognize.py).
+            source = decisions / f"{uuid4().hex}{suffix}"
+            image.save(source)
+            try:
+                name = open_file(source, uploads, decisions)
+            except ValueError as error:
+                abort(400, str(error))
+            finally:
+                source.unlink(missing_ok=True)
+            return redirect(url_for("artwork_prepare", name=name))
         if suffix not in {".png", ".jpg", ".jpeg", ".bmp", ".webp", ".svg"}:
-            abort(400, "Supported image formats: PNG, JPG, BMP, WebP, SVG")
+            abort(400, "Supported formats: PNG, JPG, BMP, WebP, SVG, or a machine file (DST, PES, JEF, EXP, VP3, ...)")
         if suffix == ".svg":
             # Vector logos are rendered by our own geometry-only reader to a
             # transparent PNG; the original SVG is kept beside it for reference.

@@ -317,9 +317,9 @@ def digitize(source, directory, height_mm=100, colours=None):
             if settings.get('region_styles'):raise ValueError('Area stitch styles require colour artwork mode, not Portrait.')
             from .photo_stitch import generate
             return generate(source,directory,height_mm,settings)
-        if settings.get('photo_style')=='one_colour':
-            # One-colour photo lines (photo_lines.py).
-            if settings.get('border_style','off')!='off':raise ValueError('One-colour photo lines do not take a border.')
+        if settings.get('photo_style') in ('one_colour','multi_colour'):
+            # Photo lines in one or several colours, closed or open (photo_lines.py).
+            if settings.get('border_style','off')!='off':raise ValueError('Photo lines do not take a border.')
             from .photo_lines import generate as photo_lines
             return photo_lines(source,directory,height_mm,settings,metadata)
     directory.mkdir(parents=True,exist_ok=True)
