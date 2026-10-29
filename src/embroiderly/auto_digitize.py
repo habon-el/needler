@@ -365,6 +365,7 @@ class AutoDigitizer:
             checked_bytes(self.root / 'work' / 'inkstitch-preview' / Path(result['prepared']).stem, 'dst')
         except ReleaseError as error:
             result['gate'] = str(error)
+            result['gate_detail'] = getattr(error, 'explanation', None)
         return result, options
 
     def _paint_specks(self, path, boxes, limit=200):
@@ -509,7 +510,9 @@ class AutoDigitizer:
                              stitches=best.get('stitches'), trims=best.get('trims'), colours=best.get('colours'),
                              width_mm=best.get('width_mm'), height_mm=best.get('height_mm'),
                              problem=best.get('error') or best.get('gate'),
-                             issues=[i['text'] for i in assess(best)])
+                             problem_detail=(best.get('gate_detail') or {}).get('text'),
+                             # The error or file check is already the problem above.
+                             issues=[i['text'] for i in assess(best) if i['kind'] not in ('error', 'gate')])
         if best.get('options', {}).get('puff') and not best.get('puff') and not best.get('error'):
             job['result']['issues'].append('3D puff was asked for, but no part is wide enough to hold the foam (3–6 mm, or 2–6 mm with 2 mm foam) at this size, so it is sewn flat. '
                                            'Try another size, 2 mm foam, or puff bold lettering instead.')
@@ -524,6 +527,13 @@ class AutoDigitizer:
                                  plan=list(best.get('plan') or [])[:8])
         if job.get('claude_usd') is not None:
             job['result']['claude_usd'] = job['claude_usd']
+        if job.get('claude_usd') is not None:
+            # What this run taught, for Claude's next picture (lessons.py). Losing it never fails the run.
+            from . import lessons
+            try:
+                lessons.record(self.decisions, best.get('kind', kind), job.get('request'), attempts)
+            except OSError:
+                pass
         job['state'] = 'done' if ok else 'needs_review'
         self._log(job, 'Done. Review it in 3D, then approve and download.' if ok else
                   'Finished with a problem it could not fix automatically. See the note below.')

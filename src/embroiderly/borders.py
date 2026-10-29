@@ -3,7 +3,7 @@ from .knowledge_messages import message as knowledge_message
 import math
 import cv2
 import numpy as np
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, box
 import xml.etree.ElementTree as ET
 from .stitch_paths import MOTIFS, PATTERNS
 
@@ -46,6 +46,14 @@ def border_plan(mask,height_mm,options):
         if kind=='satin':polygon=polygon.simplify(width*.15/scale,preserve_topology=True)
         line=polygon.buffer(offset,join_style='mitre') if offset else polygon
         if line.is_empty or line.geom_type!='Polygon':raise ValueError('Border does not fit this outline. Reduce its width or choose centered placement.')
+        # Past the picture's edge there is nothing to check a stitch against (the whole
+        # picture stitched puts the outline on that edge): move the band inside it.
+        reach=(band_mm(kind,width)/2 if kind!='running' else .3)/scale+1
+        inside=box(reach,reach,mask.shape[1]-1-reach,mask.shape[0]-1-reach)
+        if not inside.contains(line):
+            line=line.intersection(inside)
+            if line.is_empty or line.geom_type!='Polygon':raise ValueError('Border does not fit inside the picture. Reduce its width or turn it off.')
+            warnings.append('Border moved inside the picture\'s edge, so every stitch stays on the design.')
         coords=[[float(x),float(y)] for x,y in line.exterior.coords]
         if kind=='satin':satin_rails(coords,width/(2*scale))
         paths.append(coords)

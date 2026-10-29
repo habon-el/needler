@@ -39,6 +39,8 @@ photo) and what matters in it.
 machine-file checks; you get the numbers back plus a drawing of the stitches. Look at that drawing \
 critically: missing parts, lost detail, blobs, too many colours, broken lines, wrong size.
 - Change only what the result tells you to change, then try again. You have at most {attempts} attempts.
+- A failed file check comes with file_check_detail: the failures grouped by thread and by whether they are on the picture's edge or inside it, with a hint. Fix the group it names; changing anything else does not help. If the same failure comes back unchanged, you will be told to stop: call finish and explain it to the person.
+- lessons_from_earlier_runs, when present, are what earlier designs on this computer taught: the problem, the settings that failed and what fixed it (fixed_by). Do not repeat a setting that failed for the same reason.
 - Keep the current size when the person gave none: change it only if the design cannot sew at that size, \nand then say why in the summary. Bigger designs mean more stitches, cuts and machine time.
 - Sizes in the person's request refer to the sewn design itself. The tool reports the sewn size; \
 height_mm sets the canvas, which may include empty margins, so rescale from the measured result.
@@ -557,9 +559,13 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                      'sew_order', 'density', 'outlines', 'outline_colour', 'applique_partial', 'applique_combine',
                      'applique_join')}, selection_meaning='full: whole picture is stitched; anything else: only the '
                      'saved subject cut-out is stitched and the background is left as bare fabric')
+    from . import lessons
+    earlier = lessons.for_claude(Path(path).parent.parent / 'decisions')
+    if earlier:
+        brief['lessons_from_earlier_runs'] = earlier
     messages = [dict(role='user', content=[picture, dict(type='text', text=
         'Here is the picture to digitize and what Needler measured:\n' + json.dumps(brief, indent=1))])]
-    attempts, finish, plan = [], None, []
+    attempts, finish, plan, stuck = [], None, [], None
     while finish is None:
         problem = spend.room()
         if problem:
@@ -598,7 +604,17 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                 plan = plan_lines(data['plan'])
                 for line in plan:
                     log('Plan: ' + line)
-            options = settings_from(data, options, size, pixels, root)
+            if stuck:
+                results.append(dict(type='tool_result', tool_use_id=call.id, is_error=True, content=stuck))
+                continue
+            proposed = settings_from(data, options, size, pixels, root)
+            tried = next((a['number'] for a in attempts if a.get('options') == proposed), None)
+            if tried:
+                # Same settings, same stitches: not worth the time or an attempt.
+                results.append(dict(type='tool_result', tool_use_id=call.id, is_error=True,
+                                    content=f'These are exactly the settings of attempt {tried}; change something.'))
+                continue
+            options = proposed
             number = len(attempts) + 1
             log(f'Attempt {number}: making stitches…')
             result, options = attempt(options)
@@ -613,6 +629,17 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                 continue
             summary = {k: result.get(k) for k in ('stitches', 'trims', 'colours', 'width_mm', 'height_mm')}
             summary['per_colour'] = per_colour(result.get('playback') or {})
+            detail = result.get('gate_detail') or {}
+            if detail:
+                summary['file_check_detail'] = dict(text=detail.get('text'), groups=detail.get('groups'))
+                earlier = attempts[-2] if len(attempts) > 1 else {}
+                if detail.get('signature') == (earlier.get('gate_detail') or {}).get('signature'):
+                    # The change made no difference to the failure: more of the same costs money, not quality.
+                    stuck = ('The file check failed the same way twice, in the same threads and places, so another '
+                             'change of this kind will not fix it. Call finish now: keep the best attempt and tell the '
+                             'person what the failure is and what to try by hand.')
+                    summary['stop'] = stuck
+                    log(f'Attempt {number}: the same file-check failure came back unchanged; stopping here.')
             summary.update(attempt=number, file_check=result.get('gate') or 'passed',
                            puff_threads=[t + 1 for t in (result.get('puff') or {}).get('threads', [])],
                            attempts_left=MAX_ATTEMPTS - len(attempts))

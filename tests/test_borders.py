@@ -49,3 +49,26 @@ def test_line_inside_the_border_is_a_triple_stitch_ring_that_passes_the_gate(tmp
     assert checked_bytes(tmp_path/'work'/'inkstitch-preview'/Path(body['prepared_name']).stem,'dst')
     with pytest.raises(ValueError):
         border_plan(np.ones((50,50),bool),50,dict(border_style='satin',border_width=2,border_inner='wavy'))
+
+
+@pytest.mark.parametrize('placement', ['inside', 'center'])
+def test_satin_border_on_the_whole_picture_stays_on_the_canvas(tmp_path, placement):
+    # Whole picture stitched: the outline is the canvas edge itself. The satin band
+    # must sit inside the canvas, or every edge stitch fails the release gate as a
+    # "stitch across a removed area" (seen on a 56 x 100 mm portrait, Oct 2026).
+    from pathlib import Path
+    from PIL import Image
+    from embroiderly.web import create_app
+    from embroiderly.release_gate import checked_bytes
+    (tmp_path/'work/uploads').mkdir(parents=True)
+    # 768 px for 100 mm (0.13 mm a pixel), as in the original failure: a satin's last stitch
+    # landing 0.1 mm past its rail is then a whole pixel off the canvas.
+    rgb=np.zeros((768,431,3),np.uint8);rgb[:,:215]=[40,40,40];rgb[:,215:]=[96,112,112];rgb[300:470,100:330]=[160,176,168]
+    Image.fromarray(rgb).save(tmp_path/'work/uploads/p.png')
+    client=create_app(tmp_path).test_client()
+    options={'height_mm':100,'count':3,'smooth':0,'selection':'full','border_style':'satin','border_width':4,
+             'border_placement':placement,'border_inner':'triple'}
+    body=client.post('/artwork/p.png',json=dict(options=options,subject_confirmed=True,digitize=True)).get_json()
+    assert body.get('playback'),body.get('error')
+    assert checked_bytes(tmp_path/'work'/'inkstitch-preview'/Path(body['prepared_name']).stem,'dst')
+    assert any('inside the picture' in w for w in body['report']['border']['warnings'])

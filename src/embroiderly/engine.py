@@ -34,6 +34,18 @@ def grid_allowance(mask,scale):
     return cv2.dilate(mask.astype(np.uint8),kernel).astype(bool)
 
 
+
+def edge_pull(bands,pad,shape):
+    """(pixels, mask) for satin pull reaching past the picture's edge: the checked canvas
+    (shape, already padded by pad) grows by that many pixels and the mask is the pulled
+    band in the grown frame. (0, None) when no pulled area touches the edge."""
+    grow=max([g for band,g in bands if band[0].any() or band[-1].any() or band[:,0].any() or band[:,-1].any()],default=0)
+    if not grow:return 0,None
+    out=np.zeros((shape[0]+2*grow,shape[1]+2*grow),bool)
+    for band,g in bands:
+        out|=cv2.dilate(np.pad(band,pad+grow),np.ones((2*g+1,2*g+1),np.uint8)).astype(bool)
+    return grow,out
+
 def thickness_mm(rings,scale):
     """Widest point of an area (largest inscribed circle diameter) in mm."""
     x,y,w,h=cv2.boundingRect(np.vstack(rings))
@@ -418,6 +430,7 @@ def digitize(source, directory, height_mm=100, colours=None):
     here=np.zeros(2)  # where the last area ended (pixels); the design starts top left
     cut_pieces=[]     # appliqué outlines (pixel rings) for the fabric cutting file
     applique_parts=[] # (rings, node, colour pass) finished together after all parts (applique_layout.py)
+    pull_bands=[]     # (area, pixels) of satin pulled past its edge; the canvas grows where it reaches the edge
     passes=[]
     for colour in ([] if piece_layout else palette):
         key='#%02x%02x%02x'%tuple(colour)
@@ -522,7 +535,7 @@ def digitize(source, directory, height_mm=100, colours=None):
                 # Puff satin is pulled past the edge on purpose; that band is sewn, not empty.
                 band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
                 grow=max(1,int(math.ceil((float(puff_pull)+.05)/scale)))
-                release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
+                release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool);pull_bands.append((band,grow))
             if style is None and (stroke or thickness_mm(rings,scale)<=SMALL_SATIN_MM) or node.get('{http://inkstitch.org/namespace}fill_method')=='auto_satin' and style=='satin':
                 # Narrow or small shapes are satin, as a digitizer would do them:
                 # rows of fill turn ragged and gappy below a few millimetres.
@@ -533,7 +546,7 @@ def digitize(source, directory, height_mm=100, colours=None):
                     node.set('{http://inkstitch.org/namespace}pull_compensation_mm',str(satin_pull))
                     band=np.zeros_like(mask);cv2.drawContours(band,rings,-1,1,-1)
                     grow=max(1,int(math.ceil(satin_pull/scale)))
-                    release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
+                    release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool);pull_bands.append((band,grow))
             area['style']=style or ('satin' if node.get('{http://inkstitch.org/namespace}fill_method')=='auto_satin' else
                                     'tatami with satin tips' if limbs else 'tatami')
             if knockout:
@@ -545,7 +558,7 @@ def digitize(source, directory, height_mm=100, colours=None):
                 add_satin_area(document,limb,choice['thread'],objects,satin_spacing,satin_pull,knockout);objects+=1
                 band=np.zeros_like(mask);cv2.drawContours(band,limb,-1,1,-1)
                 grow=max(1,int(math.ceil(satin_pull/scale)))
-                release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool)
+                release_mask|=cv2.dilate(band,np.ones((2*grow+1,2*grow+1),np.uint8)).astype(bool);pull_bands.append((band,grow))
     if applique_parts:
         from .stitch_engine import applique_coverage
         for rings,bare in applique_finish(document,applique_parts,[m for *_,m in passes],scale,settings):
@@ -688,6 +701,13 @@ def digitize(source, directory, height_mm=100, colours=None):
     if extra_pad:
         gate=np.pad(gate,extra_pad)|extra_band
         origin=[float(o+extra_pad*scale) for o in origin]
+    # Satin pulled past its edge is sewn, not empty (release_mask above), but a mask the size
+    # of the picture cuts that band off where an area meets the picture's edge (the whole
+    # picture stitched): grow the checked canvas by the pull there, and nowhere else.
+    pull_pad,pull_band=edge_pull(pull_bands,extra_pad,gate.shape)
+    if pull_pad:
+        gate=np.pad(gate,pull_pad)|pull_band
+        origin=[float(o+pull_pad*scale) for o in origin]
 
     knockout_cuts=0
     if settings.get('colour_knockouts'):
@@ -695,6 +715,7 @@ def digitize(source, directory, height_mm=100, colours=None):
         # A border is requested stitching on the design's edge: its band is not a removed area.
         kept=alpha|coverage(border,alpha.shape) if border else alpha
         if extra_pad:kept=np.pad(kept,extra_pad)|extra_band
+        if pull_pad:kept=np.pad(kept,pull_pad)|pull_band
         knockout_cuts=protect(pattern,kept,scale,origin)
     if settings.get('colour_knockouts'):
         from tempfile import TemporaryDirectory

@@ -61,7 +61,7 @@ def read_context(directory):
 
 
 def check_pattern(pattern, alpha, scale, origin):
-    from .export_findings import inspect, summary
+    from .export_findings import inspect, summary, explain
     issues=inspect(pattern,alpha,scale,origin)
     if issues:
         first=issues[0];location=first['location']
@@ -69,6 +69,8 @@ def check_pattern(pattern, alpha, scale, origin):
                            None if location is None else [location['x_mm']*10,location['y_mm']*10],
                            None if location is None else location['command'])
         error.issues=issues
+        # Grouped by thread and edge/inside: what to change, not only where the first one is.
+        error.explanation=explain(issues,pattern,alpha.shape,scale,origin)
         raise error
 
 

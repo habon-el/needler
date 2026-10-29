@@ -1,4 +1,5 @@
 """Collect all machine-path violations without altering the audited commands."""
+import json
 import math
 from collections import Counter
 import pyembroidery as emb
@@ -51,3 +52,54 @@ def summary(issues):
             'invalid':'invalid coordinates','unsupported':'unsupported commands','empty':'empty files'}
     counts=Counter(i['code'] for i in issues)
     return ' · '.join(f'{count} {labels.get(code,code)}' for code,count in counts.items())
+
+
+EDGE_MM=1.0   # a finding this close to the picture's edge counts as "on the edge"
+
+
+def explain(issues, pattern, shape, scale, origin):
+    """The findings grouped by cause, for the person and for Claude: which thread, and
+    whether on the picture's edge or inside it. One coordinate says where the first bad
+    stitch is; the groups say what to change. signature is the same for the same failure
+    on the next attempt (auto_claude stops retrying one that comes back unchanged)."""
+    threads=[t.hex_color() for t in pattern.threadlist]
+    block=[];colour=0
+    for x,y,flags in pattern.stitches:
+        block.append(colour)
+        if flags&emb.COMMAND_MASK==emb.COLOR_CHANGE:colour+=1
+    # Picture frame in machine millimetres (inspect() maps mm to pixels as (mm+origin)/scale).
+    left,top=-origin[0],-origin[1]
+    right,bottom=(shape[1]-1)*scale-origin[0],(shape[0]-1)*scale-origin[1]
+    groups=Counter()
+    for issue in issues:
+        location=issue['location']
+        if issue['code'] not in ('crossing','travel') or location is None:
+            groups[(issue['code'],None,None)]+=1;continue
+        index=location['command']
+        # Both ends: a satin stitch failing at the edge often ends a few millimetres inside.
+        ends=[(location['x_mm'],location['y_mm'])]
+        if index:ends.append((pattern.stitches[index-1][0]/10,pattern.stitches[index-1][1]/10))
+        edge=min(min(x-left,right-x,y-top,bottom-y) for x,y in ends)<=EDGE_MM
+        thread=threads[block[index]] if index is not None and block[index]<len(threads) else None
+        groups[(issue['code'],thread,'edge' if edge else 'inside')]+=1
+    rows=[dict(code=c,thread=t,where=w,count=n) for (c,t,w),n in sorted(groups.items(),key=lambda g:-g[1])]
+    placed=[r for r in rows if r['where']]
+    on_edge=sum(r['count'] for r in placed if r['where']=='edge');inside=sum(r['count'] for r in placed if r['where']=='inside')
+    parts=[f"{r['count']} {r['code']} in thread {r['thread'] or '?'} {'on the picture edge' if r['where']=='edge' else 'inside the picture'}" for r in placed[:6]]
+    parts+=[f"{r['count']} {r['code']}" for r in rows if not r['where']]
+    if placed and not inside:
+        cause='edge'
+        hint=('All of them are on the picture\'s edge: stitches reach past the edge of the picture. '
+              'Colours, detail and density inside the picture will not change this; change what is sewn along '
+              'the edge (border, outline, the areas that touch the edge) or stitch the subject only.')
+    elif placed and not on_edge and len({r['thread'] for r in placed})==1:
+        cause='one_thread'
+        hint=f"All of them are in thread {placed[0]['thread']}, inside the picture: change how that colour is sewn."
+    elif placed:
+        cause='mixed'
+        hint='They are spread over several threads; look at the largest group first.'
+    else:
+        cause='other';hint=''
+    text=summary(issues)+': '+'; '.join(parts)+'.'+(' '+hint if hint else '')
+    signature=sorted((r['code'],r['thread'],r['where']) for r in rows)
+    return dict(groups=rows,cause=cause,text=text,signature=json.dumps(signature))

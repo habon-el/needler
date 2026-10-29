@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
    ...(r.plan?.length?[(()=>{const ul=node('ul',null,'auto-plan');ul.append(...r.plan.map(t=>node('li',t)));return ul})()]:[]),
    ...(r.tools_used?.length?[node('p','Tools used: '+r.tools_used.join(', '),'muted')]:[]),
    ...((r.check||[]).map(t=>node('p','Check: '+t,'auto-note'))),
-   ...(r.problem?[node('p',r.problem,'auto-problem')]:[]),
+   ...(r.problem?[node('p',r.problem_detail||r.problem,'auto-problem')]:[]),
    ...((r.issues||[]).map(t=>node('p',t,'auto-problem'))),
    node('p','Check it in 3D, then use Save and download. A sample sew-out is still needed.'+(r.claude_usd!=null?` Claude cost for this design: $${Number(r.claude_usd).toFixed(2)}.`:''),'muted'));
   if(r.stitches){const b=node('button','Show the result');b.type='button';b.className='primary';b.onclick=()=>{location.href=location.pathname+'?view=stitched&auto=1'};result.append(b)}

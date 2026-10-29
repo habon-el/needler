@@ -233,12 +233,46 @@ def test_scripted_claude_uses_the_new_controls_and_its_plan_reaches_the_person(t
 def test_scripted_claude_out_of_attempts_keeps_the_best_and_a_bad_finish_is_safe(tmp_path, monkeypatch):
     from embroiderly import auto_claude
     monkeypatch.setattr(auto_claude, 'MAX_ATTEMPTS', 2)
-    stitch = ('make_stitches', dict(note='Try.', mode='colour', colours=3, height_mm=40))
-    fake = _ScriptedClaude([stitch, stitch, stitch, ('finish', dict(attempt=9, summary='Kept one.'))])
+    stitch = [('make_stitches', dict(note='Try.', mode='colour', colours=n, height_mm=40)) for n in (3, 4, 5)]
+    fake = _ScriptedClaude([*stitch, ('finish', dict(attempt=9, summary='Kept one.'))])
     job = _run_claude(tmp_path, monkeypatch, fake)
     assert job['state'] == 'done' and job['result']['attempts'] == 2
     assert 'No attempts left' in fake.replies()[-1]
     assert job['result']['plan'] == [] and job['result']['tools_used'] == []
+
+
+def test_scripted_claude_same_settings_twice_are_refused_without_an_attempt(tmp_path, monkeypatch):
+    stitch = ('make_stitches', dict(note='Try.', mode='colour', colours=3, height_mm=40))
+    fake = _ScriptedClaude([stitch, stitch, ('finish', dict(attempt=1, summary='Kept one.'))])
+    job = _run_claude(tmp_path, monkeypatch, fake)
+    assert job['result']['attempts'] == 1
+    assert 'exactly the settings of attempt 1' in fake.replies()[-1]
+
+
+def test_scripted_claude_stops_when_the_file_check_fails_the_same_way_twice(tmp_path, monkeypatch):
+    from embroiderly import auto_digitize
+    real = auto_digitize.AutoDigitizer._attempt
+    detail = dict(text='5 crossing in thread #202020 on the picture edge.', cause='edge', groups=[], signature='["edge"]')
+    def failing(self, path, options, *a, **k):
+        result, options = real(self, path, options, *a, **k)
+        return {**result, 'gate': 'Export blocked: 5 stitches cross empty areas', 'gate_detail': detail}, options
+    monkeypatch.setattr(auto_digitize.AutoDigitizer, '_attempt', failing)
+    turns = [('make_stitches', dict(note='Try.', mode='colour', colours=n, height_mm=40)) for n in (3, 4, 5)]
+    fake = _ScriptedClaude([*turns, ('finish', dict(attempt=1, summary='Could not fix it.'))])
+    job = _run_claude(tmp_path, monkeypatch, fake)
+    replies = fake.replies()
+    assert replies[0]['file_check_detail']['text'] == detail['text'] and 'stop' not in replies[0]
+    assert 'same way twice' in replies[1]['stop'] and 'same way twice' in replies[2]
+    assert job['result']['attempts'] == 2 and job['result']['problem_detail'] == detail['text']
+    assert job['result']['issues'] == [] or all('Export blocked' not in i for i in job['result']['issues'])
+    # What the run taught is kept for the next picture, and handed to Claude with it.
+    from embroiderly import lessons
+    kept = lessons.load(tmp_path / 'work/decisions')
+    assert kept[-1]['cause'] == 'edge' and kept[-1]['fixed_by'] is None and kept[-1]['unchanged'] == 2
+    fake = _ScriptedClaude([('finish', dict(attempt=1, summary='Nothing.'))])
+    _run_claude(tmp_path, monkeypatch, fake)
+    first = fake.calls[0]['messages'][0]['content'][1]['text']
+    assert 'lessons_from_earlier_runs' in first and 'on the picture edge' in first
 
 
 def test_scripted_claude_refusal_and_spend_cap_fall_back_to_the_rules(tmp_path, monkeypatch):
