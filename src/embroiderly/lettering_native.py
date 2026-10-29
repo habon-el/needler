@@ -295,9 +295,14 @@ def register(app, root):
     @app.get('/lettering/native/thread')
     def thread_names():
         # Closest machine threads for the text colour (approximate; RGB charts are not measured thread).
-        from .thread_matching import rank_threads
+        # ?chart= limits the matches to one chart; empty means every chart.
+        from .thread_matching import rank_threads, CHARTS
+        chart = request.args.get('chart') or None
+        if chart is not None and chart not in CHARTS:
+            return problem(ValueError('Choose one of the listed thread charts.'), 400)
         try:
-            return jsonify(threads=rank_threads(request.args.get('hex', ''), limit=3))
+            return jsonify(threads=rank_threads(request.args.get('hex', ''), brands=[chart] if chart else None, limit=3),
+                           charts=list(CHARTS))
         except ValueError as error:
             return problem(error, 400)
 

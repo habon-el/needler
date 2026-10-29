@@ -50,3 +50,16 @@ def test_lettering_worksheet_page(tmp_path):
     assert result.get('id'), result
     html = client.get(f"/lettering/native/{result['id']}/worksheet").get_data(as_text=True)
     assert '<h1>Hello</h1>' in html and '#1e3a6e' in html
+
+
+def test_worksheet_threads_come_from_the_chosen_chart():
+    steps = [dict(t='stitch', x=0, y=0), dict(t='stitch', x=5, y=5), dict(t='color_change', x=5, y=5),
+             dict(t='stitch', x=0, y=0), dict(t='stitch', x=5, y=5)]
+    playback = dict(steps=steps, colors=['#0a55a3', '#ff0000'])
+    picked = summary(playback, chart='Pfaff PCM')
+    assert picked['chart'] == 'Pfaff PCM' and all(b['thread'].startswith('Pfaff PCM ') for b in picked['sequence'])
+    # An unknown chart falls back to the closest chart overall.
+    assert summary(playback, chart='Nope')['chart'] == summary(playback)['chart']
+    from embroiderly.worksheet import page
+    html = page(playback, 'Test', chart='Janome')
+    assert '<option selected>Janome</option>' in html and 'name="chart"' in html

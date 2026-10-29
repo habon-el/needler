@@ -239,7 +239,7 @@ def create_app(workspace: Path | None = None) -> Flask:
             chosen=find(root,options.get('hoop_id')) if isinstance(options.get('hoop_id'),str) else None
             policy=playback.get('generation_policy') or {}
             hoop=dict(name=f"{chosen['brand']} {chosen['name']}",field=options.get('piece_hoop_mm') or [chosen['width_mm'],chosen['height_mm']]) if chosen else None
-            return page(playback,'Embroidery design',fabric_info(policy.get('fabric_preset'),policy.get('fabric_custom')),hoop)
+            return page(playback,'Embroidery design',fabric_info(policy.get('fabric_preset'),policy.get('fabric_custom')),hoop,request.args.get('chart'))
         except ValueError as error:
             abort(422,str(error))
     @app.get('/applique-cut/<name>')

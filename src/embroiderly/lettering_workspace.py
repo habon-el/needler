@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 
 import pyembroidery as emb
-from flask import jsonify, render_template
+from flask import jsonify, render_template, request
 from .lettering_geometry import outline
 from .lettering_native import load
 from .machine_files import read_pattern
@@ -76,7 +76,8 @@ def register(app, root):
             return 'Saved lettering is unavailable. Open Text and rebuild your words.', 404
         recipe = data['result']['recipe']
         title = recipe['text'].splitlines()[0][:60] if recipe['text'].strip() else 'Lettering'
-        return page(data['playback'], title, fabric_info(recipe.get('fabric_preset', 'twill'), recipe.get('fabric_custom')))
+        return page(data['playback'], title, fabric_info(recipe.get('fabric_preset', 'twill'), recipe.get('fabric_custom')),
+                    chart=request.args.get('chart'))
 
     @app.get('/lettering/native/<key>/workspace-data')
     def data(key):

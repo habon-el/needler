@@ -4,6 +4,8 @@ Formula implementation: scikit-image, default kL=kC=kH=1.
 Reference: Sharma, Wu & Dalal (2005), doi:10.1002/col.20070.
 Built-in charts are the machine thread palettes shipped with pyembroidery
 (MIT). RGB catalogue values are not calibrated measurements of physical thread.
+pyembroidery ships six machine palettes and no thread-maker catalogues, so six
+charts is all there is without inventing colour data.
 """
 from functools import lru_cache
 from importlib import import_module
@@ -18,6 +20,7 @@ CHARTS={
     'Janome SEW':'pyembroidery.EmbThreadSew',
     'Husqvarna Viking':'pyembroidery.EmbThreadHus',
     'Pfaff':'pyembroidery.EmbThreadShv',
+    'Pfaff PCM':'pyembroidery.PcmReader',
 }
 
 def colour_distance(lab1,lab2):
@@ -27,11 +30,26 @@ def colour_distance(lab1,lab2):
 def chart(brand):
     """(rgb, name, code) entries of one built-in machine thread chart."""
     entries=[]
-    for thread in import_module(CHARTS[brand]).get_thread_set():
+    for thread in _thread_set(CHARTS[brand]):
         if thread is None:continue
         value=thread.color&0xFFFFFF
         entries.append(((value>>16&255,value>>8&255,value&255),thread.description or '',str(thread.catalog_number or '')))
     return tuple(entries)
+
+def _thread_set(module):
+    module=import_module(module)
+    if hasattr(module,'get_thread_set'):return module.get_thread_set()
+    # The PCM palette lives inside pyembroidery's reader: read a file that uses all 16 colours once.
+    from io import BytesIO
+    from pyembroidery import EmbPattern
+    pattern=EmbPattern()
+    module.read(BytesIO(bytes(2)+b''.join(n.to_bytes(2,'big') for n in (16,*range(16),0))),pattern)
+    for number,thread in enumerate(pattern.threadlist,1):thread.catalog_number=str(number)
+    return pattern.threadlist
+
+def charts():
+    """The built-in chart names, for a chart picker."""
+    return list(CHARTS)
 
 def palette_file(path):
     entries=[]

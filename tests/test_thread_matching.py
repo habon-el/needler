@@ -24,3 +24,25 @@ def test_builtin_machine_charts_need_no_installation():
     assert matches[0]["delta_e"]<2
     brother=rank_threads("#0a55a3",brands=["Brother"])
     assert brother[0]["brand"]=="Brother" and brother[0]["delta_e"]==0
+
+def test_pcm_palette_is_read_from_pyembroidery():
+    from embroiderly.thread_matching import CHARTS, chart
+    assert len(CHARTS) == 6
+    pcm = chart("Pfaff PCM")
+    assert len(pcm) == 16 and pcm[0] == ((0, 0, 0), "PCM Color 1", "1") and pcm[-1][0] == (255, 255, 255)
+    match = rank_threads("#808000", brands=["Pfaff PCM"], limit=1)[0]
+    assert match["brand"] == "Pfaff PCM" and match["code"] == "12" and match["delta_e"] == 0
+
+def test_every_chart_matches_on_its_own():
+    from embroiderly.thread_matching import charts
+    for name in charts():
+        matches = rank_threads("#c03030", brands=[name])
+        assert len(matches) == 3 and {m["brand"] for m in matches} == {name}
+    assert rank_threads("#c03030", brands=["Nothing"]) == []
+
+def test_text_page_thread_names_follow_the_chosen_chart(tmp_path):
+    from embroiderly.web import create_app
+    client = create_app(tmp_path).test_client()
+    body = client.get("/lettering/native/thread?hex=%23123456&chart=Janome").get_json()
+    assert {t["brand"] for t in body["threads"]} == {"Janome"} and "Pfaff PCM" in body["charts"]
+    assert client.get("/lettering/native/thread?hex=%23123456&chart=Nope").status_code == 400

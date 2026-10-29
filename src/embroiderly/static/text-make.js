@@ -240,20 +240,29 @@ document.addEventListener('DOMContentLoaded', () => {
  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();ask()}});
 });
 
-/* Thread names for the text colour: the closest machine threads, click one to use its colour. */
+/* Thread names for the text colour: the closest machine threads, click one to use its colour.
+   The chart menu limits them to one thread chart (remembered on this computer). */
 document.addEventListener('DOMContentLoaded', () => {
  'use strict';
  if(!window.nativeTextConfig)return;
  const colour=document.getElementById('letteringColour');if(!colour)return;
  const names=document.createElement('div');names.id='textThreads';names.setAttribute('aria-live','polite');
+ const picker=document.createElement('select');picker.id='textThreadChart';picker.title='Thread chart';picker.setAttribute('aria-label','Thread chart');
+ let saved='';try{saved=localStorage.getItem('needler.threadChart')||''}catch{}
+ picker.onchange=()=>{try{localStorage.setItem('needler.threadChart',picker.value)}catch{};show()};
  (colour.closest('label')||colour).after(names);
  let asked=0;
  async function show(){
   const ask=++asked;
   try{
-   const response=await fetch('/lettering/native/thread?hex='+encodeURIComponent(colour.value));
+   const chart=picker.options.length?picker.value:saved;
+   const response=await fetch('/lettering/native/thread?hex='+encodeURIComponent(colour.value)+(chart?'&chart='+encodeURIComponent(chart):''));
    const data=await response.json();if(ask!==asked||!response.ok)return;
-   names.replaceChildren(...data.threads.map(t=>{
+   if(!picker.options.length){
+    picker.append(new Option('All charts',''),...data.charts.map(c=>new Option(c,c)));
+    picker.value=data.charts.includes(saved)?saved:'';
+   }
+   names.replaceChildren(picker,...data.threads.map(t=>{
     const b=document.createElement('button');b.type='button';b.className='text-thread';
     b.title=`${t.brand} ${t.code} · ${t.name} · approximate match (ΔE ${t.delta_e})`;
     const chip=document.createElement('span');chip.style.background=t.hex;

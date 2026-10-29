@@ -42,7 +42,8 @@ def hoop_for(width, height):
     return None
 
 
-def summary(playback, fabric=None):
+def summary(playback, fabric=None, chart=None):
+    """chart: the thread chart to name threads from; None picks the closest overall."""
     steps, colours = playback.get('steps', []), playback.get('colors', [])
     sewn = [s for s in steps if s['t'] == 'stitch']
     if not sewn:
@@ -59,10 +60,11 @@ def summary(playback, fabric=None):
     distinct = sorted({b['colour'] for b in sequence})
     def total(brand):
         return sum(rank_threads(c, brands=[brand], limit=1)[0]['delta_e'] for c in distinct)
-    try:
-        chart = min(CHARTS, key=total)
-    except (ValueError, IndexError):
-        chart = None
+    if chart not in CHARTS:
+        try:
+            chart = min(CHARTS, key=total)
+        except (ValueError, IndexError):
+            chart = None
     for number, block in enumerate(sequence):
         try:
             match = rank_threads(block['colour'], brands=[chart] if chart else None, limit=1)
@@ -88,7 +90,7 @@ def summary(playback, fabric=None):
                 backing=fabric.get('backing') or policy.get('backing') or '',
                 topping=fabric.get('topping') or policy.get('topping') or '',
                 stabilizer=fabric.get('stabilizer') or policy.get('stabilizer') or '',
-                start=(sewn[0]['x'], sewn[0]['y']))
+                start=(sewn[0]['x'], sewn[0]['y']), chart=chart)
 
 
 def picture(steps, info):
@@ -119,9 +121,14 @@ def picture(steps, info):
             f'viewBox="{left:.1f} {top:.1f} {width:.1f} {height:.1f}">{lines}{marks}</svg>')
 
 
-def page(playback, title, fabric=None, hoop=None):
-    """hoop: the hoop chosen for the design, {name, field: [width, height] mm as placed}."""
-    info = summary(playback, fabric)
+def page(playback, title, fabric=None, hoop=None, chart=None):
+    """hoop: the hoop chosen for the design, {name, field: [width, height] mm as placed};
+    chart: the thread chart picked on the page (None: the closest overall)."""
+    from .thread_matching import CHARTS
+    info = summary(playback, fabric, chart)
+    options = ''.join(f'<option{" selected" if c == info["chart"] else ""}>{escape(c)}</option>' for c in CHARTS)
+    picker = (f'<form class="chart" method="get"><label>Thread chart <select name="chart" onchange="this.form.submit()">'
+              f'{options}</select></label></form>')
     rows = ''.join(
         f'<tr><td>{n}</td><td><span class="chip" style="background:{escape(b["colour"])}"></span>{escape(b["colour"])}</td>'
         f'<td>{escape(b["thread"]) or "—"}</td><td class="num">{b["stitches"]:,}</td><td class="num">{b["trims"]}</td>'
@@ -157,13 +164,15 @@ th{{font-size:11px;text-transform:uppercase;color:#666}} .num{{text-align:right;
 .tick{{width:28px;border-left:1px solid #ccc}} .design{{overflow:auto;border:1px solid #ddd;padding:8px;background:#fafaf7}}
 .legend{{font-size:12px;color:#555}} .muted{{color:#666;font-size:12px}}
 button{{font:inherit;padding:8px 16px;border:1px solid #1c1c1c;background:#1c1c1c;color:#fff;border-radius:6px;cursor:pointer}}
-@media print{{body{{padding:0}} button{{display:none}} .design{{border:0;overflow:visible;background:none}} h2{{break-after:avoid}} tr{{break-inside:avoid}}}}
+.chart{{margin:0 0 8px}} .chart select{{font:inherit;padding:4px 6px}}
+@media print{{body{{padding:0}} button,.chart{{display:none}} .design{{border:0;overflow:visible;background:none}} h2{{break-after:avoid}} tr{{break-inside:avoid}}}}
 @page{{margin:12mm}}
 </style></head><body>
 <header><h1>{escape(title)}</h1><span class="muted">Needler worksheet · {date.today().isoformat()}</span>
 <button type="button" onclick="window.print()">Print or save as PDF</button></header>
 <dl>{fact_html}</dl>
 <h2>Sewing sequence</h2>
+{picker}
 <table><thead><tr><th>#</th><th>Colour</th><th>Closest machine thread</th><th class="num">Stitches</th><th class="num">Cuts</th><th>Notes</th><th>✓</th></tr></thead>
 <tbody>{rows}</tbody></table>
 <p class="muted">Thread names are the closest catalogue colours (approximate); match them to your own threads.</p>
