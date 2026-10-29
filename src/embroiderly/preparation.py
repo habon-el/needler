@@ -169,7 +169,11 @@ def clean_selection(mask,image,options,pixel_area_override=None):
     if smooth:
         mask=cv2.medianBlur(mask.astype(np.uint8),smooth*2+1)>0
     smooth_pixels=int(np.sum(mask!=before_smooth))
-    # Explicit correction strokes win over automatic cleanup.
+    alpha=np.asarray(image.getchannel("A"))>127
+    mask &= alpha
+    from .cleanup_review import review_changes
+    mask,cleanup_review=review_changes(original,mask,options,math.sqrt(pixel_area),'selection cleanup')
+    # Explicit correction strokes win over automatic cleanup, so they are applied after its review.
     if options.get("hints"):
         if len(options["hints"])>500: raise ValueError("Too many selection strokes.")
         for hint in options.get("hints",[]):
@@ -179,9 +183,7 @@ def clean_selection(mask,image,options,pixel_area_override=None):
             cv2.polylines(brush,[np.array(pts,np.int32)],False,1,radius*2)
             for p in (pts[0],pts[-1]): cv2.circle(brush,p,radius,1,-1)
             mask[brush>0]=hint.get("kind")=="keep"
-    mask &= np.asarray(image.getchannel("A"))>127
-    from .cleanup_review import review_changes
-    mask,cleanup_review=review_changes(original,mask,options,math.sqrt(pixel_area),'selection cleanup')
+        mask &= alpha
     n,cc,stats,_=cv2.connectedComponentsWithStats(mask.astype(np.uint8),8)
     report=dict(mask_cleanup_review=cleanup_review,mask_regions_before=before,mask_regions_after=n-1,
         mask_specks_removed=removed,mask_holes_filled=filled,
