@@ -46,3 +46,16 @@ def test_text_page_thread_names_follow_the_chosen_chart(tmp_path):
     body = client.get("/lettering/native/thread?hex=%23123456&chart=Janome").get_json()
     assert {t["brand"] for t in body["threads"]} == {"Janome"} and "Pfaff PCM" in body["charts"]
     assert client.get("/lettering/native/thread?hex=%23123456&chart=Nope").status_code == 400
+
+
+def test_studio_colours_panel_has_the_same_remembered_chart_menu():
+    from pathlib import Path
+    static = Path(__file__).resolve().parents[1] / "src/embroiderly/static"
+    studio = (static / "preparation.js").read_text(encoding="utf-8")
+    text = (static / "text-make.js").read_text(encoding="utf-8")
+    # One remembered setting, shared by the Text page and the studio's Compare thread suggestions.
+    assert "localStorage.getItem('needler.threadChart')" in text
+    compare = studio[studio.index("'Compare thread suggestions'"):]
+    compare = compare[:compare.index("choices.append(note)")]
+    assert "localStorage.getItem('needler.threadChart')" in compare and "localStorage.setItem('needler.threadChart'" in compare
+    assert "/lettering/native/thread?hex=" in compare and "'&chart='" in compare and "new Option('All charts','')" in compare

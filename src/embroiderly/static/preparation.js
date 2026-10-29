@@ -281,7 +281,16 @@ function renderPalette(palette){
   label.append(lock,' Preserve colour');el.append(input,text,label);if(p.match){
    const match=document.createElement('p');match.className='muted';match.textContent='Nearest '+p.match.brand+' '+p.match.code+' · '+p.match.name+' (ΔE00 '+p.match.delta_e+')';el.append(match);
    const choices=document.createElement('details');choices.style.gridColumn='1 / -1';const title=document.createElement('summary');title.textContent='Compare thread suggestions';choices.append(title);
-   for(const candidate of p.match.alternatives||[]){const row=document.createElement('p'),swatch=document.createElement('span');swatch.style.cssText='display:inline-block;width:16px;height:16px;margin-right:6px;border:1px solid #888;vertical-align:middle';swatch.style.background=candidate.hex;row.append(swatch,candidate.code+' · '+candidate.name+' · '+candidate.hex+' · ΔE00 '+candidate.delta_e);choices.append(row)}
+   // The chart menu limits the suggestions to one thread chart; remembered on this computer, shared with the Text page.
+   const rows=document.createElement('div'),picker=document.createElement('select');picker.title='Thread chart';picker.setAttribute('aria-label','Thread chart');
+   const listed=list=>rows.replaceChildren(...list.map(candidate=>{const row=document.createElement('p'),swatch=document.createElement('span');swatch.style.cssText='display:inline-block;width:16px;height:16px;margin-right:6px;border:1px solid #888;vertical-align:middle';swatch.style.background=candidate.hex;row.append(swatch,candidate.brand+' '+candidate.code+' · '+candidate.name+' · '+candidate.hex+' · ΔE00 '+candidate.delta_e);return row}));
+   const suggest=async()=>{let chart='';try{chart=picker.options.length?picker.value:localStorage.getItem('needler.threadChart')||''}catch{}
+    try{const response=await fetch('/lettering/native/thread?hex='+encodeURIComponent(p.hex)+(chart?'&chart='+encodeURIComponent(chart):''));const data=await response.json();if(!response.ok)return;
+     if(!picker.options.length){picker.append(new Option('All charts',''),...data.charts.map(c=>new Option(c,c)));picker.value=data.charts.includes(chart)?chart:''}
+     listed(data.threads)}catch{}};
+   picker.onchange=()=>{try{localStorage.setItem('needler.threadChart',picker.value)}catch{};suggest()};
+   choices.ontoggle=()=>{if(choices.open)suggest()};
+   listed(p.match.alternatives||[]);choices.append(picker,rows);
    const note=document.createElement('p');note.textContent='CIEDE2000 compares catalogue RGB values. Lower is closer digitally; check a physical thread chart. Suggestions do not change your artwork.';choices.append(note);el.append(choices)}
   el.ondragstart=e=>e.dataTransfer.setData('text/plain',p.hex);el.ondragover=e=>e.preventDefault();
   el.ondrop=e=>{e.preventDefault();const from=e.dataTransfer.getData('text/plain');if(!palette.some(c=>c.hex===from)||from===p.hex)return;if(options.locks.includes(from)){status('Turn off Preserve colour for the source before merging.');return}remember();options.merges[from]=p.hex;options.interactions++;schedule()};
