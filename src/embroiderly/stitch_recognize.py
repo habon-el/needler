@@ -192,7 +192,7 @@ def picture(found):
 
 
 def open_file(path, uploads, decisions):
-    """Read a machine file into a new design: the silhouette as its picture (hidden), and every
+    """Read a machine file into a new design: the silhouette as its picture (its areas cut), and every
     recognized part as a drawn piece with its colour, style and stitch direction, sewn in the
     file's order. Returns the new picture's name."""
     from PIL import Image
@@ -210,8 +210,9 @@ def open_file(path, uploads, decisions):
         _, _, report = prepare(target, options, Path(decisions) / (name + '.masks'))
         stored = options['piece_edits'] = {}
         for p in report['piece_layout']['pieces']:
-            # The picture is only the file's silhouette: the recognized pieces are sewn instead.
-            stored[p['id']] = dict(visible=False, name='File outline')
+            # The picture is only the file's silhouette: its areas are replaced by the recognized
+            # pieces (cut, like a knife cut), so they are neither listed nor sewn.
+            stored[p['id']] = dict(cut=True)
         styles, angles, order = {}, {}, []
         for n, p in enumerate(found, 1):
             rings = [[[round(x, 2), round(y, 2)] for x, y in ((np.asarray(r) - low) / scale).tolist()] for r in p['rings']]

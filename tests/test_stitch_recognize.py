@@ -86,7 +86,9 @@ def test_the_pieces_open_as_a_design_that_edits_and_sews(tmp_path):
     r = client.post('/artwork/' + name, json=dict(options=options)).get_json()
     assert not r.get('error'), r.get('error')
     pieces_ = r['report']['piece_layout']['pieces']
-    shown = sorted((p for p in pieces_ if p['visible']), key=lambda p: int(p['name'].split()[-1]))
+    # Only the recognized parts are pieces: the silhouette picture's own areas are not listed (or sewn).
+    assert all(p['visible'] for p in pieces_) and not any(p['name'] == 'File outline' for p in pieces_)
+    shown = sorted(pieces_, key=lambda p: int(p['name'].split()[-1]))
     assert [p['name'] for p in shown] == ['Fill 1', 'Satin 2', 'Line 3']
     assert [p['style'] for p in shown] == ['tatami', 'satin', 'line'] and [p['colour'] for p in shown] == [RED, BLUE, GREEN]
     assert all(p['audit']['level'] != 'red' for p in shown)
