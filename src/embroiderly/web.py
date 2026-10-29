@@ -296,7 +296,8 @@ def create_app(workspace: Path | None = None) -> Flask:
 
     @app.get("/designs")
     def design_library_page():
-        return render_template("library.html", files=app.extensions['design_library'].list('recent'))
+        from .release_gate import FORMATS
+        return render_template("library.html", files=app.extensions['design_library'].list('recent'), formats=FORMATS)
 
     @app.post("/upload")
     def upload():

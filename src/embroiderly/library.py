@@ -2,6 +2,8 @@
 
 Soft deletion changes metadata only. Permanent cleanup is deliberately separate
 because older generated caches can be shared by multiple originals.
+Batch convert: the saved stitches of several designs, each converted to one machine
+format and read back through the release gate (converted_bytes), as one zip.
 """
 from __future__ import annotations
 
@@ -19,6 +21,9 @@ from PIL import Image, ImageOps
 
 class LibraryConflict(ValueError):
     pass
+
+
+MAX_CONVERT = 100   # designs in one batch-convert zip
 
 
 class DesignLibrary:
@@ -167,6 +172,38 @@ class DesignLibrary:
                 'status':'Ready' if plan else 'Not generated'}
 
 
+    def converted(self, ids, fmt):
+        """Batch convert: [(file name, bytes)] for the designs whose saved stitches pass the
+        release gate in this format, and [(design name, reason)] for those left out."""
+        from .release_gate import FORMATS, ReleaseError, converted_bytes
+        from .saved_plans import matching_folder
+        from .team_names import file_names
+        if fmt not in FORMATS:
+            raise ValueError('Choose a supported machine format.')
+        if not isinstance(ids, list) or not 1 <= len(ids) <= MAX_CONVERT or any(not isinstance(i, str) for i in ids) \
+                or len(set(ids)) != len(ids):
+            raise ValueError(f'Select between 1 and {MAX_CONVERT} designs.')
+        rows = [self.get(i) for i in ids]
+        if any(row['deleted_at'] is not None for row in rows):
+            raise LibraryConflict('A selected design is in Trash. Restore it first.')
+        files, skipped = [], []
+        for row, filename in zip(rows, file_names([row['name'] for row in rows])):
+            path = self.uploads / row['source']
+            try:
+                options_path = self.decisions / (path.name + '.preparation.json')
+                options = json.loads(options_path.read_text()) if options_path.exists() else {}
+                folder = matching_folder(self.root, path, options)
+                if folder is None:
+                    skipped.append((row['name'], 'no saved stitches; open it and make the stitches first'))
+                    continue
+                files.append((f'{filename}.{fmt}', converted_bytes(folder, fmt)))
+            except ReleaseError as error:
+                skipped.append((row['name'], str(error)))
+            except (OSError, ValueError, TypeError):
+                skipped.append((row['name'], 'its saved files could not be read'))
+        return files, skipped
+
+
 def register_library(app, root):
     from flask import abort, jsonify, request, send_file, render_template
     library = DesignLibrary(root, app.extensions['settings_service'])
@@ -237,6 +274,36 @@ def register_library(app, root):
             response.headers['Cache-Control'] = 'no-store'
             return response
         except (OSError,ValueError): return jsonify(error='Preview did not load.'),422
+
+    @app.post('/api/library/convert')
+    def library_convert():
+        # Batch convert: every selected design that has checked stitches, in one format, as a zip.
+        import zipfile
+        origin = request.headers.get('Origin')
+        if origin and origin.rstrip('/') != request.host_url.rstrip('/'):
+            return jsonify(error='Use the library on this app.'),403
+        data = request.get_json(silent=True)
+        if not isinstance(data,dict): return jsonify(error='Choose designs and a machine format.'),400
+        try:
+            files, skipped = library.converted(data.get('ids'), data.get('format'))
+        except LibraryConflict as error: return jsonify(error=str(error)),409
+        except KeyError: return jsonify(error='Design not found. Reload the library.'),404
+        except ValueError as error: return jsonify(error=str(error)),400
+        if not files:
+            return jsonify(error='None of these designs could be converted: '+
+                           '; '.join(f'{name}: {reason}' for name, reason in skipped)),422
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer,'w',zipfile.ZIP_DEFLATED) as archive:
+            for name, payload in files:
+                archive.writestr(name,payload)
+            if skipped:
+                archive.writestr('not-included.txt',''.join(f'{name}: {reason}\n' for name, reason in skipped))
+        fmt = data['format']
+        response = send_file(io.BytesIO(buffer.getvalue()),mimetype='application/zip',as_attachment=True,
+                             download_name=f'designs-{fmt}.zip')
+        response.headers['X-Converted'] = str(len(files))
+        response.headers['X-Skipped'] = str(len(skipped))
+        return response
 
     @app.post('/api/library/action')
     def library_action():

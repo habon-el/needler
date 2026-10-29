@@ -34,6 +34,7 @@
     document.querySelector('[data-bulk=restore]').hidden=view!=='trash';
     document.querySelector('[data-bulk=delete]').hidden=view==='trash';
     document.querySelector('[data-bulk=remove_recent]').hidden=view==='trash'||view==='templates';
+    $('convertDesigns').hidden=view==='trash';
     document.querySelectorAll('.design-card').forEach(card=>{
       card.dataset.selected=String(selected.has(card.dataset.id));
       card.querySelector('input[type=checkbox]').checked=selected.has(card.dataset.id);
@@ -192,6 +193,22 @@
   document.querySelectorAll('[data-library-view]').forEach(b=>b.onclick=()=>{if(busy)return;view=b.dataset.libraryView;$('librarySearch').value='';selected.clear();persist();load();});
   document.querySelectorAll('[data-bulk]').forEach(b=>b.onclick=()=>act(b.dataset.bulk,rows.filter(row=>selected.has(row.id))));
   $('cancelSelection').onclick=()=>{selected.clear();updateSelection();};
+  // Batch convert: the selected designs' checked stitches in one machine format, as a zip.
+  $('convertZip').onclick=async()=>{
+    if(busy)return;
+    const fmt=$('convertFormat').value,ids=rows.filter(row=>selected.has(row.id)).map(row=>row.id);
+    busyState(true);$('libraryStatus').textContent=`Converting ${ids.length} ${ids.length===1?'design':'designs'}…`;
+    try{
+      const response=await fetch('/api/library/convert',{method:'POST',cache:'no-store',signal:AbortSignal.timeout(300000),
+        headers:{'Content-Type':'application/json'},body:JSON.stringify({ids,format:fmt})});
+      if(!response.ok){const data=await response.json().catch(()=>({}));throw Error(data.error||'The zip could not be made. Try again.');}
+      const link=document.createElement('a');link.href=URL.createObjectURL(await response.blob());link.download=`designs-${fmt}.zip`;
+      document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(link.href),1000);
+      const made=Number(response.headers.get('X-Converted')),left=Number(response.headers.get('X-Skipped'));
+      $('libraryStatus').textContent=`${made} ${fmt.toUpperCase()} ${made===1?'file':'files'} downloaded.`+(left?` ${left} left out (see not-included.txt in the zip).`:'')+' Sew a sample first.';
+    }catch(error){failure(error);}
+    finally{busyState(false);}
+  };
   $('librarySort').onchange=()=>{persist();render();};
   $('librarySearch').oninput=event=>{if(event.isComposing)return;selected.clear();persist();render();};
   $('librarySearch').addEventListener('compositionend',()=>{persist();render();});

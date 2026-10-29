@@ -66,12 +66,23 @@ def _owner(path):
 
 
 def matching_plan(root, source, options):
+    name,payload=_matching(root,source,options)
+    return dict(playback=payload,simulation='/engine/'+name+'.png?view=1') if name else {}
+
+
+def matching_folder(root, source, options):
+    """The generated stitch folder (machine files) for these options, or None."""
+    name,_=_matching(root,source,options)
+    return Path(root)/'work'/'inkstitch-preview'/name if name else None
+
+
+def _matching(root, source, options):
     root,source=Path(root),Path(source)
     source_bytes=source.read_bytes()
     key=preparation_key(source_bytes,options)
     name='prepared_'+key
     exact=read_plan(root/'work'/'inkstitch-preview'/name/'playback.json')
-    if exact is not None:return dict(playback=exact,simulation='/engine/'+name+'.png?view=1')
+    if exact is not None:return name,exact
     candidates=[]
     # Older plans may have an earlier interaction counter or omitted defaults.
     for path in (root/'work'/'uploads').glob('prepared_*.prep.json'):
@@ -89,5 +100,5 @@ def matching_plan(root, source, options):
     for candidate in dict.fromkeys(candidates):
         payload=read_plan(root/'work'/'inkstitch-preview'/candidate/'playback.json')
         if payload is not None:
-            return dict(playback=payload,simulation='/engine/'+candidate+'.png?view=1')
-    return {}
+            return candidate,payload
+    return None,None

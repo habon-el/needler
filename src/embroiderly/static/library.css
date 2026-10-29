@@ -20,6 +20,7 @@ input,select { background:var(--ui-surface); color:var(--ui-ink); border:1px sol
 .library-tabs button[aria-pressed=true] { background:var(--ui-hover); color:var(--ui-primary); }
 .library-controls { min-height:76px; padding:16px 0; }
 .library-filters,.library-selection { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+#convertDesigns { display:inline-flex; align-items:center; gap:8px; } #convertDesigns[hidden] { display:none; }
 .library-filters > span { margin-right:auto; color:var(--ui-muted); }
 .library-filters label { display:flex; align-items:center; gap:8px; }
 #librarySearchWrap { display:flex; gap:8px; }
