@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const selected = new Set(), facts = new Map();
+  const selected = new Set(), facts = new Map(), cards = new Map();
   let rows = [], version = 0, busy = false, renameRow, renameTrigger, toastTimer, toastDeadline, toastRemaining;
   const initial = new URLSearchParams(location.search);
   let view = ['recent','all','templates','trash'].includes(initial.get('view')) ? initial.get('view') : 'recent';
@@ -65,7 +65,8 @@
     const retry=button('Rebuild preview',()=>{error.hidden=true;image.hidden=false;image.src=`/api/library/${encodeURIComponent(row.id)}/preview?rebuild=${Date.now()}`;});
     error.append(text('p','Preview did not load'),retry);
     image.onerror=()=>{image.hidden=true;error.hidden=false;};
-    image.src=`/api/library/${encodeURIComponent(row.id)}/preview`;
+    // The revision lets the browser keep the picture: re-rendering never downloads it again.
+    image.src=`/api/library/${encodeURIComponent(row.id)}/preview?v=${encodeURIComponent(row.revision)}`;
     imageBox.append(image,error);el.append(imageBox);
     const label=document.createElement('label');label.className='card-select';
     const check=document.createElement('input');check.type='checkbox';check.setAttribute('aria-label',`Select ${row.name}`);
@@ -103,7 +104,13 @@
       if(sort==='size')return ((facts.get(b.id)?.width_mm||0)*(facts.get(b.id)?.height_mm||0))-((facts.get(a.id)?.width_mm||0)*(facts.get(a.id)?.height_mm||0))||a.id.localeCompare(b.id);
       return (sort==='changed'?b.changed_at-a.changed_at:(b.opened_at||0)-(a.opened_at||0))||b.changed_at-a.changed_at;
     });
-    $('designGrid').replaceChildren(...filtered.map(card));
+    // Cards are kept between renders (search, sort, details arriving), so typing in the
+    // search never rebuilds every card and reloads every picture.
+    $('designGrid').replaceChildren(...filtered.map(row=>{
+      const key=JSON.stringify([view,row.id,row.revision,row.name,row.opened_at,row.template,row.days_remaining]);
+      if(!cards.has(key))cards.set(key,card(row));
+      const el=cards.get(key);updateCardFacts(row,el);return el;
+    }));
     if(!filtered.length)$('designGrid').append(text('p',query?'No designs match your search.':view==='trash'?'Trash is empty.':view==='templates'?'No templates yet. Open a design’s ⋯ menu and choose Save as template.':view==='recent'?'No recent designs. Open All designs or start with a new image.':'No saved designs yet. Start with a new image.'));
     $('libraryCount').textContent=`${filtered.length} of ${rows.length} ${view==='templates'?'templates':'designs'}`;
     $('librarySearchWrap').hidden=rows.length<=12 && !query;
@@ -118,6 +125,7 @@
     try {
       const data=await api('/api/library?view='+view);
       if(current!==version)return;
+      cards.clear();
       rows=data.designs.map(row=>({...row,name:row.name==='Untitled design'||/[a-f0-9]{20}/i.test(row.name)?'Image from '+new Date(row.changed_at*1000).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):row.name}));selected.clear();render();$('libraryStatus').textContent='';
       // Four readers, no digitization work; never start one request per card at once.
       const pending=rows.filter(row=>!facts.has(row.id));

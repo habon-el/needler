@@ -19,23 +19,46 @@ function label(text,view=false){
   .replace(/\bpalette\b/g,'thread set').replace(/\bPalette\b/g,'Thread set')
   .replace(/\bCut:\s/g,'Trim: ').replace(/\bdecoded cuts\b/g,'decoded trims');
 }
-if(typeof module!=='undefined')module.exports={label};
+// What changed: added nodes and edited text, never the whole page. Walking every text node
+// on each change froze the studio while playback updated its counter many times a second.
+function roots(records){
+ const out=new Set();
+ for(const record of records){
+  if(record.type==='characterData')out.add(record.target);
+  else for(const node of record.addedNodes||[])out.add(node);
+ }
+ return [...out];
+}
+if(typeof module!=='undefined')module.exports={label,roots};
 if(typeof document==='undefined')return;
 const visited=new WeakMap();
-function refresh(){
- const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
- for(let node=walker.nextNode();node;node=walker.nextNode()){
-  const parent=node.parentElement;if(!parent||parent.closest('script,style,textarea,code,pre'))continue;
-  if(visited.get(node)===node.nodeValue)continue;
-  const view=!!parent.closest('[data-view],#middleView');
-  node.nodeValue=label(node.nodeValue,view);visited.set(node,node.nodeValue);
- }
- for(const el of document.querySelectorAll('[aria-label],[title]')){
-  for(const attr of ['aria-label','title'])if(el.hasAttribute(attr)){
-   const old=el.getAttribute(attr),next=label(old);if(old!==next)el.setAttribute(attr,next);
-  }
+function text(node){
+ const parent=node.parentElement;if(!parent||parent.closest('script,style,textarea,code,pre'))return;
+ if(visited.get(node)===node.nodeValue)return;
+ const view=!!parent.closest('[data-view],#middleView');
+ const next=label(node.nodeValue,view);
+ if(next!==node.nodeValue)node.nodeValue=next;
+ visited.set(node,node.nodeValue);
+}
+function attributes(el){
+ for(const attr of ['aria-label','title'])if(el.hasAttribute(attr)){
+  const old=el.getAttribute(attr),next=label(old);if(old!==next)el.setAttribute(attr,next);
  }
 }
-function start(){refresh();let pending=false;new MutationObserver(()=>{if(pending)return;pending=true;queueMicrotask(()=>{refresh();pending=false})}).observe(document.body,{subtree:true,childList:true,characterData:true})}
+function refresh(root=document.body){
+ if(root.nodeType===3){text(root);return}
+ if(root.nodeType!==1)return;
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+ for(let node=walker.nextNode();node;node=walker.nextNode())text(node);
+ attributes(root);
+ for(const el of root.querySelectorAll('[aria-label],[title]'))attributes(el);
+}
+function start(){
+ refresh();
+ new MutationObserver(records=>{
+  for(const record of records)if(record.type==='attributes')attributes(record.target);
+  for(const root of roots(records))if(root.isConnected)refresh(root);
+ }).observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-label','title']});
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();

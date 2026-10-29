@@ -123,3 +123,23 @@ def test_facts_read_other_designs_saved_plans_only_once(library, monkeypatch):
     lib.facts('flower.png')
     # Unchanged plans of other designs are not opened again.
     assert not [name for name in reads if name.endswith('.prep.json')]
+
+
+def test_preview_is_small_and_kept_by_the_browser_until_the_design_changes(library):
+    lib,client=library
+    Image.new('RGB',(4000,3000),'green').save(lib.uploads/'flower.png')
+    row=lib.get('flower.png')
+    fresh=client.get(f"/api/library/flower.png/preview?v={row['revision']}")
+    assert fresh.headers['Cache-Control']=='private, max-age=86400'
+    assert max(Image.open(__import__('io').BytesIO(fresh.data)).size)<=600 and len(fresh.data)<200_000
+    for url in ('/api/library/flower.png/preview',f"/api/library/flower.png/preview?v={row['revision']+1}",
+                f"/api/library/flower.png/preview?v={row['revision']}&rebuild=1"):
+        assert client.get(url).headers['Cache-Control']=='no-store'
+
+
+def test_designs_page_keeps_cards_between_renders():
+    script=Path('src/embroiderly/static/library.js').read_text(encoding='utf-8')
+    render=script[script.index('function render()'):script.index('async function load()')]
+    # Search, sort and arriving details reuse the cards: no picture is fetched again.
+    assert 'cards.get(key)' in render and 'filtered.map(card)' not in render
+    assert 'preview?v=${encodeURIComponent(row.revision)}' in script

@@ -267,11 +267,16 @@ def register_library(app, root):
         except KeyError: abort(404)
         try:
             with Image.open(library.uploads / row['source']) as source:
+                # A big photo decodes at a fraction of its size (JPEG): a page of
+                # cards no longer decodes every full-size original.
+                source.draft('RGB', (1200, 900))
                 image = ImageOps.exif_transpose(source).convert('RGBA')
                 image.thumbnail((600,450),Image.Resampling.LANCZOS)
                 buffer = io.BytesIO(); image.save(buffer,format='PNG'); buffer.seek(0)
             response = send_file(buffer,mimetype='image/png')
-            response.headers['Cache-Control'] = 'no-store'
+            # Asked for by revision (library.js): the browser keeps it until the design changes.
+            fresh = request.args.get('v') == str(row['revision']) and 'rebuild' not in request.args
+            response.headers['Cache-Control'] = 'private, max-age=86400' if fresh else 'no-store'
             return response
         except (OSError,ValueError): return jsonify(error='Preview did not load.'),422
 
