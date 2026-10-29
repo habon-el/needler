@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
    show('edit');window.embroideryWorkspace.showTopic('review');
    const section=$('detailMap').closest('details');section.open=true;
    // Wait until the preparation controller releases its busy controls.
-   setTimeout(()=>{const target=$('keepPendingDetails')||section.querySelector('summary');target.scrollIntoView({block:'center'});target.focus();},0);
+   setTimeout(()=>{const target=$('cleanupChoice')||section.querySelector('summary');target.scrollIntoView({block:'center'});target.focus();},0);
   });
  }
  const downloadNote=node('p','','workflowDownloadNote');

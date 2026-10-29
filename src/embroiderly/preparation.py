@@ -462,6 +462,8 @@ def prepare(path,o,mask_directory=None,target_height_mm=None):
     if line_art:report["note"]="Line art: strokes are sewn as continuous running-stitch lines in their own colours; the dark background is not stitched. Review fine hatching and physical sewability."
     if ink_only:report["note"]="Black ink only: white is transparent and receives no stitches. Cleanup is bypassed to retain thin ink. Review faint marks and physical sewability."
     report['cleanup_review']=mask_report.get('mask_cleanup_review',[])+colour_cleanup_review
+    from .cleanup_review import cleanup_choice
+    report['cleanup_choice']=cleanup_choice(o)
     report['automatic_changes']=bool(any(r['removed'] for r in report['cleanup_review']) or detail_audit['pipeline_changes'] or detail_audit['mask_cleanup_changes'])
     report["detail_loss"]=detail_audit
     report.update(mask_report)
@@ -584,7 +586,7 @@ def register_preparation(app,root):
                     # Return the review, without saving files or approving any changes.
                     return jsonify(**response, code='cleanup_review_required',
                         error=f'Review cleanup before approving: {len(pending)} small areas may change. '
-                              'Choose Keep all pending details or review them individually.'), 400
+                              'Pick a choice under Small cleanup changes.'), 400
                 if body.get('digitize'):
                     from .fill_coverage import require_boundaries
                     require_boundaries(report['generation_blockers'])

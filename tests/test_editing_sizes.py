@@ -37,7 +37,7 @@ def test_many_cleanup_choices_return_preview_and_keep_all_preserves_pixels(tmp_p
         for x in range(31):
             draw.rectangle((5+x*7, 5+y*19, 6+x*7, 6+y*19), fill='black')
     image.save(path)
-    options = dict(count=2, height_mm=50, floor_mm2=1, smooth=0)
+    options = dict(count=2, height_mm=50, floor_mm2=1, smooth=0, cleanup_choice='review')
     blocked = client.post('/artwork/details.png', json=dict(options=options, digitize=True, subject_confirmed=True))
     assert blocked.status_code == 400
     assert blocked.json.get('code') == 'cleanup_review_required'

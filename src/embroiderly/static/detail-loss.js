@@ -32,39 +32,21 @@ window.addEventListener('studio:preview',event=>{
  $('detailStatus').textContent=`${audit.findings.length} possible interior detail-loss areas; ${audit.boundary.length} mask-edge warnings. ${changes?'Cleanup or colour changes are present; review the details below.':'Nothing was changed automatically.'}`;
  const snapshot=JSON.stringify(studio.snapshot());
  const records=report.cleanup_review||[],pending=records.filter(item=>item.decision==='pending');
- if(pending.length){
-  cleanup.append(node('p',`${pending.length} small areas are awaiting your choice. Keep them as they were before cleanup, or review each below.`));
-  const keep=node('button','Keep all pending details');keep.id='keepPendingDetails';keep.type='button';
-  keep.onclick=()=>{
-   if(studio.isBusy()||snapshot!==JSON.stringify(studio.snapshot()))return;
-   const decisions={...(studio.snapshot().cleanup_decisions||{})};
-   for(const item of pending)decisions[item.id]='keep';
-   studio.apply({cleanup_decisions:decisions});
+ // One choice covers every cleanup change; the engine still records each one.
+ if(records.length){
+  const choice=document.createElement('label');choice.textContent='Small cleanup changes ';
+  const select=document.createElement('select');select.id='cleanupChoice';
+  for(const [value,label] of [['auto','Automatic'],['keep','Keep all as drawn'],['drop','Let all go']])select.append(new Option(label,value));
+  if(report.cleanup_choice==='review')select.append(new Option('Review each','review'));
+  select.value=report.cleanup_choice||'auto';
+  select.onchange=()=>{
+   if(studio.isBusy()||snapshot!==JSON.stringify(studio.snapshot())){select.value=report.cleanup_choice||'auto';return}
+   studio.apply({cleanup_choice:select.value,cleanup_decisions:{}});
   };
-  cleanup.append(keep,node('p','Keeps only the pending areas. Your earlier choices stay unchanged. Undo reverses this action.'));
- }else if(records.length)cleanup.append(node('p','All cleanup choices made. Check stitches when ready.'));
- // Bound the DOM for large reviews; every record stays available.
- let shown=0;
- const more=node('button','Show more cleanup details');more.type='button';
- const items=document.createElement('div');cleanup.append(items);
- function page(){
- for(const detail of records.slice(shown,shown+30)){
-  const item=document.createElement('article');
-  item.append(node('p',`Cleanup detail: ${detail.width_mm} × ${detail.height_mm} mm; ${detail.area_mm2} mm². Image bounds: ${detail.bounds.join(', ')}. Decision: ${detail.decision}.`));
-  const locate=node('button','Locate cleanup detail');locate.type='button';locate.onclick=()=>studio.focusBounds(detail.bounds);item.append(locate);
-  for(const [value,label] of [['keep','Keep it'],['drop','Let it go']]){
-   const button=node('button',label);button.type='button';button.setAttribute('aria-pressed',String(detail.decision===value));
-   button.onclick=()=>{
-    if(studio.isBusy()||snapshot!==JSON.stringify(studio.snapshot()))return;
-    studio.apply({cleanup_decisions:{...(studio.snapshot().cleanup_decisions||{}),[detail.id]:value}});
-   };item.append(button);
-  }
-  items.append(item);
+  choice.append(select);cleanup.append(choice);
+  const kept=records.filter(item=>item.decision==='keep').length;
+  cleanup.append(node('p',pending.length?`${pending.length} changes wait for a choice.`:`${records.length-kept} specks cleaned up, ${kept} kept as drawn. Automatic lets specks under 0.8 mm go.`));
  }
- shown=Math.min(records.length,shown+30);
- more.hidden=shown>=records.length;more.textContent=`Show more cleanup details (${shown} of ${records.length})`;
- }
- more.onclick=page;cleanup.append(more);page();
  if(audit.findings.length>100)list.append(node('p','Texture-heavy artwork: select the subject first. Not every flagged patch is a detail you should stitch.'));
  for(const f of audit.findings.slice(0,20)){
   const item=document.createElement('article');item.append(node('p',`${f.position}: ${f.width_mm} × ${f.height_mm} mm. Contrast ${f.source_contrast} → ${f.result_contrast}. Cause: ${f.cause}.`));
