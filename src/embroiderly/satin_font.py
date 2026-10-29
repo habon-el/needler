@@ -515,7 +515,7 @@ def glyph_columns(path, char):
     return columns_for(shape), advance, shape
 
 
-def area_columns(shape):
+def area_columns(shape, gaps=False):
     """Satin columns for any filled shape (e.g. millimetres): the shape is
     scaled to the tracer's working size and the columns scaled back."""
     if not shape.is_valid:
@@ -529,10 +529,10 @@ def area_columns(shape):
     unit = affine_transform(shape, [1/factor, 0, 0, 1/factor, -left/factor, -top/factor])
     back = lambda p: (p[0]*factor+left, p[1]*factor+top)
     return tuple((tuple(back(p) for p in a), tuple(back(p) for p in b), closed, width*factor)
-                 for a, b, closed, width in columns_for(unit))
+                 for a, b, closed, width in columns_for(unit, gaps))
 
 
-def columns_for(shape):
+def columns_for(shape, gaps=True):
     """Core: skeleton strokes -> cross-section satin columns, in sewing order."""
     mask, to_px, to_em = _raster(shape)
     outline = affine_transform(shape, [RESOLUTION, 0, 0, RESOLUTION, to_px(0, 0)[0], to_px(0, 0)[1]])
@@ -580,6 +580,8 @@ def columns_for(shape):
             if dot:
                 widths = [math.dist(p, q)/2 for p, q in zip(*dot)]
                 columns.append((dot[0], dot[1], False, float(np.median(widths))))
+    if gaps:
+        columns += _gap_columns(columns, outline)  # letters only; areas keep their columns
     result = []
     for a, b, closed, width in columns:
         ra = [to_em(*p) for p in a]; rb = [to_em(*p) for p in b]
@@ -587,6 +589,43 @@ def columns_for(shape):
             ra, rb = ra+[ra[0]], rb+[rb[0]]
         result.append((tuple(ra), tuple(rb), closed, width/RESOLUTION))
     return tuple(_order(result, shape))
+
+
+def _gap_columns(columns, outline):
+    """Columns for parts of the letter no column reaches. Junction cuts, sharp-turn
+    splits and twisted end sections leave such gaps (a stem, a lobe, where strokes
+    meet); small letters hide them, big ones show bare fabric. A gap counts when it is
+    wider than 0.3 of the typical stroke; it is sewn along its long axis, overlapping
+    its neighbours a little so the satin is continuous."""
+    if not columns:
+        return []
+    ribbons = []
+    for a, b, closed, _ in columns:
+        polygon = Polygon(a, [b]) if closed else Polygon(list(a)+list(b)[::-1])
+        ribbons.append(polygon if polygon.is_valid else polygon.buffer(0))
+    half = float(np.median([width for *_, width in columns]))
+    bare = outline.difference(unary_union(ribbons))
+    out = []
+    for piece in polygons(bare):
+        core = piece.buffer(-half*.3)
+        if core.is_empty or core.area < half*half*.2:
+            continue
+        patch = core.buffer(half*.3+min(2.0, half*.25)).intersection(outline)
+        for part in polygons(patch):
+            if part.area < half*half*.5:
+                continue
+            # Traced like a letter of its own (a curved gap needs a curved column);
+            # a compact one along its long axis.
+            traced = [(a, b) for a, b, closed, _ in area_columns(part) if not closed]
+            dot = _dot(part, RESOLUTION)
+            for a, b in traced or ([dot] if dot else []):
+                a, b = _clean_column(list(a), list(b), outline)
+                if len(a) >= 2:
+                    # Part of a stroke: it counts as the typical stroke (sizes, puff, underlay).
+                    # closed=None marks it (still an open column): layout leaves out the
+                    # ones too short to sew at small sizes, where the thread hides the gap.
+                    out.append((a, b, None, half))
+    return out
 
 
 def _order(columns, shape):

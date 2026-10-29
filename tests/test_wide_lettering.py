@@ -85,3 +85,33 @@ def test_split_column_underlay_legs_leave_room_for_the_machine_grid():
     column = [([(0.0, 0.0), (20.0, 0.0)], False), ([(0.0, 11.6), (20.0, 11.6)], False)]
     points = satin(column, .38, contour_underlay=True, zigzag_underlay='double', split=SPLIT_MM)
     assert max(math.dist(p, q) for p, q in zip(points, points[1:])) <= SPLIT_MM-.15+1e-9
+
+
+def bare_mm2(key, chars, cap_mm):
+    """Largest part of each letter no satin column reaches, wider than 0.5 mm, at this capital height."""
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    from embroiderly.satin_font import glyph_columns
+    from embroiderly.stitch_paths import polygons
+    em = cap_mm/embroidery_fonts.cap_height(key)
+    worst = {}
+    for char in chars:
+        columns, _, shape = glyph_columns(embroidery_fonts.font_path(key), char)
+        sewn = unary_union([Polygon(list(a)+list(b)[::-1]).buffer(0) for a, b, *_ in columns]).buffer(.1/em)
+        cores = [g.buffer(-.25/em).area*em*em for g in polygons(shape.difference(sewn))]
+        worst[char] = max(cores, default=0.0)
+    return worst
+
+
+def test_big_script_letters_have_no_gaps_in_their_satin():
+    # Junction cuts and sharp-turn splits left a P's stem, an r's top, an h's shoulder
+    # unsewn: hidden in small letters, bare fabric at 30 mm.
+    worst = bare_mm2('pacifico', 'PhmrYuwKN', 30)
+    assert max(worst.values()) < 1.0, worst
+
+
+@pytest.mark.parametrize('text,font', [('Prum', 'pacifico'), ('Love', 'lobster')])
+def test_big_script_satin_still_passes_the_file_checks(tmp_path, text, font):
+    result, source = build(tmp_path, text, font, 40)
+    assert result['checks_passed'], result['issues']
+    assert 'letter_fill' not in source

@@ -11,12 +11,14 @@ import math
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from .satin_font import _font, glyph_columns
+from .stitch_paths import path_length
 
 FONT_DIR = Path(__file__).with_name('fonts')
 SVG_NS = 'http://www.w3.org/2000/svg'
 INK_NS = 'http://inkstitch.org/namespace'
 LABEL_NS = 'http://www.inkscape.org/namespaces/inkscape'
 PX_MM = 25.4/96
+GAP_MIN_MM = 1.5
 CHARACTERS = ''.join(chr(c) for c in range(33, 127))+'ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝàáâãäåçèéêëìíîïñòóôõöùúûüýÿ£€©®°'
 
 FONTS = {
@@ -605,6 +607,10 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
             glyphs = []
             for i, char in enumerate(line):
                 columns, advance, _ = glyph_columns(font_path(key), char) if char != ' ' else ((), None, None)
+                # Gap columns (satin_font._gap_columns) shorter than this are hidden by the
+                # thread; sewn they are too short for needle points of their own.
+                columns = tuple(c for c in columns if c[2] is not None or
+                                (path_length(c[0])+path_length(c[1]))/2*em_px*PX_MM >= GAP_MIN_MM)
                 if char == ' ':
                     advance = font['hmtx'][font.getBestCmap()[32]][0]/em if 32 in font.getBestCmap() else .3
                 glyphs.append((char, x, columns, advance))
