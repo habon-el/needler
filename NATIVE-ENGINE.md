@@ -1000,3 +1000,31 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   upload route takes machine files; the designs page has Open machine file. The machine file
   itself is not kept.
 - Limit: a block that holds several objects sewn without a cut becomes one piece type.
+
+## Thread charts, node reshaping, bottom join, batch convert (added 2026-10-29)
+
+- Thread charts: `thread_matching.CHARTS` adds Pfaff PCM, the 16-colour palette pyembroidery keeps
+  inside `PcmReader` (read by feeding the reader a file that uses every colour once; no colour
+  values are copied). Six charts is every machine palette pyembroidery has; it has no thread-maker
+  catalogues. `/lettering/native/thread?chart=` limits the Text page's thread names to one chart
+  (the menu is remembered on the computer); `worksheet.summary(..., chart)` and `?chart=` on both
+  worksheet pages name every thread from the picked chart, otherwise the closest chart overall.
+- Node reshaping: piece command `reshape`, value = the piece's rings in mm on the hoop (same rings,
+  in order; points moved, added or deleted). Stored in the piece's own picture pixels, before its
+  matrix, as `rings` on its piece edit, so the id, name, style and transform stay; a picture piece
+  may now carry `rings` too (copies made earlier keep the old outline). Refused: fewer than 3 points
+  (2 for a line), a crossing outline, a hole outside the piece, under 1 mm², over 5000 points.
+  Stitches rebuild after it. Pieces panel ◇ Points: handles on every point, 8 screen px reach.
+- Bottom join: `embroidery_fonts.layout(..., join='bottom')`. `_bottom_entry` runs from the sewn
+  area nearest the letter's foot (its left edge on its own baseline, turned and bent with it) to
+  the first stroke's start, 0.15 mm inside the sewn columns, sewn first so the strokes cover it;
+  skipped under 1 mm. Touching letters still join inside both, now ending at that entry. Satin
+  letters only (puff and fill letters unchanged). Letters with fabric between them keep their
+  cut: a thread along the baseline over bare fabric fails the release gate, which is unchanged.
+  The letter's exit is not moved: a run to its bottom-right would lie on top of its satin.
+  Recipe key `join` (left out when closest); Claude's text tools take `join`.
+- Batch convert: `DesignLibrary.converted(ids, fmt)` finds each design's stitch folder
+  (`saved_plans.matching_folder`, the folder `matching_plan` reads) and converts it with
+  `converted_bytes`, the single download's gate. `POST /api/library/convert` returns a zip
+  (`designs-<fmt>.zip`, team-names file naming), with `not-included.txt` for designs without stitches
+  or failing a check; none converted is a 422 naming why. Up to 100 designs; trashed ones refused.
