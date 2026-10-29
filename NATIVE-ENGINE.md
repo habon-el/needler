@@ -942,3 +942,28 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Tried and left out because ordinary letters failed checks at normal sizes: Black Ops One,
   Carter One, Changa One, Cookie, Courgette (its Z fails at scattered sizes), Lobster Two Bold,
   Norican, Squada One.
+
+## Morphing, auto trace and magic wand (added 2026-10-29)
+
+- Piece commands `morph` (`{kind, strength}`; pinch, punch, twirl, wave; 10–100%) and `auto_trace`
+  (value `null`) on the selected pieces; both regenerate stitches like `smooth`, and store the new
+  outline through `piece_weld.replace`, so style, direction, holes and part outline stay.
+- `piece_morph`: edges get points at most 0.5 mm apart (finer on small selections), then every
+  point moves around the selection's box centre. Pinch / punch raise the distance to the centre,
+  as a share of the farthest point, to the power 1+1.5s or 1/(1+1.5s); twirl turns up to 180° at
+  the centre, fading to nothing at 1.25× the farthest point; wave moves points up and down by up
+  to 20% of the height, two waves across. Each map is one-to-one, so holes stay holes. A morph that
+  moves the outline less than `ALREADY_MM` (a circle twirled) is refused.
+- `piece_trace.traced`: each ring is resampled every half pixel; corners are bends over 50° seen
+  1.5 and 3 pixels each side (pixel steps fail the second), the stretches between them are smoothed
+  (Gaussian, about 1.2 px, at least 0.15 mm) and eased back to the corners; holes under 1 mm² are
+  closed; the result is scaled back to the traced area. Pieces already clean are skipped; all clean
+  is refused.
+- `magic_wand` (`{point, tolerance}`, no ids): reads the artwork (`load_image`, before colour
+  reduction; same pixel grid as the prepared image), compares Lab colours with the median around the
+  click, keeps the 4-connected region, drops 1 px hairs, keeps its holes, traces it, and adds a drawn
+  piece `Wand N` in the design's nearest thread (Lab), or the region's own colour when there is none.
+  A region over 90% of the picture is refused.
+- Pieces panel: Morph select, Strength % and Morph next to Smooth; a Trace box with the Magic wand,
+  Tolerance, and Auto trace for Selected pieces, All threads or one thread (locked and hidden
+  pieces are left out). Not a Claude tool: like weld and smooth, these edit pieces by hand.

@@ -97,7 +97,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Remove overlaps | Colour knockout; areas never stack | ✅ | |
 | Stitch edit, insert stop/trim, convert to manual | Remove stitches by area; Check stitches: Add stop here, Add cut here (tie-off and tie-in), Delete this stitch, Move this stitch (up to 3 mm) at the playback position, saved with the design and checked against 0.3–7 mm and empty fabric. Converting a whole part to hand-placed stitches is not offered | ✅ 2026-10-25 | |
 | Recognize stitches (machine file → objects) | — | ✗ | P3 |
-| Morphing (pinch, punch, twirl, wave) | — | ✗ | P3 |
+| Morphing (pinch, punch, twirl, wave) | Pieces panel Morph: Pinch (sides cave in, corners stay), Punch (sides bulge out), Twirl (the middle turns, fading to the edge), Wave (two waves across), Strength 10–100%; several pieces morph together around one centre, holes stay, style and direction kept, stitches made again from the new outline (`piece_morph.py`) | ✅ 2026-10-29 | |
 
 ## 7. Sequencing
 | Tool | Needler | Status | P |
@@ -133,7 +133,7 @@ digitizing guidance. No third-party code, text, fonts, motifs, pattern data or d
 | Add outlines | `engine.colour_outlines`: one branched run on every colour edge, sewn last; checkbox or "outline" in the request | ✅ 2026-10-24 | |
 | Multi-colour photo stitch, open photo stitch | photo stitch (experimental) | ◐ | P3 |
 | One-colour photo stitch | photo lines | ✅ | |
-| Auto trace to vectors, magic wand | — | ✗ | P3 |
+| Auto trace to vectors, magic wand | Pieces panel Trace: 🪄 Magic wand: click the artwork, the connected area of similar colour (Tolerance 1–60, in the Lab colours preparation uses) becomes a new piece in the nearest thread of the design; Auto trace: the selected pieces, all threads or one thread become clean curves fitted to their pixel outlines, corners kept sharp, specks of holes closed, area kept (`piece_trace.py`) | ✅ 2026-10-29 | |
 
 ## 10. Output and management
 | Tool | Needler | Status | P |
@@ -200,7 +200,7 @@ instructions are typed by hand, so they fall behind every new feature.
 | 13 | P3: templates / save as template; product colour and mockup | ✓ 2026-10-28 |
 | 14 | P3: partial, combined and overlap-free appliqué; buttonholes and basting markers | ✓ 2026-10-28 |
 | 15 | P3: lettering envelopes and elastic lettering; more fonts | ✓ 2026-10-28 |
-| 16 | P3: morphing (pinch, punch, twirl, wave); auto trace to vectors and magic wand | ✗ |
+| 16 | P3: morphing (pinch, punch, twirl, wave); auto trace to vectors and magic wand | ✓ 2026-10-29 |
 | 17 | P3: multi-colour and open photo stitch; recognize stitches (machine file to objects) | ✗ |
 | 18–19 | Parked bugs (parallel agents): merging a colour on a cut-out subject fails the file check; rose gaps and flat leaves; Start does nothing over an old result; white parts dropped and white merging with pale sky; colour change unticks "I approve"; ~30 edge-speck cleanup choices; stuck on "Opening image editor…"; big script satin gaps; designs page and studio freezing Chrome | ✗ |
 

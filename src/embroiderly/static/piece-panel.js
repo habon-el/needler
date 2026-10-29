@@ -23,7 +23,7 @@
  <div class="piece-arrange" role="group" aria-label="Arrange">
  <button type="button" data-arrange="mirror:x" title="Mirror left–right">⇋ Mirror</button><button type="button" data-arrange="mirror:y" title="Mirror top–bottom">⇅ Mirror</button>
  <button type="button" data-arrange="rotate_by:-15" title="Rotate 15° to the left">↺ 15°</button><button type="button" data-arrange="rotate_by:15" title="Rotate 15° to the right">↻ 15°</button><button type="button" data-arrange="rotate_by:45" title="Rotate 45° to the right">↻ 45°</button>
- <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceSatinHere" aria-pressed="false" title="Drag a line where a thin part starts: that side becomes satin, the rest keeps its fill">〰 Satin here</button><button type="button" id="pieceWeld" title="Join the selected pieces of one thread into one piece. They must touch or overlap.">⊕ Weld</button><button type="button" id="pieceSmooth" title="Smooth the outline: removes jagged pixel steps, keeps sharp corners and the size">Smooth</button><select id="pieceSmoothStrength" aria-label="How much to smooth" title="How much to smooth"><option value="light">Light</option><option value="more">More</option></select><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
+ <button type="button" id="pieceDuplicate" title="Copy the piece, 5 mm to the right and down">Duplicate</button><button type="button" id="pieceKnife" aria-pressed="false" title="Drag a line across the selected piece to cut it in two">✂ Knife</button><button type="button" id="pieceSatinHere" aria-pressed="false" title="Drag a line where a thin part starts: that side becomes satin, the rest keeps its fill">〰 Satin here</button><button type="button" id="pieceWeld" title="Join the selected pieces of one thread into one piece. They must touch or overlap.">⊕ Weld</button><button type="button" id="pieceSmooth" title="Smooth the outline: removes jagged pixel steps, keeps sharp corners and the size">Smooth</button><select id="pieceSmoothStrength" aria-label="How much to smooth" title="How much to smooth"><option value="light">Light</option><option value="more">More</option></select><select id="pieceMorphKind" aria-label="Morph" title="Morph the outline around its centre"><option value="pinch">Pinch</option><option value="punch">Punch</option><option value="twirl">Twirl</option><option value="wave">Wave</option></select><label title="How strong the morph is, 10–100%">Strength %<input id="pieceMorphStrength" type="number" min="10" max="100" step="5" value="40"></label><button type="button" id="pieceMorph" title="Pinch draws the sides in, Punch bulges them out, Twirl turns the middle, Wave makes it rise and fall">Morph</button><button type="button" id="pieceDelete" hidden title="Delete this copy or part">Delete</button>
  </div>
  </fieldset>
  <fieldset id="pieceLineUp"><legend>Line up</legend><div class="piece-arrange" role="group" aria-label="Line up several pieces">
@@ -49,6 +49,11 @@
  <button type="button" data-draw="fill" aria-pressed="false" title="Click an empty space closed by lines to fill it. The fill is sewn first, under the lines.">🪣 Click to fill</button>
  <label title="Leave the parts inside the space open; off fills under them too"><input id="pieceFillHoles" type="checkbox" checked> Keep holes</label>
  <label>Thread <input id="pieceDrawColour" type="color" value="#202020"></label></div></fieldset>
+ <fieldset id="pieceTrace"><legend>Trace</legend><div class="piece-arrange" role="group" aria-label="Trace">
+ <button type="button" data-draw="wand" aria-pressed="false" title="Click a colour in the artwork: the area of similar colour around it becomes a new piece">🪄 Magic wand</button>
+ <label title="How different a colour may be and still be selected, 1–60">Tolerance<input id="pieceWandTolerance" type="number" min="1" max="60" step="1" value="12"></label>
+ <select id="pieceTraceWhich" aria-label="What to trace"><option value="">Selected pieces</option><option value="all">All threads</option></select>
+ <button type="button" id="pieceTrace" title="Turn the outlines into clean curves with sharp corners">Auto trace</button></div></fieldset>
  <div class="piece-modes"><button id="pieceMove" type="button" aria-pressed="true">Drag to move</button><button id="pieceRotate" type="button" aria-pressed="false">Drag to rotate</button></div>
  <label class="piece-advanced">Group / subgroup<input id="pieceGroup" maxlength="100" placeholder="For example: Head / Eyes"></label>
  <p id="pieceFeedback" role="status" aria-live="polite">Select a piece to edit its measurements.</p>
@@ -68,7 +73,7 @@
  function format(value,angle=false){return value===null?'—':(value/(units()==='in'&&!angle?25.4:1)).toFixed(units()==='in'&&!angle?3:1)}
  function feedback(message){$('pieceFeedback').textContent=message}
  async function commit(field,value,ids=[...selected]){
-  if(pending||(!ids.length&&field!=='draw'&&field!=='click_fill'))return;
+  if(pending||(!ids.length&&field!=='draw'&&field!=='click_fill'&&field!=='magic_wand'))return;
   pending=true;sync();feedback('Saving piece and rebuilding stitches when needed…');
   try{const ok=await studio.pieceEdit({ids,field,value,linked:advanced?linked:true});feedback(ok?(studio.hasPlayback()?(field==='sew_order'?'Saved. Stitches follow the new sewing order.':'Saved. Stitches use the updated outline.'):'Piece saved. No current stitch plan; review the design before generating.'):'Not applied. See the workspace message; the previous piece is unchanged.')}
   catch(error){feedback(error.message)}finally{pending=false;sync()}
@@ -92,6 +97,8 @@
   $('pieceAudit').dataset.level=items.some(p=>p.audit.level==='red')?'red':items.some(p=>p.audit.level==='yellow')?'yellow':'green';
   properties.querySelectorAll('[data-arrange],#pieceDuplicate,#pieceDelete,#pieceSkew,#pieceKnife,#pieceSatinHere').forEach(control=>{control.disabled=disabled;});
   $('pieceWeld').disabled=disabled||items.length<2||items.some(p=>p.line);$('pieceSmooth').disabled=$('pieceSmoothStrength').disabled=disabled||items.some(p=>p.line);
+  ['pieceMorph','pieceMorphKind','pieceMorphStrength'].forEach(id=>{$(id).disabled=disabled||items.some(p=>p.line)});
+  const which=$('pieceTraceWhich').value;$('pieceTrace').disabled=pending||studio.isBusy()||!traceTargets().length||(!which&&disabled);
   $('pieceKnife').disabled=$('pieceSatinHere').disabled=disabled||items.length!==1||items.some(p=>p.line);
   properties.querySelectorAll('[data-lineup]').forEach(b=>{b.disabled=disabled||items.length<(b.dataset.lineup.startsWith('distribute')?3:2)});
   const outline=items.length&&items.every(p=>JSON.stringify(p.outline)===JSON.stringify(items[0].outline))?items[0].outline:null;
@@ -109,7 +116,7 @@
   properties.querySelectorAll('[data-sew]').forEach(b=>{b.disabled=sewBlocked});
   properties.querySelector('[data-sew="picked"]').disabled=sewBlocked||items.length<2;properties.querySelector('[data-sew="auto"]').disabled=!custom||pending||studio.isBusy();
   $('pieceSewNote').textContent=!sewn.length?'Generate the stitches to change the sewing order.':items.length===1&&sewn.includes(items[0].id)?`Sewn ${sewn.indexOf(items[0].id)+1} of ${sewn.length}.`:custom?'Your own sewing order.':'Automatic sewing order.';
-  properties.querySelectorAll('[data-draw],#pieceDrawColour,#pieceFillHoles,#pieceLineStitch').forEach(control=>{control.disabled=pending||studio.isBusy()||!report.pieces.length;});
+  properties.querySelectorAll('[data-draw],#pieceDrawColour,#pieceFillHoles,#pieceLineStitch,#pieceWandTolerance,#pieceTraceWhich').forEach(control=>{control.disabled=pending||studio.isBusy()||!report.pieces.length;});
   properties.querySelectorAll('[data-draw]').forEach(b=>b.setAttribute('aria-pressed',String(drawing?.shape===b.dataset.draw)));
   window.stitchRegionSelection=active&&items.length?{rings:items.flatMap(p=>p.rings)}:null;
   const target=$('stitchRegion');target.value=items.length===1?items[0].id:'';target.dispatchEvent(new Event('change'));
@@ -120,6 +127,11 @@
   const select=document.createElement('button');select.type='button';select.textContent='Select group';select.onclick=()=>choose(items.map(p=>p.id));
   const eye=document.createElement('button');eye.type='button';eye.replaceChildren(icon(items.some(p=>p.visible)?'eye':'hidden'));eye.setAttribute('aria-label','Show or hide '+label);eye.disabled=pending||items.some(p=>p.locked);eye.onclick=()=>commit('visible',!items.some(p=>p.visible),items.map(p=>p.id));
   actions.append(select,eye);return actions;
+ }
+ function traceChoices(){
+  const list=$('pieceTraceWhich'),was=list.value,threads=[...new Set(report.pieces.filter(p=>!p.line).map(p=>p.colour))];
+  list.replaceChildren(new Option('Selected pieces',''),new Option('All threads','all'),...threads.map(c=>new Option(report.pieces.find(p=>p.colour===c).thread_name||c,c)));
+  list.value=[...list.options].some(o=>o.value===was)?was:'';
  }
  function renderRows(){
   const list=$('pieceList'),open=new Set([...list.querySelectorAll('details[open]')].map(d=>d.dataset.group));list.replaceChildren();
@@ -157,6 +169,11 @@
  // Weld: the pieces in the order picked (the first keeps its style); Smooth: each selected outline.
  $('pieceWeld').onclick=()=>commit('weld',null);
  $('pieceSmooth').onclick=()=>commit('smooth',$('pieceSmoothStrength').value);
+ $('pieceMorph').onclick=()=>commit('morph',{kind:$('pieceMorphKind').value,strength:Number($('pieceMorphStrength').value)});
+ // Auto trace: the selected pieces, every filled piece, or one thread's pieces (locked and hidden ones stay).
+ function traceTargets(){const which=$('pieceTraceWhich').value;return which?report.pieces.filter(p=>!p.line&&!p.locked&&p.visible&&(which==='all'||p.colour===which)):targets()}
+ $('pieceTraceWhich').onchange=()=>sync();
+ $('pieceTrace').onclick=()=>commit('auto_trace',null,traceTargets().map(p=>p.id));
  // Sewing order by hand: send every part in its new place; the first selected part decides the spot.
  properties.querySelectorAll('[data-sew]').forEach(button=>button.onclick=()=>{
   if(button.dataset.sew==='auto'){commit('sew_order',null,report.pieces.map(p=>p.id));return}
@@ -214,7 +231,7 @@
   commit(field,line);
  },true);
  // Draw a shape: rectangle / ellipse by dragging corners, freehand by dragging, polygon by clicking corners.
- const drawOn=shape=>{drawing=shape&&drawing?.shape!==shape?{shape,points:[]}:null;if(drawing){knifeOn(false);studio.pieceView();feedback($('pieceDraw').querySelector(`[data-draw="${shape}"]`).title+'.')}window.stitchRegionSelection=null;sync()};
+ const drawOn=shape=>{drawing=shape&&drawing?.shape!==shape?{shape,points:[]}:null;if(drawing){knifeOn(false);studio.pieceView();feedback(properties.querySelector(`[data-draw="${shape}"]`).title+'.')}window.stitchRegionSelection=null;sync()};
  properties.querySelectorAll('[data-draw]').forEach(b=>b.onclick=()=>drawOn(b.dataset.draw));
  const outline=(points,hover)=>{
   const all=hover?[...points,hover]:points;if(all.length<2)return all;
@@ -225,7 +242,7 @@
  };
  const isLine=()=>drawing&&(drawing.shape==='line'||drawing.shape==='freehand_line');
  // Snap (canvas-guides.js): corners and points go to guides, the hoop centre lines and the grid; freehand and Click to fill stay free.
- const snapped=at=>window.snapPoint&&!drawing.shape.startsWith('freehand')&&drawing.shape!=='fill'?window.snapPoint(at):at;
+ const snapped=at=>window.snapPoint&&!drawing.shape.startsWith('freehand')&&drawing.shape!=='fill'&&drawing.shape!=='wand'?window.snapPoint(at):at;
  const showDrawing=hover=>{const ring=outline(drawing.points,hover);window.stitchRegionSelection=ring.length>1?{rings:[isLine()?[...ring,...ring.slice(0,-1).reverse()]:[...ring,ring[0]]]}:null;studio.redraw()};
  const finishDrawing=()=>{
   const {shape,points}=drawing,colour=$('pieceDrawColour').value;drawing=null;window.stitchRegionSelection=null;
@@ -238,6 +255,9 @@
   e.stopImmediatePropagation();e.preventDefault();const at=snapped(studio.piecePoint(e,canvas));
   if(drawing.shape==='fill'){
    drawing=null;sync();commit('click_fill',{point:toMm(at),colour:$('pieceDrawColour').value,holes:$('pieceFillHoles').checked});return;
+  }
+  if(drawing.shape==='wand'){
+   drawing=null;sync();commit('magic_wand',{point:toMm(at),tolerance:Math.round(Number($('pieceWandTolerance').value))});return;
   }
   if(drawing.shape==='line'){drawing.points.push(at);showDrawing();return}
   if(drawing.shape==='polygon'){
@@ -282,7 +302,7 @@
  },true);
  canvas.addEventListener('pointerup',e=>{if(!drag)return;e.stopImmediatePropagation();const done=drag;drag=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(rotate&&done.angle)commit('rotation',(done.items.length===1?done.box.rotation:0)+done.angle);else if(done.position)commit('position',done.position);else sync()},true);
  const cancel=()=>{if(drag){drag=null;sync()}};canvas.addEventListener('pointercancel',cancel,true);canvas.addEventListener('lostpointercapture',cancel,true);
- window.addEventListener('studio:preview',e=>{total.textContent=Number(e.detail.stitchCount||0).toLocaleString()+' total stitches';report=e.detail.report.piece_layout||{pieces:[]};sewn=e.detail.sewParts||[];custom=Array.isArray(e.detail.options.sew_sequence)&&e.detail.options.sew_sequence.length>0;selected=new Set([...selected].filter(id=>report.pieces.some(p=>p.id===id)));renderRows();sync()});
+ window.addEventListener('studio:preview',e=>{total.textContent=Number(e.detail.stitchCount||0).toLocaleString()+' total stitches';report=e.detail.report.piece_layout||{pieces:[]};sewn=e.detail.sewParts||[];custom=Array.isArray(e.detail.options.sew_sequence)&&e.detail.options.sew_sequence.length>0;selected=new Set([...selected].filter(id=>report.pieces.some(p=>p.id===id)));traceChoices();renderRows();sync()});
  window.addEventListener('studio:topic',e=>{active=e.detail==='styles';sync()});
  window.addEventListener('studio:controls',()=>{if(!drag)sync()});
  new MutationObserver(()=>sync()).observe(document.documentElement,{attributes:true,attributeFilter:['data-units']});

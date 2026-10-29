@@ -536,10 +536,11 @@ def register_preparation(app,root):
                     return jsonify(error='This design changed in another window. Reload before editing pieces.'),409
             if piece_command:
                 prepared_image,_,current_report=prepare(path,options,decisions/(path.name+'.masks'))
-                options=change_pieces(options,current_report['piece_layout'],piece_command,
-                                      image=prepared_image.convert('RGBA') if piece_command.get('field')=='click_fill' else None)
+                # Click to fill reads the prepared colours; the magic wand reads the artwork itself.
+                artwork={'click_fill':lambda:prepared_image.convert('RGBA'),'magic_wand':lambda:load_image(path)}.get(piece_command.get('field'))
+                options=change_pieces(options,current_report['piece_layout'],piece_command,image=artwork() if artwork else None)
                 body['save']=True
-                if piece_command['field'] in ('position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible','outline','sew_order','align','distribute','match_size','mirror_copy','circle','array','weld','smooth'):
+                if piece_command['field'] in ('position','x_mm','y_mm','width_mm','height_mm','rotation','style','visible','outline','sew_order','align','distribute','match_size','mirror_copy','circle','array','weld','smooth','morph','auto_trace'):
                     body['digitize']=True
             if body.get('piece_undo'):
                 body['save']=True

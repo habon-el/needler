@@ -202,6 +202,12 @@ def change(options, report, command, image=None):
         if image is None:
             raise ValueError('Click to fill needs the prepared artwork.')
         return click_fill(deepcopy(options), report, image, command.get('value'))
+    if command.get('field') == 'magic_wand':
+        # The artwork region of similar colour under the click becomes a new piece (piece_trace).
+        if image is None:
+            raise ValueError('The magic wand needs the artwork.')
+        from .piece_trace import magic_wand
+        return magic_wand(deepcopy(options), report, image, command.get('value'))
     ids = command.get('ids')
     if not isinstance(ids, list) or not ids or len(set(ids)) != len(ids):
         raise ValueError('Select the pieces to edit.')
@@ -261,6 +267,14 @@ def change(options, report, command, image=None):
         # Weld pieces of one thread into one, or smooth an outline (piece_weld); picking order counts.
         from .piece_weld import run
         return run(updated, report, sorted(selected, key=lambda p: ids.index(p['id'])), field, value)
+    if field == 'morph':
+        # Pinch, punch, twirl or wave the outline around the selection's centre (piece_morph).
+        from .piece_morph import run
+        return run(updated, report, selected, value)
+    if field == 'auto_trace':
+        # Clean vector outlines fitted to the pieces' pixel outlines (piece_trace).
+        from .piece_trace import run
+        return run(updated, report, selected, value)
     if field in ('knife', 'split_satin'):
         if any(p.get('line') for p in selected):
             raise ValueError('A stitched line cannot be cut. Delete it and draw it again.')
