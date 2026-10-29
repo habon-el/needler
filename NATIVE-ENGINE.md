@@ -946,8 +946,9 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 ## Morphing, auto trace and magic wand (added 2026-10-29)
 
 - Piece commands `morph` (`{kind, strength}`; pinch, punch, twirl, wave; 10–100%) and `auto_trace`
-  (value `null`) on the selected pieces; both regenerate stitches like `smooth`, and store the new
-  outline through `piece_weld.replace`, so style, direction, holes and part outline stay.
+  (value `null`) on the selected pieces; both regenerate stitches like `smooth`; morph stores the new
+  outline through `piece_weld.replace`, auto trace in place (see session 21), so style, direction,
+  holes and part outline stay.
 - `piece_morph`: edges get points at most 0.5 mm apart (finer on small selections), then every
   point moves around the selection's box centre. Pinch / punch raise the distance to the centre,
   as a share of the farthest point, to the power 1+1.5s or 1/(1+1.5s); twirl turns up to 180° at
@@ -995,11 +996,11 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   `satin_reason` allows it, else tatami with the length-weighted axial mean stitch direction.
   Over 100 parts is refused.
 - `open_file`: the silhouette (grey, 700 px on the long side, 2 mm margin) is the new design's
-  picture; its own pieces are saved hidden ("File outline"); every part is a drawn piece (rings in
+  picture; its own pieces are cut (not listed, not sewn); every part is a drawn piece (rings in
   picture pixels) with `region_styles`, `area_angles` and `sew_sequence` in file order. The
   upload route takes machine files; the designs page has Open machine file. The machine file
   itself is not kept.
-- Limit: a block that holds several objects sewn without a cut becomes one piece type.
+- Since session 21 a block holding several objects sewn without a cut is split into them (below).
 
 ## Thread charts, node reshaping, bottom join, batch convert (added 2026-10-29)
 
@@ -1089,3 +1090,41 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   fetches every picture again), previews are fetched by design revision and cached by the browser
   for a day (`no-store` without it or with `rebuild`), and JPEG originals decode reduced
   (`draft`) for the 600 px preview. Confirming the freeze is gone needs a browser.
+
+## Gaps from sessions 16–18 (added 2026-10-29)
+
+- Magic wand: `piece_trace.knock_out` cuts the new wand shape out of every visible, unlocked filled
+  piece it covers (at least `COVERED_MM2`). What is left keeps its id, stored in place as the piece's
+  own `rings` (picture pixels, before its matrix, as reshape stores them); further parts become cut
+  parts (`source` + `rings`, style and per-piece choices copied); slivers under 1 mm² or narrower than
+  0.5 mm (the wand's edge sits just inside the piece's) go; a piece covered completely is removed
+  (`piece_weld.remove`). Undo restores the old options, so both come back.
+- Auto trace stores each new outline in place (`rings` on the piece's own edit), so it never makes
+  copies and the 100 copied-pieces limit does not apply; ids, names and choices stay. New outline
+  points are budgeted against `MAX_PART_POINTS`: pieces that do not fit are left, the route returns
+  `piece_notice` ("Traced N pieces; M left as they were …", never saved) and the Pieces panel shows it.
+- Open machine file: the silhouette picture's own pieces are stored `cut`, so the Pieces panel lists
+  only the recognized parts and nothing sews the silhouette. Designs opened earlier keep their
+  hidden rows.
+- Recognition on files structured like commercial ones (tested on our own synthetic files: objects
+  of one thread joined by travel runs without trims, edge-run and crossing-row underlay under
+  tatami, centre-walk, edge-walk and zigzag underlay under satin, tie-in/tie-off, jumps without
+  trims, a 50 mm move in 1.5 mm jumps, one thread used twice; PES and DST):
+  - `read`: jumps are measured from the last stitch, so a long move made of many short jumps starts
+    a new block; a short move is sewn through as one stitch.
+  - `pieces`: each connected area left after the 0.8 mm opening is one object; stitches within
+    `REACH_MM` of it are its own. The stitches between areas (back-and-forth folded, so ties go) are
+    split where they turn more than `TURN_DEG` (30°); a straight stretch (≤ 1.1× its chord) leaving or
+    reaching an area is travel, a run from an area back into it is travel, the rest is a running or
+    triple line. Objects keep the file's order.
+  - `_top`: of 16 starts, the latest whose stitches alone (closed like the area) still cover 95% of
+    the area; satin turns and stitch direction are read from there, so underlay is left out.
+  - Limit: two objects of one thread that overlap or touch are still one area, so one piece.
+- Multi-colour photo stitch: `thread_matching.matched_threads` turns the k-means colours into
+  distinct threads of one chart (the chart with the smallest total CIEDE2000, the closest colour
+  choosing first); the two-nearest mix is computed with those threads' Lab colours, so stitches,
+  playback and machine files use real thread colours; `photo_lines.chart` and `thread_names` name
+  them. The chart is not the remembered menu choice (that lives in the browser).
+- Studio Colours panel: Compare thread suggestions has the thread chart menu (All charts or one),
+  using `/lettering/native/thread?chart=` and the same remembered `needler.threadChart` as the
+  Text page; it asks when the suggestions are opened or the chart changes.
