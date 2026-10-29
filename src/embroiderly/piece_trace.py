@@ -7,7 +7,8 @@ like Smooth (piece_weld.replace), so style, direction, holes and outline stay wi
 
 The magic wand selects the connected region of similar colour under a click in the artwork itself
 (before colour reduction), measured in the same Lab colour space preparation uses, and adds it as a
-new piece in the nearest thread already in the design, traced the same way.
+new piece in the nearest thread already in the design, traced the same way. Areas never stack: the
+wand piece cuts its area out of the pieces under it, so that part is sewn once (locked pieces stay).
 """
 import hashlib
 import math
@@ -24,6 +25,9 @@ MIN_HOLE_MM2 = 1.      # smaller holes are specks and are closed
 TOLERANCE = (1, 60)    # wand: colour difference (Lab, about ΔE) from the clicked colour
 DEFAULT_TOLERANCE = 12
 MOST_OF_PICTURE = .9   # a wand region covering more of the picture than this is refused
+COVERED_MM2 = .05      # a piece sharing less than this with the wand piece is left as it is
+LEFT_MM2 = 1.          # what is left of a covered piece smaller than this is a sliver and goes
+SLIVER_MM = .5         # ...and so is what is left narrower than this (the wand's edge sits just inside the piece's)
 
 
 def run(updated, report, selected, value):
@@ -176,10 +180,55 @@ def magic_wand(updated, report, image, value):
         if key not in stored:
             break
         n += 1
-    count = sum(item.get('name', '').startswith('Wand ') for item in stored.values())+1
+    count = sum('drawn' in item and bool(re.fullmatch(r'Wand \d+', item.get('name', ''))) for item in stored.values())+1
+    knock_out(updated, report, shape)
     stored[key] = {'drawn': colour, 'rings': stored_rings, 'name': f'Wand {count}'}
     edits(updated)
     return updated
+
+
+def knock_out(updated, report, shape):
+    """Cut shape (mm on the hoop) out of every visible filled piece it covers. What is left keeps the
+    piece's outline in place (its own rings, as reshape stores them); further parts become cut parts;
+    a piece covered completely goes (piece_weld.remove)."""
+    from shapely.geometry import Polygon
+    from .piece_layout import IDENTITY, matrix
+    from .piece_weld import MIN_HOLE_MM2, PER_PIECE, remove, shape_of
+    stored = updated.setdefault('piece_edits', {})
+    origin, scale = np.array(report['origin_mm']), report['scale']
+    for p in report['pieces']:
+        if p.get('line') or not p['visible'] or p['locked']:
+            continue
+        own = shape_of(p)
+        if own.intersection(shape).area < COVERED_MM2:
+            continue
+        rest = own.difference(shape)
+        rest = rest.buffer(-SLIVER_MM/2, join_style=2).buffer(SLIVER_MM/2, join_style=2).intersection(rest)
+        parts = sorted((g for g in getattr(rest, 'geoms', [rest]) if g.geom_type == 'Polygon' and g.area >= LEFT_MM2),
+                       key=lambda g: -g.area)
+        if own.area-sum(g.area for g in parts) < COVERED_MM2:
+            continue
+        if not parts:
+            remove(updated, p['id'])
+            continue
+        item = stored.setdefault(p['id'], {})
+        inverse = np.linalg.inv(matrix(item.get('matrix', IDENTITY)))
+        def to_source(ring):
+            points = np.asarray(ring.coords[:-1], float)
+            source = ((np.c_[points, np.ones(len(points))] @ inverse.T)[:, :2]+origin)/scale
+            return [[round(x, 2), round(y, 2)] for x, y in source.tolist()]
+        for index, part in enumerate(parts):
+            part = Polygon(part.exterior, [h for h in part.interiors if Polygon(h).area >= MIN_HOLE_MM2]).simplify(.02)
+            rings = [to_source(r) for r in (part.exterior, *part.interiors)]
+            if not index:
+                item['rings'] = rings
+                continue
+            key = hashlib.sha256(f"wand-part:{p['id']}:{rings[0][:3]}:{index}".encode()).hexdigest()[:20]
+            stored[key] = {'source': item.get('source', p['id']), 'rings': rings, 'matrix': item.get('matrix', IDENTITY),
+                           'rotation': item.get('rotation', 0), 'name': f"{p['name']} part {index+1}"[:100]}
+            for field in PER_PIECE:
+                if p['id'] in updated.get(field, {}):
+                    updated[field][key] = updated[field][p['id']]
 
 
 def nearest_thread(rgb, report):

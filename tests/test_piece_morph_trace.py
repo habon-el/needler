@@ -211,3 +211,52 @@ def test_magic_wand_route_reads_the_artwork(tmp_path):
     piece = next(p for p in done['report']['piece_layout']['pieces'] if p['name'] == 'Wand 1')
     # Only the left half: the other red differs by more than the tolerance.
     assert piece['width_mm'] == pytest.approx(50*report['scale'], abs=.6)
+
+
+def overlap(pieces):
+    """The largest area (mm²) two pieces share."""
+    shapes = [Polygon(p['rings_mm'][0], p['rings_mm'][1:]).buffer(0) for p in pieces if not p.get('line')]
+    return max((a.intersection(b).area for i, a in enumerate(shapes) for b in shapes[i+1:]), default=0)
+
+
+def test_magic_wand_cuts_its_area_out_of_the_pieces_underneath():
+    rgba = artwork()
+    # Separate areas, as preparation finds them: the blue frame around the red, and the red square.
+    frame = dict(id='a'*20, colour='#2846c8', style='tatami',
+                 rings=[[[20, 20], [180, 20], [180, 180], [20, 180]], [[60, 60], [140, 60], [140, 140], [60, 140]]])
+    areas = [frame, box('b', 60, 60, 140, 140, '#c82832')]
+    report = inventory({'areas': areas}, {}, 200, 200, SCALE)
+    point = [70*SCALE-report['origin_mm'][0], 70*SCALE-report['origin_mm'][1]]
+    def click(tolerance, options=None):
+        options = options or {}
+        report = inventory({'areas': areas}, options, 200, 200, SCALE)
+        return change(options, report, dict(ids=[], field='magic_wand', value=dict(point=point, tolerance=tolerance)), image=rgba)
+    before = inventory({'areas': areas}, {}, 200, 200, SCALE)['pieces']
+    done = click(60)
+    pieces = inventory({'areas': areas}, done, 200, 200, SCALE)['pieces']
+    # The red square is now sewn once, by the wand piece; the piece it covered is gone.
+    assert [p['name'] for p in pieces if p['colour'] == '#c82832'] == ['Wand 1']
+    assert overlap(pieces) < .5
+    assert sum(p['area_mm2'] for p in pieces) == pytest.approx(sum(p['area_mm2'] for p in before), rel=.03)
+    # A lower tolerance leaves the dark spot out of the wand: the red piece keeps just the spot, in place.
+    done = click(15)
+    pieces = inventory({'areas': areas}, done, 200, 200, SCALE)['pieces']
+    red = [p for p in pieces if p['colour'] == '#c82832' and not p['name'].startswith('Wand')]
+    assert [p['id'] for p in red] == ['b'*20] and red[0]['area_mm2'] == pytest.approx(6.25, rel=.15)
+    assert overlap(pieces) < .5
+    # A second click on the same spot replaces the first wand piece instead of stacking on it.
+    again = inventory({'areas': areas}, click(15, done), 200, 200, SCALE)['pieces']
+    assert overlap(again) < .5 and len([p for p in again if p['name'].startswith('Wand')]) == 1
+    # Undo puts the old options back: both pieces return as they were.
+    assert inventory({'areas': areas}, {}, 200, 200, SCALE)['pieces'] == before
+
+
+def test_magic_wand_leaves_locked_pieces_alone():
+    rgba = artwork()
+    areas = [box('b', 60, 60, 140, 140, '#c82832')]
+    report = inventory({'areas': areas}, {}, 200, 200, SCALE)
+    locked = change({}, report, dict(ids=['b'*20], field='locked', value=True))
+    report = inventory({'areas': areas}, locked, 200, 200, SCALE)
+    point = [70*SCALE-report['origin_mm'][0], 70*SCALE-report['origin_mm'][1]]
+    done = change(locked, report, dict(ids=[], field='magic_wand', value=dict(point=point, tolerance=60)), image=rgba)
+    assert done['piece_edits']['b'*20] == locked['piece_edits']['b'*20]
