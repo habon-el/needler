@@ -134,7 +134,9 @@ def test_stop_cut_delete_and_move_pass_the_release_gate_and_reach_both_files(tmp
     assert not edited.get('error') and not edited.get('gate'), edited
     report = edited['playback']['stitch_edits']
     assert report['applied'] == 4 and len(report['dropped']) == 1 and 'Stop 5' in report['dropped'][0]
-    assert edited['colours'] == whole['colours'] + 1 and edited['trims'] == whole['trims'] + 1
+    # The stop sews the same thread again: one more colour block, the same number of threads.
+    assert len(edited['playback']['colors']) == len(whole['playback']['colors']) + 1
+    assert edited['colours'] == whole['colours'] and edited['trims'] == whole['trims'] + 1
     folder = tmp_path / 'work/inkstitch-preview' / Path(edited['prepared']).stem
     for fmt in ('pes', 'dst'):
         assert checked_bytes(folder, fmt)                           # both files pass the release gate
