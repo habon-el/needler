@@ -515,12 +515,17 @@ def glyph_columns(path, char):
     return columns_for(shape), advance, shape
 
 
-def area_columns(shape, gaps=True):
+MIN_GAP = .4     # mm: a bare part narrower than about a thread gets no gap column
+
+
+def area_columns(shape, gaps=True, min_gap=MIN_GAP):
     """Satin columns for any filled shape (e.g. millimetres): the shape is
     scaled to the tracer's working size and the columns scaled back. Gap columns
     cover what the traced columns leave bare where outlines branch and meet (a picture's
     satin outlines as much as a letter); gaps=False: the traced columns alone, as they
-    follow the shape (a gap's own column; the share a satin stroke covers)."""
+    follow the shape (a gap's own column; the share a satin stroke covers). min_gap: no
+    gap column for a bare part narrower than this (shape units, millimetres for pictures):
+    the thread closes it, and a traced pixel edge breaks into hundreds of such specks."""
     if not shape.is_valid:
         # Traced pixel outlines can touch themselves; GEOS refuses those in cuts.
         shape = shape.buffer(0)
@@ -532,10 +537,10 @@ def area_columns(shape, gaps=True):
     unit = affine_transform(shape, [1/factor, 0, 0, 1/factor, -left/factor, -top/factor])
     back = lambda p: (p[0]*factor+left, p[1]*factor+top)
     return tuple((tuple(back(p) for p in a), tuple(back(p) for p in b), closed, width*factor)
-                 for a, b, closed, width in columns_for(unit, gaps))
+                 for a, b, closed, width in columns_for(unit, gaps, min_gap/factor))
 
 
-def columns_for(shape, gaps=True):
+def columns_for(shape, gaps=True, min_gap=0.0):
     """Core: skeleton strokes -> cross-section satin columns, in sewing order."""
     mask, to_px, to_em = _raster(shape)
     outline = affine_transform(shape, [RESOLUTION, 0, 0, RESOLUTION, to_px(0, 0)[0], to_px(0, 0)[1]])
@@ -585,7 +590,7 @@ def columns_for(shape, gaps=True):
                 columns.append((dot[0], dot[1], False, float(np.median(widths))))
     if gaps:
         columns = _widen(columns, outline)
-        extra = _gap_columns(columns, outline)
+        extra = _gap_columns(columns, outline, min_gap*RESOLUTION)
         if extra:
             # Gap columns meet the others with rounded ends: let them reach the wedges too.
             columns = _widen(columns+extra, outline)
@@ -720,7 +725,7 @@ def _lines(shape):
 CORE, CORE_AREA = .15, .05
 
 
-def _gap_columns(columns, outline):
+def _gap_columns(columns, outline, least=0.0):
     """Columns for parts of the letter no column reaches. Junction cuts, sharp-turn
     splits and twisted end sections leave such gaps (a stem, a lobe, where strokes
     meet); small letters hide them, big ones show bare fabric. A gap counts when it is
@@ -732,10 +737,13 @@ def _gap_columns(columns, outline):
     bare = outline.difference(unary_union([_ribbon(a, b, closed) for a, b, closed, _ in columns]))
     out = []
     for piece in polygons(bare):
-        core = piece.buffer(-half*CORE)
+        # Relative to the typical stroke, and never thinner than `least` (px): in a picture
+        # a one-pixel line beside a wide area makes the typical stroke a hair.
+        shrink = max(half*CORE, least/2)
+        core = piece.buffer(-shrink)
         if core.is_empty or core.area < half*half*CORE_AREA:
             continue
-        patch = core.buffer(half*CORE+min(2.0, half*.25)).intersection(outline)
+        patch = core.buffer(shrink+min(2.0, half*.25)).intersection(outline)
         for part in polygons(patch):
             if part.area < half*half*.5:
                 continue

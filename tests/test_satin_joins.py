@@ -119,3 +119,17 @@ def test_coverage_check_finds_a_letter_part_without_a_column():
     issues = bare_patches(ET.tostring(root, encoding='unicode'))
     assert issues and {i['code'] for i in issues} == {'bare_patch'} and {i['letter'] for i in issues} == {'a'}
     assert all(math.isfinite(i['location']['x_mm']+i['location']['y_mm']) for i in issues)
+
+
+def test_a_pixel_line_beside_a_wide_area_gets_no_specks_of_satin():
+    # A 6 mm band and a one-pixel (0.13 mm) stepped line running off its edge, as a traced
+    # picture gives. The line's columns make the typical stroke a hair; gap columns relative
+    # to it covered every pixel step with a speck of satin (172 here), and the moves between
+    # them crossed the removed background of a cut-out subject.
+    from shapely.geometry import box
+    px = .13
+    shape = unary_union([box(40, 0, 46, 40)]+[box(i*px*3, 40-i*px*1.8, (i+1)*px*3+px, 40-i*px*1.8+px)
+                                               for i in range(100)])
+    gaps = [(a, b) for a, b, closed, _ in area_columns(shape) if closed is None]
+    assert len(gaps) <= 4
+    assert all(max(math.dist(p, q) for p, q in zip(a, b)) >= .4 for a, b in gaps)
