@@ -44,20 +44,50 @@ function autoComposer(id,label,placeholder,send){
  const mic=document.createElement('button');mic.type='button';mic.className='auto-mic';mic.setAttribute('aria-pressed','false');
  mic.innerHTML=AUTO_ICON(AUTO_MIC)+'<span>Speak</span>';mic.title='Say it instead of typing';bar.prepend(mic);
  const listening=box.querySelector('.auto-listening');
- let recognition=null;
- const done=label=>{recognition=null;mic.classList.remove('on');mic.setAttribute('aria-pressed','false');listening.hidden=true;
-  mic.querySelector('span').textContent=label||'Speak';if(label)setTimeout(()=>{if(!recognition)mic.querySelector('span').textContent='Speak'},3000)};
- mic.onclick=()=>{
-  if(recognition){recognition.stop();return}
-  recognition=new Listen();recognition.lang=document.documentElement.lang||navigator.language||'en-US';
+ const why=document.createElement('p');why.className='auto-voice-problem';why.hidden=true;why.setAttribute('role','status');box.append(why);
+ const tell=text=>{why.textContent=text||'';why.hidden=!text};
+ // Every reason the browser gives for stopping is said in words; none is silent.
+ const REASONS={'not-allowed':'The microphone is blocked for this page. Click the microphone or lock icon at the left of the address bar, allow it, then press Speak again.',
+  'service-not-allowed':'This browser does not allow speech typing here. Use Chrome or Edge, or type instead.',
+  'audio-capture':'No microphone was found. Plug one in, or pick it in Windows sound settings, then press Speak again.',
+  'network':'The browser’s speech service could not be reached. Speech typing needs the internet; check the connection or type instead.',
+  'language-not-supported':'Speech typing does not support this language here. Type instead.',
+  'no-speech':'Nothing was heard. Press Speak and talk a little closer to the microphone.'};
+ // Chrome ends listening by itself after a pause; keep going until Stop is pressed.
+ let recognition=null,wanted=false,quickEnds=0,said='';
+ const off=()=>{wanted=false;recognition=null;mic.classList.remove('on');mic.setAttribute('aria-pressed','false');listening.hidden=true;
+  mic.querySelector('span').textContent='Speak'};
+ function listen(){
+  const started=Date.now(),before=said;
+  recognition=new Listen();recognition.lang=navigator.language||'en-US';
   recognition.continuous=true;recognition.interimResults=true;
-  const before=field.value.trim()?field.value.trim()+' ':'';
-  recognition.onresult=e=>{field.value=before+[...e.results].map(r=>r[0].transcript).join('').trim();field.dispatchEvent(new Event('input'))};
-  recognition.onerror=e=>{const blocked=e.error==='not-allowed'||e.error==='service-not-allowed';
-   if(blocked)mic.title='Allow the microphone for this page in the address bar, then try again.';
-   done(blocked?'Mic blocked':e.error==='no-speech'?'Nothing heard':'')};
-  recognition.onend=()=>{if(recognition)done();field.focus()};
-  try{recognition.start()}catch{done();return}
+  recognition.onresult=e=>{
+   const heard=[...e.results].map(r=>r[0].transcript).join('').trim();
+   said=(before&&heard?before+' ':before)+heard;field.value=said;field.dispatchEvent(new Event('input'));quickEnds=0;
+  };
+  recognition.onerror=e=>{if(e.error==='aborted')return;
+   if(e.error!=='no-speech'||!field.value.trim())tell(REASONS[e.error]||`Speech typing stopped (${e.error}). Press Speak to try again, or type instead.`);
+   if(e.error!=='no-speech')off()};
+  recognition.onend=()=>{
+   if(!wanted){off();return}
+   // Ending at once again and again means the browser cannot listen here.
+   quickEnds=Date.now()-started<1500?quickEnds+1:0;
+   if(quickEnds>=3){off();tell('Listening stops as soon as it starts. Check that the microphone works in Windows sound settings and that no other app is using it.');return}
+   try{listen()}catch{off()}
+  };
+  recognition.start();
+ }
+ mic.onclick=async()=>{
+  if(wanted){wanted=false;recognition?.stop();off();field.focus();return}
+  tell('');
+  // Ask for the microphone first: this shows the browser's permission prompt and finds a missing microphone.
+  if(navigator.mediaDevices?.getUserMedia){
+   try{(await navigator.mediaDevices.getUserMedia({audio:true})).getTracks().forEach(t=>t.stop())}
+   catch(error){tell(REASONS[error.name==='NotFoundError'?'audio-capture':error.name==='NotAllowedError'?'not-allowed':'']||
+    `The microphone could not be opened (${error.name}). Check it in Windows sound settings, or type instead.`);return}
+  }
+  wanted=true;quickEnds=0;said=field.value.trim();
+  try{listen()}catch{off();tell('Speech typing could not start. Reload the page and press Speak again, or type instead.');return}
   mic.classList.add('on');mic.setAttribute('aria-pressed','true');mic.querySelector('span').textContent='Stop';listening.hidden=false;
  };
  return box;
@@ -268,4 +298,4 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
   fetch(api,{cache:'no-store'}).then(r=>r.json()).then(job=>{if(job.state==='running'){show();running=true;start.disabled=true;cover.hidden=false;poll()}}).catch(()=>{});
  }
 });
-if(typeof module!=='undefined')module.exports={autoReviewNote,AUTO_REQUEST_LIMIT};
+if(typeof module!=='undefined')module.exports={autoReviewNote,autoComposer,AUTO_REQUEST_LIMIT};

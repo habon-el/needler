@@ -106,3 +106,7 @@
 .auto-panel #autoStart, #autoResult button.primary, .auto-understood button.primary, .auto-panel .auto-send, .auto-change .auto-send {
   background:var(--ui-primary); border-color:var(--ui-primary); color:var(--ui-surface); font-weight:650; }
 .auto-panel #autoStart:hover:not(:disabled), #autoResult button.primary:hover, .auto-understood button.primary:hover { background:var(--ui-ink); }
+/* Why speech typing stopped, in words, inside the prompt box. */
+.auto-voice-problem { margin:0; padding:6px 12px 8px; font-size:12px; line-height:1.45; color:var(--ui-ink);
+  border-top:1px solid var(--ui-line); border-left:3px solid var(--ui-danger); }
+.auto-voice-problem[hidden] { display:none; }
