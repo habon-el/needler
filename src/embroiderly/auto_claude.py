@@ -10,6 +10,7 @@ import base64
 import io
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -204,7 +205,8 @@ TOOLS = [
          description='Stop and keep one attempt. Call this exactly once, at the end.',
          input_schema=dict(type='object', additionalProperties=False, required=['attempt', 'summary'], properties=dict(
              attempt=dict(type='integer', minimum=1, description='The attempt number to keep.'),
-             summary=dict(type='string', description='Two or three plain sentences: what you made and why.'),
+             summary=dict(type='string', description='Two or three plain sentences: what you made and why. Name '
+                                                     'the thread colours the kept attempt sews, not the ones planned.'),
              request=dict(type='string', description='One plain sentence: how you followed the person\'s request, '
                                                      'or what you could not do and why. Leave out when there was none.'),
              tools_used=dict(type='array', maxItems=10, items=dict(type='string'),
@@ -385,18 +387,49 @@ def per_colour(playback):
     return report
 
 
-def plan_lines(plan):
-    """Claude's plan as short lines for the person: 'Sky (#88aadd): gradient fill - soft blend'."""
-    lines = []
+def clip(text, limit):
+    """text in at most limit characters, cut after its last whole sentence (or, with none, at a
+    word with '…'), so what Claude writes for the person never stops mid-sentence."""
+    text = ' '.join(str(text or '').split())
+    if len(text) <= limit:
+        return text
+    cut = max((m.end() for m in re.finditer(r'[.!?](?=\s)', text[:limit + 1])), default=0)
+    if cut >= limit // 3:
+        return text[:cut]
+    return text[:limit - 1].rsplit(' ', 1)[0].rstrip(' ,;:-') + '…'
+
+
+def _rgb(colour):
+    try:
+        return tuple(int(str(colour)[i:i + 2], 16) for i in (1, 3, 5))
+    except ValueError:
+        return None
+
+
+def plan_lines(plan, sewn=None):
+    """Claude's plan as short lines for the person: 'Sky (#88aadd): gradient fill - soft blend'.
+    sewn: the thread colours an attempt sewed. A plan with more lines than that (colours merged
+    or dropped on the way) keeps only the line nearest each sewn colour, so the person is told
+    the colours actually sewn, not the ones planned."""
+    items = []
     for item in plan[:8]:
         if not isinstance(item, dict):
             continue
-        what, style, why = (str(item.get(k) or '').strip()[:80] for k in ('what', 'style', 'why'))
+        what, style, why = (clip(item.get(k), 120) for k in ('what', 'style', 'why'))
         if what and style:
-            colour = str(item.get('colour') or '')[:7]
-            lines.append(f"{what[0].upper() + what[1:]}{f' ({colour})' if colour else ''}: {style}" +
-                         (f' - {why}' if why else ''))
-    return lines
+            items.append((str(item.get('colour') or '')[:7], what, style, why))
+    threads = [_rgb(c) for c in dict.fromkeys(str(c).lower() for c in sewn or [])]
+    if threads and len(items) > len(threads):
+        pairs = sorted((sum((a - b) ** 2 for a, b in zip(_rgb(item[0]) or (999,) * 3, thread)), i, j)
+                       for i, item in enumerate(items) for j, thread in enumerate(threads) if thread)
+        kept, used = set(), set()
+        for _, i, j in pairs:
+            if i not in kept and j not in used:
+                kept.add(i)
+                used.add(j)
+        items = [item for i, item in enumerate(items) if i in kept]
+    return [f"{what[0].upper() + what[1:]}{f' ({colour})' if colour else ''}: {style}" + (f' - {why}' if why else '')
+            for colour, what, style, why in items]
 
 
 def recent_sewouts(work, limit=5):
@@ -573,7 +606,7 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
         brief['lessons_from_earlier_runs'] = earlier
     messages = [dict(role='user', content=[picture, dict(type='text', text=
         'Here is the picture to digitize and what Needler measured:\n' + json.dumps(brief, indent=1))])]
-    attempts, finish, plan, stuck = [], None, [], None
+    attempts, finish, planned, stuck = [], None, [], None
     while finish is None:
         problem = spend.room()
         if problem:
@@ -585,6 +618,8 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
             betas=['server-side-fallback-2026-07-01'], fallbacks='default')
         spend.add(response.usage)
         job['claude_usd'] = round(spend.run, 4)
+        # The model that answered (the server may fall back to another), named in the result.
+        job['claude_model'] = getattr(response, 'model', None) or MODEL
         if response.stop_reason == 'refusal':
             raise RuntimeError('Claude declined this picture.')
         if response.stop_reason == 'max_tokens':
@@ -607,10 +642,10 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
                 results.append(dict(type='tool_result', tool_use_id=call.id, is_error=True,
                                     content=f'No attempts left. Call finish with one of attempts 1-{len(attempts)}.'))
                 continue
-            log('Claude: ' + data['note'][:240])
+            log('Claude: ' + clip(data['note'], 300))
             if isinstance(data.get('plan'), list) and data['plan']:
-                plan = plan_lines(data['plan'])
-                for line in plan:
+                planned = data['plan']
+                for line in plan_lines(planned):
                     log('Plan: ' + line)
             if stuck:
                 results.append(dict(type='tool_result', tool_use_id=call.id, is_error=True, content=stuck))
@@ -628,10 +663,10 @@ def run(job, path, kind, facts, wish, options, attempt, log, client=None):
             result, options = attempt(options)
             result.update(options=options, number=number, kind=('line_art' if options.get('line_art') else
                                                                'ink' if options.get('ink_only') else 'logo'))
-            result['plan'] = plan
+            result['plan'] = plan_lines(planned, (result.get('playback') or {}).get('colors'))
             attempts.append(result)
             if result.get('error'):
-                log(f'Attempt {number}: ' + result['error'][:240])
+                log(f'Attempt {number}: ' + clip(result['error'], 300))
                 results.append(dict(type='tool_result', tool_use_id=call.id, is_error=True,
                                     content=f"Attempt {number} failed: {result['error']}"))
                 continue

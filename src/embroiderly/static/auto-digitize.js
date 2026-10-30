@@ -1,7 +1,18 @@
 /* "Digitize for me": one button that runs the rules-based auto-digitizer on
    the server, shows each step live, then opens the result for review.
    The server saves settings and stitches; nothing is downloaded here. */
-document.addEventListener('DOMContentLoaded', () => {
+// Longest request the server reads (REQUEST_LIMIT in auto_digitize.py); longer is warned, not cut silently.
+const AUTO_REQUEST_LIMIT=1000;
+/* The note under the 3D review, worded from the real export result: the places the 3D
+   review marks, and whether the file checks passed or the download is blocked. */
+function autoReviewNote(found,result){
+ if(!found||!result?.stitches)return '';
+ const places=`${found} place${found===1?'':'s'}`;
+ return `3D preview ready. Look at the ${places} it marks (numbered on the model). `+(result.problem||result.ok===false?
+  'The download is blocked until the problem above is fixed.':
+  `The file checks passed; check ${found===1?'it':'them'} on a sample sew-out.`);
+}
+if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', () => {
  'use strict';
  const $=id=>document.getElementById(id), studio=window.embroideryStudio;
  const choices=$('workflowChoices'), inspector=document.querySelector('.inspector');
@@ -18,7 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
  panel.innerHTML=`<h1 id="autoTitle">Digitize for me</h1>
  <p class="muted">It looks at your picture, chooses the settings, makes the stitches and checks them. If a check fails it adjusts and tries again. You review the result before downloading.</p>
  <label for="autoRequest">Anything it should know? <span class="muted">(optional)</span></label>
- <textarea id="autoRequest" maxlength="300" placeholder="For example: cap front, 6 cm wide, 3 colours"></textarea>
+ <textarea id="autoRequest" placeholder="For example: cap front, 6 cm wide, 3 colours"></textarea>
+ <p id="autoRequestLong" class="auto-problem" hidden></p>
  <p class="muted">It understands sizes (mm, cm, inches; wide or tall), a number of colours, and “line art”, “black lines” or “logo”.</p>
  <label for="autoDetail">Detail</label>
  <div class="auto-detail"><span class="muted">Fewer</span><input type="range" id="autoDetail" min="1" max="5" step="1" value="3"><span class="muted">More</span></div>
@@ -29,6 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
  <div id="autoResult" hidden></div>`;
  inspector.prepend(panel);
  const steps=$('autoSteps'),result=$('autoResult'),start=$('autoStart');
+ $('autoRequest').oninput=()=>{
+  const n=$('autoRequest').value.length,warn=$('autoRequestLong');warn.hidden=n<=AUTO_REQUEST_LIMIT;
+  warn.textContent=`Too long: ${n.toLocaleString()} characters. Only the first ${AUTO_REQUEST_LIMIT.toLocaleString()} are read; shorten it.`;
+ };
  const cover=node('div','','auto-cover');cover.hidden=true;cover.innerHTML='<div><strong>Digitizing…</strong><span></span></div>';
  document.querySelector('.panels')?.append(cover);
  const hideOthers=on=>{for(const child of inspector.children)if(child!==panel)child.classList.toggle('auto-hidden',on)};
@@ -51,10 +67,11 @@ document.addEventListener('DOMContentLoaded', () => {
    ...(r.request?[node('p','Your request: '+r.request,'auto-summary')]:[]),
    ...(r.plan?.length?[(()=>{const ul=node('ul',null,'auto-plan');ul.append(...r.plan.map(t=>node('li',t)));return ul})()]:[]),
    ...(r.tools_used?.length?[node('p','Tools used: '+r.tools_used.join(', '),'muted')]:[]),
+   ...(r.decided_by?[node('p','Settings chosen by '+r.decided_by+'.','muted')]:[]),
    ...((r.check||[]).map(t=>node('p','Check: '+t,'auto-note'))),
    ...(r.problem?[node('p',r.problem_detail||r.problem,'auto-problem')]:[]),
    ...((r.issues||[]).map(t=>node('p',t,'auto-problem'))),
-   node('p','Check it in 3D, then use Save and download. A sample sew-out is still needed.'+(r.claude_usd!=null?` Claude cost for this design: $${Number(r.claude_usd).toFixed(2)}.`:''),'muted'));
+   node('p',(r.problem?'Check it in 3D. The download is blocked until the problem above is fixed.':'Check it in 3D, then use Save and download.')+' A sample sew-out is still needed.'+(r.claude_usd!=null?` Claude cost for this design: $${Number(r.claude_usd).toFixed(2)}.`:''),'muted'));
   if(r.stitches){const b=node('button','Show the result');b.type='button';b.className='primary';b.onclick=()=>{location.href=location.pathname+'?view=stitched&auto=1'};result.append(b)}
  }
  async function poll(){
@@ -108,7 +125,8 @@ document.addEventListener('DOMContentLoaded', () => {
      setTimeout(()=>{
       const found=(window.Thread3D.findings()||[]).filter(f=>f.kind!=='repeat');
       const show3d=result.querySelector('button');if(show3d){show3d.textContent='Open 3D view';show3d.onclick=()=>window.Thread3D.open()}
-      if(found.length)result.insertBefore(node('p',`The 3D review marks ${found.length} place${found.length===1?'':'s'} worth a look (numbered on the model). They passed the file checks; check them on a sample sew-out.`,'auto-note'),result.querySelector('.muted'));
+      const note=autoReviewNote(found.length,job.result);
+      if(note)result.insertBefore(node('p',note,'auto-note'),result.querySelector('.muted'));
      },1200);
     }
     else if(++tries>40)clearInterval(wait);
@@ -119,3 +137,4 @@ document.addEventListener('DOMContentLoaded', () => {
   fetch(api,{cache:'no-store'}).then(r=>r.json()).then(job=>{if(job.state==='running'){show();running=true;start.disabled=true;cover.hidden=false;poll()}}).catch(()=>{});
  }
 });
+if(typeof module!=='undefined')module.exports={autoReviewNote,AUTO_REQUEST_LIMIT};

@@ -81,3 +81,38 @@ def test_start_waits_for_preparation_and_starts_over_an_old_result(tmp_path):
     # The finished job could not be fully shown (plan not a list), yet Start is free again.
     assert report['runningAfter'] is False and report['posts2'] == 2
     assert report['keptDisabled'] is True
+
+
+CHECKS = r"""
+(async () => {
+  const box = $('autoRequest'), warn = $('autoRequestLong');
+  box.value = 'x'.repeat(1000); box.oninput();
+  const report = {limit: module.exports.AUTO_REQUEST_LIMIT, fits: warn.hidden};
+  box.value = 'x'.repeat(1200); box.oninput();
+  report.long = warn.hidden ? '' : warn.textContent;
+  const note = module.exports.autoReviewNote;
+  report.passed = note(2, {stitches: 100, ok: true});
+  report.blocked = note(1, {stitches: 100, ok: false, problem: 'Export blocked: 5 stitches cross empty areas'});
+  report.none = note(0, {stitches: 100, ok: true});
+  console.log(JSON.stringify(report));
+  process.exit(0);
+})();
+"""
+
+
+@pytest.mark.skipif(not shutil.which('node'), reason='needs Node')
+def test_a_long_request_is_warned_and_the_3d_note_follows_the_export_result(tmp_path):
+    """Session 23: the request box cut at 300 characters with no warning, and the 3D note said
+    the marked places passed the file checks even when the download was blocked."""
+    from embroiderly.auto_digitize import REQUEST_LIMIT
+    harness = tmp_path / 'harness.js'
+    harness.write_text(HARNESS.split('(async () => {')[0] + CHECKS)
+    out = subprocess.run(['node', str(harness), str(SCRIPT)], capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr
+    report = json.loads(out.stdout.strip().splitlines()[-1])
+    assert report['limit'] == REQUEST_LIMIT and report['fits'] is True
+    assert '1,200 characters' in report['long'] and 'first 1,000' in report['long']
+    assert 'maxlength' not in SCRIPT.read_text(encoding='utf-8')
+    assert report['passed'].startswith('3D preview ready. Look at the 2 places') and 'file checks passed' in report['passed']
+    assert 'download is blocked' in report['blocked'] and 'passed' not in report['blocked']
+    assert report['none'] == ''

@@ -1139,3 +1139,17 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - Studio Colours panel: Compare thread suggestions has the thread chart menu (All charts or one),
   using `/lettering/native/thread?chart=` and the same remembered `needler.threadChart` as the
   Text page; it asks when the suggestions are opened or the chart changes.
+
+## AI messages (added 2026-10-30)
+
+- `auto_digitize.classify`: the ink test also needs under 3% colourful pixels (saturation over 0.35,
+  not dark), the same limit as the line-art test; black outlines around colour fills are colour art.
+- `auto_claude.clip(text, limit)` shortens what Claude writes for the person after its last whole
+  sentence (or at a word, with "…", when the first sentence alone is too long). Plan parts allow 120
+  characters, notes and errors 300, the summary 800.
+- `auto_claude.plan_lines(plan, sewn)`: when an attempt sews fewer thread colours than the plan has
+  lines, each sewn colour keeps its nearest plan line (RGB distance, each line used once); the rest
+  were merged or dropped. The result's `colours` counts distinct threads, not colour blocks.
+- The request is read up to `REQUEST_LIMIT` (1000) characters; past it the panel warns and the steps
+  say how much was read. The result's `decided_by` names Claude and the model that answered
+  (`response.model`, which a server-side fallback may change), or the built-in rules.

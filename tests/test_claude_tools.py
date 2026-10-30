@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 
 from embroiderly import custom_fabrics, hoops
-from embroiderly.auto_claude import catalog, handbook, run, settings_from, tools
+from embroiderly.auto_claude import catalog, clip, handbook, plan_lines, run, settings_from, tools
 from embroiderly.borders import OUTLINES, border_plan
 from embroiderly.generation_policy import preset_for, presets
 from embroiderly.region_stitches import CATALOG, VARIANTS
@@ -222,3 +222,29 @@ def test_claude_shows_a_plan_follows_the_request_and_names_its_tools(tmp_path):
     # The plan carries to later attempts until Claude changes it.
     assert [a['plan'] for a in attempts] == [['Sky (#1e5ac8): gradient fill - you asked for a soft sky']] * 2
     assert finish['request'].startswith('The sky') and finish['tools_used'] == ['gradient fill']
+
+
+def test_explanations_end_at_a_sentence_not_mid_word():
+    # Session 23: plan lines were cut at 80 characters and notes at 240, mid-sentence.
+    note = 'The flames are satin so they shine. ' * 8 + 'The ball is a fill with seams on top'
+    short = clip(note, 240)
+    assert len(short) <= 240 and short.endswith('shine.')
+    words = clip('orange flames licking around the whole ball ' * 4, 80)
+    assert len(words) <= 80 and words.endswith('…') and 'orange flames' in words
+    assert words[:-1].split()[-1] in 'orange flames licking around the whole ball'.split()
+    assert clip('  Short   one. ', 80) == 'Short one.' and clip(None, 80) == ''
+
+
+def test_the_plan_tells_the_colours_actually_sewn():
+    # Session 23: five planned colours were listed while four were sewn (two flames merged).
+    plan = [dict(colour='#e8731c', what='ball', style='fill', why='a solid ball'),
+            dict(colour='#202020', what='seams', style='satin', why='crisp lines'),
+            dict(colour='#ffd23f', what='flame tips', style='satin', why='bright'),
+            dict(colour='#d22b1e', what='flames', style='fill', why='big areas'),
+            dict(colour='#c8281c', what='flame shadow', style='fill', why='depth')]
+    sewn = ['#E8731C', '#202020', '#ffd23f', '#d02a1e', '#202020']
+    lines = plan_lines(plan, sewn)
+    assert len(lines) == 4 and not any('shadow' in line for line in lines)
+    assert lines[0] == 'Ball (#e8731c): fill - a solid ball'
+    # With as many sewn colours as plan lines, or none known, the whole plan stays.
+    assert len(plan_lines(plan, sewn + ['#123456'])) == 5 and len(plan_lines(plan)) == 5

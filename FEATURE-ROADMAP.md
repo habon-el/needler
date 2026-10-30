@@ -207,7 +207,7 @@ instructions are typed by hand, so they fall behind every new feature.
 | 20 | Bugs: edge-speck choices, stuck image editor, big script satin gaps, Chrome freezing | ✓ 2026-10-29 |
 | 21 | Gaps from 16–18: wand overlap, auto trace limit, File outline rows, recognition on real-world structure, photo stitch threads, Colours panel chart | ✓ 2026-10-29 |
 | 22 | Coverage: satin joins widened over bare fabric, gap columns on picture satin, bare-patch check for lettering (reported, not blocking); small text keeps gaps wider than 0.4 mm; Compare stitches without the stale typing preview | ✓ 2026-10-29 |
-| 23 | Round 3, AI messages: see "Session 23 notes" below | |
+| 23 | Round 3, AI messages: see "Session 23 notes" below | ✓ 2026-10-30: requests up to 1000 characters, warned past that; Claude's notes, plan and summary cut at a sentence end; 3D review note worded from the export result (checks passed / download blocked); colour art with black outlines no longer called an ink drawing; the plan lists only the colours sewn; source picture untinted in Compare and Review; the result names who chose the settings (Claude and its model, or the built-in rules) |
 | 24 | Round 4, export proof: see "Session 24 notes" below | |
 
 ### Session 23 notes (AI messages; found testing a flaming basketball, 2026-10-29)

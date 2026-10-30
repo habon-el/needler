@@ -170,7 +170,8 @@ function draw(){
     for(const ring of window.stitchRegionSelection.rings){ring.forEach(([x,y],j)=>j?c.lineTo(x,y):c.moveTo(x,y));c.closePath()}
     c.fillStyle='rgba(0,180,160,.18)';c.fill('evenodd');c.strokeStyle='#008d79';c.lineWidth=2/t.s;c.stroke();c.restore();
   }
-  if(i===0&&prepared.naturalWidth&&options.selection!=='full'){
+  // The green subject tint marks the selection; side by side with the colours or stitches it would hide the source colours.
+  if(i===0&&prepared.naturalWidth&&options.selection!=='full'&&!['compare','review'].includes(currentView)){
     tint.width=width;tint.height=height;const mask=tint.getContext('2d');mask.drawImage(prepared,0,0);mask.globalCompositeOperation='source-in';mask.fillStyle='#00c999';mask.fillRect(0,0,width,height);c.globalAlpha=+$('overlay').value/100;c.drawImage(tint,0,0);c.globalAlpha=1;
   }
   if(i===2){

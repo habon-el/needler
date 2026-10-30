@@ -30,6 +30,30 @@ def test_classify_picks_line_art_ink_logo_and_photo():
     assert classify(noise)[0] == 'photo'
 
 
+def test_colour_fills_with_black_outlines_are_not_an_ink_drawing():
+    # Session 23: a flaming basketball (colour fills, black outlines, white around) was called ink.
+    cartoon = Image.new('RGB', (300, 300), 'white')
+    draw = ImageDraw.Draw(cartoon)
+    draw.ellipse((90, 90, 210, 210), fill='#e8731c', outline='black', width=4)
+    draw.polygon([(150, 30), (175, 90), (125, 90)], fill='#d22b1e', outline='black', width=3)
+    kind, facts = classify(cartoon)
+    assert kind == 'logo' and facts['colourful'] >= .03
+
+
+def test_a_long_request_is_kept_to_the_limit_and_the_person_is_told(tmp_path, monkeypatch):
+    from embroiderly.auto_digitize import REQUEST_LIMIT, AutoDigitizer
+    monkeypatch.setattr(AutoDigitizer, '_run', lambda self, path, job: None)
+    (tmp_path / 'work/uploads').mkdir(parents=True)
+    for name in ('short.png', 'long.png'):
+        badge().save(tmp_path / 'work/uploads' / name)
+    runner = AutoDigitizer(None, tmp_path)
+    job = runner.start('short.png', 'flames ' * 50)
+    assert job['request'] == 'flames ' * 50 and not job['steps']
+    job = runner.start('long.png', 'f' * (REQUEST_LIMIT + 200))
+    assert len(job['request']) == REQUEST_LIMIT > 300
+    assert f'{REQUEST_LIMIT + 200:,} characters' in job['steps'][0]['text']
+
+
 def test_request_parser_reads_sizes_colours_and_kind():
     assert parse_request('cap front, 6 cm wide, 3 colours') == {'width_mm': 60.0, 'colours': 3, 'fabric': 'cap'}
     assert parse_request('2.5 inch tall line art') == {'height_mm': 63.5, 'kind': 'line_art'}
@@ -136,6 +160,8 @@ def test_claude_path_uses_tools_records_spend_and_keeps_its_choice(tmp_path, mon
     spent = json.loads((tmp_path / 'work/decisions/claude-spend.json').read_text())['usd']
     assert 0 < spent < .1 and job['result']['claude_usd'] == round(spent, 4)
     assert 'ANTHROPIC' not in json.dumps(job)
+    # The person is told which AI chose the settings.
+    assert job['result']['decided_by'] == "Claude (claude-opus-5-5), Anthropic's AI"
 
 
 def test_claude_failure_falls_back_to_rules(tmp_path, monkeypatch):
@@ -150,6 +176,7 @@ def test_claude_failure_falls_back_to_rules(tmp_path, monkeypatch):
     client.post('/api/auto-digitize/badge.png', json={'use_claude': True})
     job = _wait(client, 'badge.png')
     assert job['state'] == 'done' and any('built-in rules' in s['text'] for s in job['steps'])
+    assert job['result']['decided_by'] == "Needler's built-in rules (no AI)"
 
 
 class _ScriptedClaude:

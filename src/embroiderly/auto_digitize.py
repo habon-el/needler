@@ -14,6 +14,8 @@ import numpy as np
 from PIL import Image
 
 MAX_ATTEMPTS = 4
+# Longest request read, in characters (the panel's box warns past it; static/auto-digitize.js).
+REQUEST_LIMIT = 1000
 # Detail slider step -> smallest colour area kept, mm² (3 is the usual 1 mm²).
 DETAIL_FLOOR_MM2 = {1: 8.0, 2: 3.0, 3: 1.0, 4: .5, 5: .25}
 KINDS = {
@@ -45,7 +47,10 @@ def classify(image, max_side=384):
     if dark > .55 and .005 < lit < .35 and colourful < .03:
         return 'line_art', facts
     ink_pixels = lum < 90
-    if bright > .6 and .003 < ink_pixels.mean() < .3 and float(sat[ink_pixels].mean() if ink_pixels.any() else 1) < .18:
+    # Black outlines around coloured fills (a cartoon, clip art) are colour art: black-lines
+    # mode would leave the fills out.
+    if bright > .6 and .003 < ink_pixels.mean() < .3 and float(sat[ink_pixels].mean() if ink_pixels.any() else 1) < .18 \
+            and colourful < .03:
         return 'ink', facts
     # Shaded black-and-white art (engravings, pencil, halftone): almost no colour and
     # many mid-greys. Black-ink mode would turn its shading into specks and a
@@ -292,9 +297,12 @@ class AutoDigitizer:
             job = self.jobs.get(path.name)
             if job and job['state'] == 'running':
                 raise RuntimeError('Digitize for me is already working on this design.')
-            job = dict(state='running', steps=[], request=request_text[:300], started=time.time(), result=None,
-                       use_claude=bool(use_claude), choices=choices or {})
+            job = dict(state='running', steps=[], request=request_text[:REQUEST_LIMIT], started=time.time(),
+                       result=None, use_claude=bool(use_claude), choices=choices or {})
             self.jobs[path.name] = job
+            if len(request_text) > REQUEST_LIMIT:
+                self._log(job, f'Your request is {len(request_text):,} characters; only the first '
+                               f'{REQUEST_LIMIT:,} are read. Shorten it if the rest matters.')
         threading.Thread(target=self._run, args=(path, job), daemon=True).start()
         return job
 
@@ -355,7 +363,8 @@ class AutoDigitizer:
         sewn = [s for s in playback.get('steps', []) if s['t'] == 'stitch'] or [dict(x=0, y=0)]
         xs, ys = [s['x'] for s in sewn], [s['y'] for s in sewn]
         result = dict(stitches=playback.get('stitch_count', 0), trims=playback.get('trim_count', 0),
-                      colours=len(playback.get('colors', [])), prepared=body.get('prepared_name'),
+                      # Thread colours sewn; a thread used twice counts once.
+                      colours=len({c.lower() for c in playback.get('colors', [])}), prepared=body.get('prepared_name'),
                       width_mm=round(max(xs) - min(xs), 1), height_mm=round(max(ys) - min(ys), 1),
                       puff=playback.get('puff'))
         if keep_playback:
@@ -455,10 +464,13 @@ class AutoDigitizer:
                                                        lambda o: self._attempt(path, o, next(drop), True),
                                                        lambda text: self._log(job, text))
                 except Exception as error:  # Claude unavailable: the rules still work offline.
-                    self._log(job, f'Claude could not help ({str(error)[:160]}). Switching to the built-in rules.')
+                    self._log(job, f'Claude could not help ({auto_claude.clip(error, 200)}). Switching to the built-in rules.')
                     attempts, finish = [], None
-            if not [a for a in attempts if not a.get('error')]:
+            if [a for a in attempts if not a.get('error')]:
+                job['decided_by'] = f"Claude ({job.get('claude_model')}), Anthropic's AI"
+            else:
                 attempts = self._rules(job, path, kind, wish, options)
+                job['decided_by'] = "Needler's built-in rules (no AI)"
             self._finish(job, path, kind, facts, wish, attempts, finish)
         except Exception as error:  # Report, never crash the server thread.
             job['state'] = 'failed'
@@ -530,17 +542,19 @@ class AutoDigitizer:
                              problem=best.get('error') or best.get('gate'),
                              problem_detail=(best.get('gate_detail') or {}).get('text'),
                              # The error or file check is already the problem above.
-                             issues=[i['text'] for i in assess(best) if i['kind'] not in ('error', 'gate')])
+                             issues=[i['text'] for i in assess(best) if i['kind'] not in ('error', 'gate')],
+                             decided_by=job.get('decided_by'))
         if best.get('options', {}).get('puff') and not best.get('puff') and not best.get('error'):
             job['result']['issues'].append('3D puff was asked for, but no part is wide enough to hold the foam (3–6 mm, or 2–6 mm with 2 mm foam) at this size, so it is sewn flat. '
                                            'Try another size, 2 mm foam, or puff bold lettering instead.')
         elif best.get('puff'):
             job['result']['puff'] = best['puff']
         if finish:
-            job['result'].update(summary=str(finish.get('summary', ''))[:800],
-                                 check=[str(c)[:300] for c in finish.get('check', [])][:4],
-                                 request=str(finish.get('request') or '')[:400],
-                                 tools_used=[str(t)[:60] for t in finish.get('tools_used', [])
+            from .auto_claude import clip
+            job['result'].update(summary=clip(finish.get('summary'), 800),
+                                 check=[clip(c, 300) for c in finish.get('check', [])][:4],
+                                 request=clip(finish.get('request'), 400),
+                                 tools_used=[clip(t, 60) for t in finish.get('tools_used', [])
                                              if isinstance(t, str)][:10],
                                  plan=list(best.get('plan') or [])[:8])
         if job.get('claude_usd') is not None:
