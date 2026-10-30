@@ -812,6 +812,13 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
                         f'{{{INK_NS}}}max_stitch_length_mm': '3.5', f'{{{INK_NS}}}fill_underlay': 'true',
                         f'{{{INK_NS}}}trim_after': 'true'})
                 continue
+            # The letter as drawn, for the coverage check (lettering_coverage.bare_patches):
+            # what of it the columns leave bare. A group attribute is never sewn.
+            letter = page(glyph_columns(font_path(key), char)[2], m)
+            rings = [ring for poly in getattr(letter, 'geoms', [letter]) if not poly.is_empty
+                     for ring in (poly.exterior, *poly.interiors)]
+            if rings:
+                group.set(f'{{{INK_NS}}}letter_outline', ' '.join(_path(list(r.coords))+' Z' for r in rings))
             travel = None
             nodes = []
             sewn_columns, column_nodes = [], []

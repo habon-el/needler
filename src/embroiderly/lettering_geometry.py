@@ -19,7 +19,8 @@ GRID = .04
 MAX_GRID = .1   # coarsest verifier raster, for the largest lettering
 
 
-def outline(svg, *, with_paths=False):
+def outline(svg, *, with_paths=False, raw=False):
+    """raw: with_paths gives each column's own area, without its pull compensation."""
     from . import svg_geometry
     try:
         root = svg_geometry.load(svg)
@@ -59,7 +60,7 @@ def outline(svg, *, with_paths=False):
             raise ValueError('This font has unsupported pull compensation.')
         shapes.append(shape)
         envelopes.append(shape.buffer(max(compensation)))
-        paths[node.get('id')] = envelopes[-1]
+        paths[node.get('id')] = shape if raw else envelopes[-1]
     if not shapes:
         raise ValueError('This font has no verifiable satin columns.')
     if with_paths:

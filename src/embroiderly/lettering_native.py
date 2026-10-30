@@ -178,6 +178,10 @@ def build(folder, settings):
                     shutil.copyfile(draft/name, folder/name)
                 reports, issues, bounds, spans = after, remaining, new_bounds, new_spans
                 generated, source, wide_letters = candidate, candidate['rebuild_report'], 'fill'
+    # Letter parts the satin columns leave bare (wider than a thread), with locations.
+    # Reported, not yet a download block: square terminals of block fonts still show some.
+    from .lettering_coverage import bare_patches
+    bare = bare_patches(generated['svg'])
     fit = width_fit(reports['dst']['width_mm'], settings['available_width_mm'])
     passed = not any(issues.values()) and fit['fits']
     if passed:
@@ -192,7 +196,7 @@ def build(folder, settings):
                   seconds=round(time.monotonic()-started, 2),
                   pending=['Density and repeated-penetration assessment',
                            'Visual readability and a physical sew-out on your fabric'],
-                  wide_letters=wide_letters,
+                  wide_letters=wide_letters, bare_patches=bare,
                   message=('File checks passed. '+('These big letters are sewn as fill, not satin, so no stitch '
                                                     'crosses a letter hole. ' if wide_letters else '')+
                            'Review the lettering before saving.' if passed else

@@ -67,25 +67,25 @@ def area_mm2(rings,scale):
 
 SATIN_COVER=.9      # satin columns must cover this share of an area, or it is filled instead
 FILL_FROM_MM=2.0    # ... when it is at least this wide (rows of fill turn ragged below)
+SATIN_BARE_MM=.4    # a part the satin leaves bare wider than about a thread shows as fabric
 
 
 def satin_gaps(rings,scale,thick):
     """True when satin columns would leave a wide enough area visibly bare: a branched area
-    with many holes (a petal netted by darker shading) has wedges and tips no column reaches.
-    Such an area is filled. Narrow or small areas stay satin."""
-    if thick<FILL_FROM_MM or area_mm2(rings,scale)<30:return False
-    from shapely.geometry import Polygon
+    with many holes (a petal netted by darker shading) has wedges and tips no column reaches,
+    and a thin outline can keep a bare wedge where its branches meet even after the gap
+    columns. Such an area is filled."""
     from shapely.ops import unary_union
     from .stitch_fills import fill_shape
-    from .satin_font import area_columns
+    from .satin_font import _ribbon, area_columns, bare_patches
     shape=fill_shape([([(float(x)*scale,float(y)*scale) for x,y in r[:,0,:]],True) for r in rings if len(r)>=3],'evenodd')
     if shape.is_empty:return False
-    columns=[]
-    for a,b,closed,_ in area_columns(shape):
-        if closed and len(a)>=3 and len(b)>=3:columns.append(Polygon(a).symmetric_difference(Polygon(b)).buffer(0))
-        elif not closed and len(a)>=2 and len(b)>=2:columns.append(Polygon(list(a)+list(b)[::-1]).buffer(0))
-    covered=unary_union(columns).intersection(shape).area if columns else 0.
-    return covered<SATIN_COVER*shape.area
+    usable=lambda columns:[c for c in columns if min(len(c[0]),len(c[1]))>=(3 if c[2] else 2)]
+    if thick>=FILL_FROM_MM and area_mm2(rings,scale)>=30:
+        # The traced columns alone, before any repair: too little of a wide area is a satin stroke at all.
+        traced=[_ribbon(a,b,closed) for a,b,closed,_ in usable(area_columns(shape,gaps=False))]
+        if (unary_union(traced).intersection(shape).area if traced else 0.)<SATIN_COVER*shape.area:return True
+    return bool(bare_patches(shape,usable(area_columns(shape)),SATIN_BARE_MM))
 
 
 def stroke_like(rings,scale,thick):

@@ -515,9 +515,12 @@ def glyph_columns(path, char):
     return columns_for(shape), advance, shape
 
 
-def area_columns(shape, gaps=False):
+def area_columns(shape, gaps=True):
     """Satin columns for any filled shape (e.g. millimetres): the shape is
-    scaled to the tracer's working size and the columns scaled back."""
+    scaled to the tracer's working size and the columns scaled back. Gap columns
+    cover what the traced columns leave bare where outlines branch and meet (a picture's
+    satin outlines as much as a letter); gaps=False: the traced columns alone, as they
+    follow the shape (a gap's own column; the share a satin stroke covers)."""
     if not shape.is_valid:
         # Traced pixel outlines can touch themselves; GEOS refuses those in cuts.
         shape = shape.buffer(0)
@@ -581,7 +584,12 @@ def columns_for(shape, gaps=True):
                 widths = [math.dist(p, q)/2 for p, q in zip(*dot)]
                 columns.append((dot[0], dot[1], False, float(np.median(widths))))
     if gaps:
-        columns += _gap_columns(columns, outline)  # letters only; areas keep their columns
+        columns = _widen(columns, outline)
+        extra = _gap_columns(columns, outline)
+        if extra:
+            # Gap columns meet the others with rounded ends: let them reach the wedges too.
+            columns = _widen(columns+extra, outline)
+        columns = _redundant(columns)
     result = []
     for a, b, closed, width in columns:
         ra = [to_em(*p) for p in a]; rb = [to_em(*p) for p in b]
@@ -591,32 +599,149 @@ def columns_for(shape, gaps=True):
     return tuple(_order(result, shape))
 
 
+def _ribbon(a, b, closed):
+    """The area a column sews: between its rails (a loop: between its two rings)."""
+    if closed:
+        return Polygon(a).buffer(0).symmetric_difference(Polygon(b).buffer(0))
+    polygon = Polygon(list(a)+list(b)[::-1])
+    return polygon if polygon.is_valid else polygon.buffer(0)
+
+
+def bare_patches(shape, columns, across):
+    """Parts of shape no column ribbon covers that are wider than `across` (same units):
+    what shows as bare fabric once sewn. Narrower slivers close as the thread spreads."""
+    if shape.is_empty:
+        return []
+    covered = unary_union([_ribbon(a, b, closed) for a, b, closed, _ in columns if len(a) >= 2 and len(b) >= 2])
+    bare = shape.difference(covered) if not covered.is_empty else shape
+    return [g for g in polygons(bare) if not g.buffer(-across/2).is_empty]
+
+
+def _widen(columns, outline):
+    """Cross-sections reach on along their own line over fabric no column covers, to the
+    outline, and overlap the neighbour they meet a little. Where strokes join or bend the
+    columns stop short of the outline (junction cuts, straight junction ends, rails capped
+    at the stroke width) and left thin bare wedges. Only bare fabric is reached for, so
+    no point gains more than one extra layer; ends (tips, terminals) are not lengthened."""
+    if not columns:
+        return columns
+    from shapely.prepared import prep
+    covered = unary_union([_ribbon(a, b, closed) for a, b, closed, _ in columns])
+    # Only bare parts wider than a raster pixel matter (thinner is edge rounding), and
+    # only cross-sections whose ray meets one are measured: the ray cuts are costly.
+    bare = [g for g in polygons(outline.difference(covered)) if not g.buffer(-.5).is_empty]
+    if not bare:
+        return columns
+    near = prep(unary_union(bare))
+    zone = prep(outline.buffer(1.0))
+    out = []
+    for a, b, closed, width in columns:
+        if closed:
+            out.append((a, b, closed, width)); continue
+        overlap, reach = width*.25, width*2.2
+        a, b, changed = list(a), list(b), False
+        for i, (p, q) in enumerate(zip(a, b)):
+            d = math.dist(p, q)
+            if d < 1e-6:
+                continue
+            u = ((p[0]-q[0])/d, (p[1]-q[1])/d)
+            for side, (end, s) in enumerate(((p, 1), (q, -1))):
+                room = reach-d/2
+                if room <= overlap:
+                    continue
+                far = (end[0]+s*u[0]*room, end[1]+s*u[1]*room)
+                ray = LineString([end, far])
+                if not near.intersects(ray):
+                    continue
+                inside = [g for g in _lines(ray.intersection(outline)) if g.distance(Point(end)) < 1.0]
+                if not inside:
+                    continue
+                stop = max(math.dist(end, xy) for g in inside for xy in g.coords)
+                if stop < 1.0:
+                    continue
+                open_ = LineString([end, (end[0]+s*u[0]*stop, end[1]+s*u[1]*stop)]).difference(covered)
+                lengths = [math.dist(end, xy) for g in _lines(open_) for xy in g.coords]
+                if not lengths or open_.length < .5:
+                    continue
+                t = min(stop, max(lengths)+overlap)
+                to = (end[0]+s*u[0]*t, end[1]+s*u[1]*t)
+                if side == 0:
+                    a[i] = to
+                else:
+                    b[i] = to
+                changed = True
+        if changed:
+            # Rays fan together inside a bend and a chord between two reached points can
+            # cut a concave outline: undo the reach of such sections until the ribbon holds.
+            a0, b0 = columns[len(out)][0], columns[len(out)][1]
+            # Checked section by section: a column that nearly closes on itself (a bowl)
+            # may now overlap its own start, which is sewn like any overlap.
+            moved = lambda i: (a[i], a[i+1], b[i], b[i+1]) != (a0[i], a0[i+1], b0[i], b0[i+1])
+            quad = lambda i: Polygon([a[i], a[i+1], b[i+1], b[i]])
+            while True:
+                wrong = {k for i in range(len(a)-1) if moved(i) and not _sound(quad(i), zone) for k in (i, i+1)}
+                if not wrong:
+                    break
+                for k in wrong:
+                    a[k], b[k] = a0[k], b0[k]
+            grown = [quad(i) for i in range(len(a)-1) if moved(i)]
+            if grown:
+                covered = covered.union(unary_union(grown))
+        out.append((a, b, closed, width))
+    return out
+
+
+def _redundant(columns, share=.97):
+    """Leave out columns the others (overlapping, widened) already sew over: they only
+    pile thread, and a short one cannot take needle points of its own, so the written-file
+    check reports it as a missing letter part. Smallest first; loops always stay."""
+    ribbons = [_ribbon(a, b, closed) for a, b, closed, _ in columns]
+    keep = list(range(len(columns)))
+    for i in sorted(keep, key=lambda i: ribbons[i].area):
+        if columns[i][2] or ribbons[i].is_empty or len(keep) < 2:
+            continue
+        others = unary_union([ribbons[j] for j in keep if j != i])
+        if others.intersection(ribbons[i]).area >= share*ribbons[i].area:
+            keep.remove(i)
+    return [columns[i] for i in keep]
+
+
+def _sound(quad, zone):
+    return quad.is_valid and zone.contains(quad)
+
+
+def _lines(shape):
+    return [g for g in getattr(shape, 'geoms', [shape]) if isinstance(g, LineString) and not g.is_empty]
+
+
+# A bare part gets a gap column when it is wider than 2*CORE of the typical half
+# stroke (and its core has CORE_AREA of a half stroke squared): the thin wedges where
+# script strokes join count too.
+CORE, CORE_AREA = .15, .05
+
+
 def _gap_columns(columns, outline):
     """Columns for parts of the letter no column reaches. Junction cuts, sharp-turn
     splits and twisted end sections leave such gaps (a stem, a lobe, where strokes
     meet); small letters hide them, big ones show bare fabric. A gap counts when it is
-    wider than 0.3 of the typical stroke; it is sewn along its long axis, overlapping
+    wider than 0.15 of the typical stroke; it is sewn along its long axis, overlapping
     its neighbours a little so the satin is continuous."""
     if not columns:
         return []
-    ribbons = []
-    for a, b, closed, _ in columns:
-        polygon = Polygon(a, [b]) if closed else Polygon(list(a)+list(b)[::-1])
-        ribbons.append(polygon if polygon.is_valid else polygon.buffer(0))
     half = float(np.median([width for *_, width in columns]))
-    bare = outline.difference(unary_union(ribbons))
+    bare = outline.difference(unary_union([_ribbon(a, b, closed) for a, b, closed, _ in columns]))
     out = []
     for piece in polygons(bare):
-        core = piece.buffer(-half*.3)
-        if core.is_empty or core.area < half*half*.2:
+        core = piece.buffer(-half*CORE)
+        if core.is_empty or core.area < half*half*CORE_AREA:
             continue
-        patch = core.buffer(half*.3+min(2.0, half*.25)).intersection(outline)
+        patch = core.buffer(half*CORE+min(2.0, half*.25)).intersection(outline)
         for part in polygons(patch):
             if part.area < half*half*.5:
                 continue
             # Traced like a letter of its own (a curved gap needs a curved column);
             # a compact one along its long axis.
-            traced = [(a, b) for a, b, closed, _ in area_columns(part) if not closed]
+            traced = [(a, b) for a, b, closed, _ in area_columns(part, gaps=False) if not closed]
             dot = _dot(part, RESOLUTION)
             for a, b in traced or ([dot] if dot else []):
                 a, b = _clean_column(list(a), list(b), outline)
