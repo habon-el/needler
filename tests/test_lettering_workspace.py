@@ -64,3 +64,64 @@ def test_resize_uses_new_font_recipe_and_keeps_original_version(client):
     assert second['approved'] is False
     assert (store/first['id']/'design.dst').read_bytes() == original
     assert json.loads((store/first['id']/'result.json').read_text())['recipe']['height_mm'] == 5
+
+
+def _text_preview_run(tmp_path, steps, source=None):
+    """Runs text-make.js's typing preview with a stand-in page; returns what each step left on screen."""
+    import shutil, subprocess
+    source = source or (Path(__file__).resolve().parents[1]/'src/embroiderly/static/text-make.js').read_text(encoding='utf-8')
+    start = source.index('/* Instant letter preview')
+    block = source[start:source.index('/* Every problem at once', start)]
+    harness = r"""
+const handlers={}, timers=[], frames=[], drawn=[];
+const listen=(target)=>(type,fn)=>{(handlers[target+type]=handlers[target+type]||[]).push(fn)};
+const field=(value)=>({value,addEventListener:(type,fn)=>listen('field')(type,fn)});
+const fields={letteringWords:field('habonimana'),nativeFont:field('damion'),nativeHeight:field('15.8'),nativeBaseline:field('straight')};
+const context={font:'',fillStyle:'',clearRect(){},fillRect(){},save(){},restore(){},translate(){},rotate(){},
+ measureText:t=>({width:10*t.length,actualBoundingBoxAscent:70,actualBoundingBoxDescent:5,fontBoundingBoxAscent:80,fontBoundingBoxDescent:20}),
+ fillText:t=>drawn.push(t)};
+const page={clientWidth:600,clientHeight:300,offsetLeft:0,offsetTop:0,offsetParent:{},classList:{contains:()=>false},closest:()=>null};
+page.parentElement={append:o=>{o.parentElement=page.parentElement},style:{}};
+const document={addEventListener:listen('document'),getElementById:id=>fields[id]||null,
+ querySelectorAll:()=>[page],createElement:()=>({style:{},getContext:()=>context,hidden:true}),fonts:{add(){}}};
+const window={nativeTextConfig:{},addEventListener:listen('window'),embroideryStudio:{hasPlayback:()=>stitches}};
+let stitches=false;
+const getComputedStyle=()=>({position:'relative'});
+class FontFace{load(){return Promise.resolve(this)}}
+const requestAnimationFrame=fn=>{frames.push(fn);return frames.length}, cancelAnimationFrame=()=>{};
+const setTimeout=fn=>timers.push(fn);
+""" + block + r"""
+const settle=()=>new Promise(r=>queueMicrotask(()=>queueMicrotask(()=>queueMicrotask(r))));
+const fire=(key)=>(handlers[key]||[]).forEach(fn=>fn({}));
+const shown=()=>drawn.some(t=>/press Make stitches/.test(t));
+(async()=>{
+ handlers.documentDOMContentLoaded.forEach(fn=>fn());
+ const out=[];
+ for(const step of STEPS){
+  drawn.length=0;
+  if(step==='stitches'){stitches=true;fire('documentlettering:result')}
+  if(step==='timer')timers.splice(0).forEach(fn=>fn());
+  if(step==='edit'){stitches=false;fire('fieldinput')}
+  if(step==='resize')fire('windowresize');
+  while(frames.length){await frames.shift()();await settle()}
+  await settle();out.push(shown());
+ }
+ console.log(JSON.stringify(out));
+})();
+""".replace('STEPS', json.dumps(steps))
+    script = tmp_path/'preview.js'
+    script.write_text(harness, encoding='utf-8')
+    run = subprocess.run([shutil.which('node'), str(script)], capture_output=True, text=True, timeout=60)
+    assert run.returncode == 0, run.stderr
+    return json.loads(run.stdout)
+
+
+@pytest.mark.skipif(not __import__('shutil').which('node'), reason='needs Node')
+def test_typing_preview_never_covers_current_stitches(tmp_path):
+    # Saved stitches load before the delayed first preview: Compare showed the font
+    # preview at its own scale, saying "press Make stitches", beside real stitches.
+    assert _text_preview_run(tmp_path, ['stitches', 'timer', 'resize']) == [False, False, False]
+    # Edited words clear the stitches: the preview is back until the next stitches.
+    assert _text_preview_run(tmp_path, ['stitches', 'edit', 'stitches']) == [False, True, False]
+    # A new page with words and no stitches yet still previews them.
+    assert _text_preview_run(tmp_path, ['timer']) == [True]

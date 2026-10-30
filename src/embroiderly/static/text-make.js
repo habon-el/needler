@@ -49,7 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* Instant letter preview while typing: the words drawn with the real embroidery
    font over the canvas, no stitching (so no delay). Hidden as soon as real
-   stitches are made, shown again when the words or settings change. */
+   stitches are made, shown again when the words or settings change. Never over
+   current stitches (saved ones load with the page): at its own scale it hid them,
+   and in Compare it stood in for the letter shapes. Only a font peek draws over them. */
 document.addEventListener('DOMContentLoaded', () => {
  'use strict';
  if(!window.nativeTextConfig)return;
@@ -61,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
    .then(face=>{document.fonts.add(face);return face}).catch(()=>null)}
   return fonts[key];
  };
+ const current=()=>!peeked&&!!window.embroideryStudio?.hasPlayback?.();
  const canvas=()=>[...document.querySelectorAll('main canvas')].find(c=>c.offsetParent&&c.clientWidth>200&&!c.classList.contains('remove-overlay')&&!c.closest('.thread-3d'));
  function place(){
   const c=canvas();if(!c)return null;
@@ -73,9 +76,11 @@ document.addEventListener('DOMContentLoaded', () => {
  }
  async function draw(){
   const text=words.value.replace(/\s+$/,'');
-  if((!stale&&!peeked)||!text){if(overlay)overlay.hidden=true;return}
+  const hide=()=>{if(overlay)overlay.hidden=true};
+  if((!stale&&!peeked)||!text||current())return hide();
   const key=peeked||$('nativeFont')?.value||'small_font',size=Math.max(1,Number($('nativeHeight')?.value)||5);
   const face=await fontFor(key);
+  if((!stale&&!peeked)||current())return hide();  // stitches arrived while the font loaded
   const o=place();if(!o)return;o.hidden=false;
   const g=o.getContext('2d'),family=face?`needler-${key}`:'sans-serif';
   // The height entered is the height of the stitched words (all lines), as on
@@ -151,7 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
   $(id)?.addEventListener(['letteringWords','nativeHeight','nativeCurve','nativeCircle','nativeWave','nativeFitLength'].includes(id)?'input':'change',later);
  document.addEventListener('lettering:result',()=>{stale=false;if(overlay)overlay.hidden=true});
  window.addEventListener('resize',()=>{if(stale)later()});
- if(stale)setTimeout(later,600);
+ // Saved stitches may load first: then there is nothing to preview.
+ if(stale)setTimeout(()=>{if(stale)later()},600);
 });
 
 /* Every problem at once, under Make stitches, each with a one-click fix (the server's

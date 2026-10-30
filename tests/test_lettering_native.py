@@ -54,7 +54,7 @@ def test_glyph_check_rejects_missing_marks_without_substitution():
 def client(tmp_path, monkeypatch):
     count = []
     def generate(body, **kwargs):
-        assert kwargs == {'native': True}
+        assert kwargs in ({'native': True}, {'native': True, 'wedges': False})  # without wedges: build's retry
         count.append(body)
         thread=dict(color='#000000',description='Black',catalog_number=None,details=None,brand=None,chart=None,weight=None)
         source = FONT_SVG.replace('<path id="dot" i:satin_column="true" d="M0 15L0 18M3 15L3 18"/>','')

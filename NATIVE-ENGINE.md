@@ -1079,11 +1079,22 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   a u's foot unsewn), when wider than 0.3 of the typical stroke. Each gap is traced as its own
   shape (`area_columns(..., gaps=False)`), or along its long axis when compact, grown a little
   into its neighbours and cleaned against the outline. Gap columns are marked `closed=None`
-  and count as the typical stroke width (size range, puff, underlay); layout leaves out those
-  shorter than `GAP_MIN_MM` (1.5 mm) at the chosen size, where the thread hides the gap and the
-  column is too short for needle points of its own. Pacifico at a 30 mm capital: the largest bare
-  core in a letter went from 36 mm² to 3 mm² (most letters under 1 mm²). Area satin
-  (`area_columns`) is unchanged unless called with `gaps=True`.
+  and count as the typical stroke width (size range, puff, underlay). Pacifico at a 30 mm
+  capital: the largest bare core in a letter went from 36 mm² to 3 mm² (most letters under
+  1 mm²). Area satin (`area_columns`) is unchanged unless called with `gaps=True`.
+  `embroidery_fonts.gap_cover` measures the bare patch each gap column covers and adds wedge
+  columns for every patch still left between columns (junction wedges below the tracer's em
+  sizes; never first or last in the letter, sewn where they lengthen the moves least). Layout
+  sews a gap column when its patch is at least `GAP_SHOW_MM` (0.4 mm) across at the chosen size,
+  where the thread beside it no longer hides it. A wedge column is widened to `WEDGE_END_MM`
+  (0.65 mm) where the letter has room (away from its edge if need be) and its narrower ends cut
+  off: locks retrace the zigzag, and in a narrower one the tie-in and tie-off stitches were too
+  short for the file checks (big letters then fell back to fill). One with no room is left out.
+  If the words still fail a check with wedges, `lettering_native.build` tries them without
+  (`layout(wedges=False)`) before the fill fallback. Before, layout dropped gap columns under
+  1.5 mm long and never covered wedges: Damion "habonimana" 15.8 mm high kept bare slivers at
+  each a's foot (0.4 mm across); now 6 wedge columns are sewn there (29 at 25 mm, none at 10 mm),
+  and at 6 mm 14 of the 16 gap columns are sewn instead of none.
 - Freezing: `ui-language.js` relabelled the whole page on every DOM change (playback updates its
   counter many times a second); it now relabels only added nodes, changed text and changed labels.
   The designs page keeps its cards between renders (search no longer rebuilds every card and

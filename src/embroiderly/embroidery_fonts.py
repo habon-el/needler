@@ -11,14 +11,15 @@ import math
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from .satin_font import _font, glyph_columns
-from .stitch_paths import path_length
+from .stitch_paths import polygons
 
 FONT_DIR = Path(__file__).with_name('fonts')
 SVG_NS = 'http://www.w3.org/2000/svg'
 INK_NS = 'http://inkstitch.org/namespace'
 LABEL_NS = 'http://www.inkscape.org/namespaces/inkscape'
 PX_MM = 25.4/96
-GAP_MIN_MM = 1.5
+GAP_SHOW_MM = .4  # a bare patch narrower than this (across) is hidden by the thread beside it
+WEDGE_END_MM = .65  # a wedge column's ends: room for its 0.6 mm tie-in and tie-off
 CHARACTERS = ''.join(chr(c) for c in range(33, 127))+'ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝàáâãäåçèéêëìíîïñòóôõöùúûüýÿ£€©®°'
 
 FONTS = {
@@ -189,6 +190,109 @@ def cap_height(key):
     _, _, shape = glyph_columns(font_path(key), 'H')
     left, top, right, bottom = shape.bounds
     return bottom-top
+
+
+def _across(shape):
+    """How wide a shape is at its widest place: the largest circle inside it."""
+    from shapely.ops import polylabel
+    return max((2*piece.boundary.distance(polylabel(piece, 1e-4)) for piece in polygons(shape)
+                if piece.area > 0), default=0.0)
+
+
+@lru_cache(maxsize=None)
+def gap_cover(path, char):
+    """The glyph's columns, each with how wide (em) the bare patch it covers is (None for
+    main columns, always sewn) and whether it was added here. Besides the tracer's gap
+    columns (closed=None), patches left between columns (junction wedges below the tracer's
+    own em sizes, bare fabric on big letters) get wedge columns here, grown a little into
+    their neighbours. Layout sews a gap column when its patch is wider than GAP_SHOW_MM at
+    the sewn size."""
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    from .satin_font import RESOLUTION, _clean_column, _dot, area_columns
+    columns, _, shape = glyph_columns(path, char)
+    if not columns:
+        return ()
+    def ribbon(a, b, closed):
+        polygon = Polygon(a, [b]) if closed else Polygon(list(a)+list(b)[::-1])
+        return polygon if polygon.is_valid else polygon.buffer(0)
+    key = lambda a, b: frozenset((a[0], a[-1], b[0], b[-1]))  # the same column either way round
+    bare = shape.difference(unary_union([ribbon(*c[:3]) for c in columns if c[2] is not None]))
+    across = {key(a, b): _across(bare.intersection(ribbon(a, b, None))) for a, b, closed, _ in columns if closed is None}
+    half = float(sorted(width for *_, width in columns)[len(columns)//2])
+    left = bare.difference(unary_union([ribbon(*c[:3]) for c in columns if c[2] is None]))
+    columns, added = list(columns), set()
+    middle = lambda a, b, i: ((a[i][0]+b[i][0])/2, (a[i][1]+b[i][1])/2)
+    for piece in polygons(left):
+        if _across(piece) < half*.25:
+            continue  # under an eighth of the stroke: hidden at any size these fonts sew as satin
+        part = max(polygons(piece.buffer(half*.3).intersection(shape)), key=lambda g: g.area, default=None)
+        if part is None:
+            continue
+        dot = _dot(part, RESOLUTION)
+        options = [(a, b) for a, b, closed, _ in area_columns(part) if not closed] or ([dot] if dot else [])
+        # Biggest first; another only while the patch still shows beside the ones before.
+        for a, b in sorted(options, key=lambda c: -ribbon(*c, False).area):
+            wide = _across(piece)
+            if wide < half*.25:
+                break
+            a, b = _clean_column(list(a), list(b), shape, 1/RESOLUTION)
+            if len(a) < 2:
+                continue
+            a, b = tuple(map(tuple, a)), tuple(map(tuple, b))
+            # Sewn where it lengthens the moves least (between the columns it lies between,
+            # entered from the nearer side): short moves stay inside the letter, a long one
+            # is a cut and tie-ins. The cheap version of the tracer's ordering. Never first or
+            # last: the letter's tie-in and tie-off stay on the tracer's columns.
+            def detour(i, flip):
+                start, end = (middle(a, b, -1), middle(a, b, 0)) if flip else (middle(a, b, 0), middle(a, b, -1))
+                before = math.dist(middle(*columns[i-1][:2], -1), start) if i else 0.0
+                after = math.dist(end, middle(*columns[i][:2], 0)) if i < len(columns) else 0.0
+                plain = math.dist(middle(*columns[i-1][:2], -1), middle(*columns[i][:2], 0)) if 0 < i < len(columns) else 0.0
+                return before+after-plain
+            _, i, flip = min((detour(i, flip), i, flip) for i in range(1, max(2, len(columns))) for flip in (False, True))
+            if flip:
+                a, b = a[::-1], b[::-1]
+            columns.insert(i, (a, b, None, half)); across[key(a, b)] = wide; added.add(key(a, b))
+            piece = piece.difference(ribbon(a, b, False))
+    return tuple((c, None if c[2] is not None else across[key(*c[:2])], key(*c[:2]) in added) for c in columns)
+
+
+def _wedge(column, mm, shape):
+    """A wedge column (gap_cover) sewable at this size (mm per em): sections narrower than
+    WEDGE_END_MM but at least half that widened where the letter has room, away from its
+    edge if need be (tips, widened, cross their neighbours on a curve; a sliver the thread
+    shows is still too narrow for a tie-in or tie-off: locks retrace the zigzag, and in a
+    narrow one their stitches are too short for the machine), then ends still narrower cut
+    off. None when what is left is shorter than that: too small for needle points."""
+    from shapely.geometry import LineString, Polygon
+    a, b, closed, width = column
+    if len(a) != len(b):
+        return None
+    need, zone = WEDGE_END_MM/mm, shape.buffer(1e-4)
+    plain = [(p, q) for p, q in zip(a, b) if math.dist(p, q) > 1e-9]
+    wide = []
+    for p, q in plain:
+        d = math.dist(p, q)
+        if need/2 <= d < need:
+            u = ((q[0]-p[0])/d*(need-d), (q[1]-p[1])/d*(need-d))
+            # Both ways, else only away from the letter's edge.
+            for t in (.5, 0.0, 1.0):
+                wider = (p[0]-u[0]*t, p[1]-u[1]*t), (q[0]+u[0]*(1-t), q[1]+u[1]*(1-t))
+                if zone.contains(LineString(wider)):
+                    p, q = wider
+                    break
+        wide.append((p, q))
+    for rails in (wide, plain):  # widened sections can cross on a tight curve: then as traced
+        keep = [i for i, (p, q) in enumerate(rails) if math.dist(p, q) >= need*.999]
+        if len(keep) < 2:
+            continue
+        rails = rails[keep[0]:keep[-1]+1]
+        ra, rb = tuple(p for p, _ in rails), tuple(q for _, q in rails)
+        middle = [((p[0]+q[0])/2, (p[1]+q[1])/2) for p, q in rails]
+        if Polygon(list(ra)+list(rb)[::-1]).is_valid and LineString(middle).length >= need:
+            return ra, rb, closed, width
+    return None
 
 
 def text_metrics(text, key, line_spacing=1.0):
@@ -546,7 +650,7 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
            pull_mm=None, letter_spacing_mm=0.0, line_spacing=1.0, baseline='straight', radius_mm=None,
            sequence='left', arc_degrees=None, frame='none', frame_mm=2.5, classic=False, ornament='none',
            circle_mm=None, wave_percent=6.0, fit_length_mm=None, envelope='none', envelope_percent=30.0,
-           join='closest'):
+           join='closest', wedges=True):
     """SVG of satin-column lettering; user units are CSS px (96 per inch).
     puff: letters over foam (see stitch_satin._puff_satin). Each letter has a
     placement line sewn before the stop for the foam, then a perforation line
@@ -564,7 +668,8 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
     baseline (letter_spacing_mm is then not used). envelope: the words (every line) stretched
     to fill a shape, letters bending with it, its edges moving envelope_percent of the words'
     height (_envelope_warp). join='bottom': satin letters (not puff or fill) are entered at their
-    baseline on the left (_bottom_entry); letters with fabric between them still cut."""
+    baseline on the left (_bottom_entry); letters with fabric between them still cut. wedges=False:
+    no wedge columns (gap_cover), for a file the checks refuse with them."""
     if baseline not in BASELINES or sequence not in SEQUENCES:
         raise ValueError('Choose a listed baseline and letter order.')
     if join not in JOINS:
@@ -606,11 +711,12 @@ def layout(text, key, scale_percent, align='left', colour='#000000', puff=False,
             x = 0.0
             glyphs = []
             for i, char in enumerate(line):
-                columns, advance, _ = glyph_columns(font_path(key), char) if char != ' ' else ((), None, None)
-                # Gap columns (satin_font._gap_columns) shorter than this are hidden by the
-                # thread; sewn they are too short for needle points of their own.
-                columns = tuple(c for c in columns if c[2] is not None or
-                                (path_length(c[0])+path_length(c[1]))/2*em_px*PX_MM >= GAP_MIN_MM)
+                advance = glyph_columns(font_path(key), char)[1] if char != ' ' else None
+                # Gap columns whose bare patch is wider than the thread can hide at this size.
+                shape = glyph_columns(font_path(key), char)[2] if char != ' ' else None
+                columns = tuple(filter(None, ((_wedge(c, em_px*PX_MM, shape) if wedges else None) if added else c
+                                              for c, wide, added in (gap_cover(font_path(key), char) if char != ' ' else ())
+                                              if wide is None or wide*em_px*PX_MM >= GAP_SHOW_MM)))
                 if char == ' ':
                     advance = font['hmtx'][font.getBestCmap()[32]][0]/em if 32 in font.getBestCmap() else .3
                 glyphs.append((char, x, columns, advance))

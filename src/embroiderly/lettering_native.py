@@ -164,6 +164,20 @@ def build(folder, settings):
                     for name in ('source.svg', 'plan.json', 'design.pes', 'design.dst', 'release-context.json'):
                         shutil.copyfile(draft/name, folder/name)
                     reports, issues, bounds, spans = after, remaining, new_bounds, new_spans
+    if any(issues.values()):
+        # Wedge columns (bare slivers between strokes on big letters) can leave a tie-off
+        # in a narrow zigzag or a move the checks refuse: then the words without them.
+        candidate = small_lettering.generate(settings, native=True, wedges=False)
+        if candidate['svg'] != generated['svg']:
+            with TemporaryDirectory(prefix='no-wedges-', dir=folder) as temporary:
+                draft = Path(temporary)
+                after, remaining, new_bounds, new_spans = write_and_check(draft, settings, candidate)
+                if not any(remaining.values()):
+                    for name in ('source.svg', 'plan.json', 'design.pes', 'design.dst', 'release-context.json'):
+                        shutil.copyfile(draft/name, folder/name)
+                    reports, issues, bounds, spans = after, remaining, new_bounds, new_spans
+                    generated, source = candidate, candidate['rebuild_report']
+                    glyphs = glyph_check(generated['svg'], settings['text'])
     wide_letters = None
     if any(issues.values()) and small_lettering.split_satin(*small_lettering.validate(settings)[:3],
                                                              settings.get('puff') is True):

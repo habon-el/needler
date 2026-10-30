@@ -290,9 +290,10 @@ def validate(body):
     return text,font,scale,align
 
 
-def generate(body, *, native=False, fill=False):
+def generate(body, *, native=False, fill=False, wedges=True):
     """fill=True: split-satin words are sewn as tatami fill instead, at the same
-    stitched height (lettering_native.build's fallback when their satin fails a check)."""
+    stitched height (lettering_native.build's fallback when their satin fails a check).
+    wedges=False: without the wedge columns between strokes (build's other fallback)."""
     text,font,scale,align=validate(body)
     puff=body.get('puff') is True
     if uses_fill(text,font,scale,puff):fill=True
@@ -302,7 +303,7 @@ def generate(body, *, native=False, fill=False):
         scale=float(body.get('height_mm',5))/m['height']/font['size']*100
     else:fill=False
     vector=embroidery_fonts.layout(text,font['key'],scale,align,puff=puff,foam_mm=puff_foam(body),
-                                   fill=fill,pull_mm=font['pull_mm'],**font['layout'])
+                                   fill=fill,pull_mm=font['pull_mm'],wedges=wedges,**font['layout'])
     coverage={}
     if native:
         from .lettering_geometry import source_frame
