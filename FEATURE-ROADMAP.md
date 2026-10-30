@@ -206,6 +206,24 @@ instructions are typed by hand, so they fall behind every new feature.
 | 19 | Bugs: cut-out colour merge, rose gaps and flat leaves, Start over old result, white parts, colour change unticks approval | ✓ 2026-10-29 |
 | 20 | Bugs: edge-speck choices, stuck image editor, big script satin gaps, Chrome freezing | ✓ 2026-10-29 |
 | 21 | Gaps from 16–18: wand overlap, auto trace limit, File outline rows, recognition on real-world structure, photo stitch threads, Colours panel chart | ✓ 2026-10-29 |
+| 22 | Coverage: satin joins widened over bare fabric, gap columns on picture satin, bare-patch check for lettering (reported, not blocking); small text keeps gaps wider than 0.4 mm; Compare stitches without the stale typing preview | ✓ 2026-10-29 |
+| 23 | Round 3, AI messages: see "Session 23 notes" below | |
+| 24 | Round 4, export proof: see "Session 24 notes" below | |
+
+### Session 23 notes (AI messages; found testing a flaming basketball, 2026-10-29)
+- The request is cut at 300 characters with no warning: `static/auto-digitize.js` textarea `maxlength="300"` and `auto_digitize.py` `request_text[:300]`. Raise the limit and warn the person when it is still too long.
+- Claude's explanations end mid-sentence: `auto_claude.py` cuts plan items to 80 characters (`[:80]`, the plan loop) and notes and errors to 240. Cut at a sentence end, or let the schema limit the length instead.
+- `static/auto-digitize.js` (3D review note) always says the marked places "passed the file checks", even when the download is blocked. Word it from the real export result: preview ready / look at these places / file checks passed / download blocked.
+- `auto_digitize.classify` calls a colour picture with black outlines on white an ink drawing: the ink test checks bright and dark pixels but not how colourful the rest is. Add a colourful-pixels limit.
+- The final explanation listed the planned 5 colours while 4 were sewn: report the colours actually sewn.
+- Show the source picture without the green selection tint when comparing colours; name the AI provider in use.
+
+### Session 24 notes (export proof)
+- Read the written DST and PES back from disk and check those stitches against the design's shapes (coverage, crossings, size), not only the preview.
+- Compare the requested sewn size with the actual sewn size and say so when they differ.
+- Re-check the basketball crossing (5 stitches over empty fabric, first at command 2246, x 14.2 mm, y −27.8 mm).
+- Fine spaces between fill rows: measure real row spacing in the stitches, apart from the preview's thread width and lighting.
+- Open from session 22: block fonts (anton, bungee, alfa_slab_one, bowlby_one, sniglet) still show bare square corners, so the bare-patch check only reports; decide whether to fix them and then make it block. A 0.46 mm wedge in Damion "m" at 15.8 mm may stay bare (no room for its ties).
 
 Sessions after 12 are estimates; if a row runs long, it moves to the next session and the rows below shift.
 
