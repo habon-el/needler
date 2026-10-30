@@ -227,6 +227,10 @@ def generate(source,directory,height_mm,options):
         origin_mm=[w*scale/2,h*scale/2],height_mm=height_mm,thread_width_mm=THREAD_WIDTH_MM,engine='Experimental photo-stitch',objects=region_count,
         palette_format='PES v6 custom RGB',portrait_audit=quality)
     (directory/'portrait-audit.json').write_text(json.dumps(quality,sort_keys=True))
+    # The written files read back from disk: PES and DST sizes, stitches over empty fabric (export_proof.py).
+    from .export_proof import proof
+    try:payload['export_proof']=proof(directory,alpha,scale,payload['origin_mm'],canvas_mm=(w*scale,height_mm),svg=None)
+    except Exception as error:payload['export_proof']=dict(error=str(error)[:200],notes=[])  # a report, never a block
     (directory/'playback.json').write_text(json.dumps(payload))
     from .release_gate import record_context
     record_context(directory,alpha,scale,payload['origin_mm'])

@@ -150,3 +150,55 @@ def test_the_flaming_basketball_with_its_background_left_out_passes_the_file_che
     # The ball and flames fill 86 mm of the 100 mm canvas: said, with the canvas for 100 mm.
     assert 80 < made['height_mm'] < 92 and any('set the canvas to' in n for n in made['notes'])
     assert all(r['gaps'] == 0 for r in made['rows']) and made['rows']
+
+
+# --- Round 29: photo stitch, photo lines and lettering get the read-back too ---
+
+def _same_files(export, height, crossings=0):
+    pes, dst = export['files']['pes'], export['files']['dst']
+    assert pes['stitches'] == dst['stitches'] > 100
+    assert (pes['width_mm'], pes['height_mm']) == (dst['width_mm'], dst['height_mm'])
+    assert pes['crossings'] == dst['crossings'] == crossings
+    assert abs(export['height_mm'] - height) <= max(1.5, .05*height)
+
+
+def test_photo_stitch_reads_its_written_files_back(tmp_path):
+    from PIL import ImageDraw
+    from embroiderly.photo_stitch import generate
+    path = tmp_path / 'portrait.png'
+    image = Image.new('RGBA', (60, 60), 'red')
+    ImageDraw.Draw(image).rectangle((30, 0, 59, 59), fill='blue')
+    image.save(path)
+    result = generate(path, tmp_path / 'out', 25, {'photo_angle': 31})
+    # This small picture's photo stitch crosses its top edge: the release gate blocks the download
+    # with the same count, and the read-back says so in plain words (a photo stitch fault to fix).
+    from embroiderly.release_gate import checked_bytes
+    try:
+        checked_bytes(tmp_path / 'out', 'dst')
+        gate = 0
+    except ValueError as error:
+        gate = int(str(error).split('Export blocked: ')[1].split()[0])
+    _same_files(result['export_proof'], 25, crossings=gate)
+    assert not gate or 'cross empty fabric' in ' '.join(result['export_proof']['notes'])
+
+
+def test_photo_lines_read_their_written_files_back(tmp_path):
+    from embroiderly.auto_digitize import AutoDigitizer
+    from embroiderly.web import create_app
+    app = create_app(tmp_path)
+    y, x = np.mgrid[0:240, 0:320]
+    face = 255 - 200 * np.exp(-((x - 160) ** 2 + (y - 120) ** 2) / 4000.0)
+    Image.fromarray(np.dstack([face] * 3).astype(np.uint8)).save(tmp_path / 'work/uploads/photo.png')
+    result, _ = AutoDigitizer(app, tmp_path)._attempt(
+        tmp_path / 'work/uploads/photo.png',
+        dict(artwork_type='logo', count=2, smooth=2, height_mm=60, photo_style='one_colour'), 2.0, True)
+    assert not result.get('error'), result
+    _same_files(result['playback']['export_proof'], 60)
+
+
+def test_lettering_reads_its_written_files_back(tmp_path):
+    from embroiderly import lettering_native as ln
+    result = ln.build(tmp_path, ln.recipe(dict(text='Team', font='anton', height_mm=20, available_width_mm=200)))
+    assert result['checks_passed']
+    _same_files(result['export_proof'], 20)
+    assert result['export_proof']['notes'] == []

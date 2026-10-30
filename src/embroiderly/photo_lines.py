@@ -320,6 +320,12 @@ def generate(source, directory, height_mm, options, metadata=None):
         # The chart the threads came from: the longest chart name every thread name starts with.
         brand = max((b for b in CHARTS if all(n.startswith(b + ' ') for n in names)), key=len)
         payload['photo_lines'].update(chart=brand, thread_names=[named[t] for t in used])
+    # The written files read back from disk: PES and DST sizes, stitches over empty fabric (export_proof.py).
+    from .export_proof import proof
+    try:
+        payload['export_proof'] = proof(directory, alpha, scale, payload['origin_mm'], canvas_mm=(w * scale, height_mm), svg=None)
+    except Exception as error:  # A report: it never blocks the files it describes.
+        payload['export_proof'] = dict(error=str(error)[:200], notes=[])
     (directory / 'playback.json').write_text(json.dumps(payload))
     from .release_gate import record_context
     record_context(directory, alpha, scale, payload['origin_mm'])

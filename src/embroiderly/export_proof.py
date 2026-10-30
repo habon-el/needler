@@ -200,13 +200,15 @@ def _bounds(pattern):
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def proof(directory, mask=None, scale=None, origin=None, shift=(0.0, 0.0), canvas_mm=None):
-    """Read design.dst and design.pes back from disk and measure them against design.svg.
+def proof(directory, mask=None, scale=None, origin=None, shift=(0.0, 0.0), canvas_mm=None, svg='design.svg'):
+    """Read design.dst and design.pes back from disk and measure them against the stitch document.
     shift: how far the files were moved after the stitch document (pieces), in mm.
     mask/scale/origin: the release context, for counting stitches over empty fabric.
-    canvas_mm: (width, height) of the canvas the person set."""
+    canvas_mm: (width, height) of the canvas the person set.
+    svg: the stitch document's file name; None where there is none in the files' own millimetres
+    (photo stitch, photo lines, lettering): then sizes and stitches over empty fabric only."""
     from .export_findings import inspect
-    areas, drawn = design_shapes(directory/'design.svg', shift)
+    areas, drawn = design_shapes(directory/svg, shift) if svg else ([], None)
     files, threads = {}, None
     for fmt in ('pes', 'dst'):
         pattern = read_pattern(directory/('design.'+fmt))

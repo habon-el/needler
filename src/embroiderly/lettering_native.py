@@ -196,6 +196,13 @@ def build(folder, settings):
     # Reported, not yet a download block: square terminals of block fonts still show some.
     from .lettering_coverage import bare_patches
     bare = bare_patches(generated['svg'])
+    # The final written files read back from disk: PES and DST sizes, stitches over empty fabric
+    # (export_proof.py; the letters' own coverage is bare_patches above).
+    from .export_proof import proof
+    try:
+        export = proof(folder, source['mask'], source.get('grid', GRID), source['origin'], svg=None)
+    except Exception as error:  # A report: it never blocks the files it describes.
+        export = dict(error=str(error)[:200], notes=[])
     fit = width_fit(reports['dst']['width_mm'], settings['available_width_mm'])
     passed = not any(issues.values()) and fit['fits']
     if passed:
@@ -210,7 +217,7 @@ def build(folder, settings):
                   seconds=round(time.monotonic()-started, 2),
                   pending=['Density and repeated-penetration assessment',
                            'Visual readability and a physical sew-out on your fabric'],
-                  wide_letters=wide_letters, bare_patches=bare,
+                  wide_letters=wide_letters, bare_patches=bare, export_proof=export,
                   message=('File checks passed. '+('These big letters are sewn as fill, not satin, so no stitch '
                                                     'crosses a letter hole. ' if wide_letters else '')+
                            'Review the lettering before saving.' if passed else
