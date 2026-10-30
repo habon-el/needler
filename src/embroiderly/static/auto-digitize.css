@@ -32,6 +32,36 @@
 .auto-claude input { margin-top:3px; flex-shrink:0; accent-color:var(--ui-primary); }
 .auto-claude span span { display:block; color:var(--ui-muted); margin-top:4px; }
 .auto-summary { font-size:13px !important; line-height:1.5; }
-.auto-detail { display:flex; align-items:center; gap:8px; font-size:12px; }
-.auto-detail input { flex:1; }
 .auto-plan { margin:4px 0; padding-left:18px; font-size:12px; line-height:1.45; color:var(--ui-ink); }
+/* Taps: icon cards (what it goes on), segmented rows (size, look), chips, and the brief. */
+.auto-q { border:0; margin:14px 0 0; padding:0; min-width:0; }
+.auto-q legend { display:flex; align-items:center; gap:8px; padding:0; margin-bottom:8px; font-size:13px; font-weight:650; color:var(--ui-ink); }
+.auto-q legend b { display:grid; place-items:center; width:20px; height:20px; border-radius:50%; font-size:11px;
+  background:var(--ui-primary); color:var(--ui-surface); }
+.auto-panel .auto-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+.auto-panel .auto-cards label, .auto-panel .auto-seg label, .auto-panel .auto-chips label { margin:0; cursor:pointer; position:relative; }
+.auto-panel .auto-q input, .auto-panel .auto-chips input { position:absolute; opacity:0; pointer-events:none; }
+.auto-cards label { display:flex !important; flex-direction:column; align-items:center; gap:4px; padding:8px 2px 6px;
+  border:1px solid var(--ui-line); border-radius:var(--ui-radius); background:var(--ui-surface); font-size:11px !important; color:var(--ui-ink); }
+.auto-cards svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linejoin:round; stroke-linecap:round; }
+.auto-seg { display:grid; grid-template-columns:repeat(3,1fr); gap:0; border:1px solid var(--ui-line); border-radius:var(--ui-radius); overflow:hidden; }
+.auto-seg label + label { border-left:1px solid var(--ui-line); }
+.auto-seg span { display:flex; flex-direction:column; align-items:center; gap:1px; padding:7px 4px; font-size:12px; text-align:center;
+  background:var(--ui-surface); color:var(--ui-ink); }
+.auto-seg small { font-size:10px; color:var(--ui-muted); line-height:1.25; }
+.auto-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.auto-chips span, .auto-chips button { display:inline-block; padding:5px 10px; border:1px solid var(--ui-line); border-radius:999px;
+  font-size:12px; background:var(--ui-surface); color:var(--ui-ink); min-height:0; cursor:pointer; }
+.auto-cards label:hover, .auto-seg label:hover span, .auto-chips label:hover span, .auto-chips button:hover { background:var(--ui-hover); }
+.auto-cards label:has(input:checked) { border-color:var(--ui-primary); box-shadow:inset 0 0 0 1px var(--ui-primary); color:var(--ui-primary); font-weight:650; }
+.auto-seg input:checked + span { background:var(--ui-primary); color:var(--ui-surface); font-weight:650; }
+.auto-seg input:checked + span small { color:inherit; opacity:.8; }
+.auto-chips input:checked + span { background:var(--ui-primary); border-color:var(--ui-primary); color:var(--ui-surface); }
+.auto-chips input:checked + span::before { content:'✓ '; }
+.auto-panel .auto-q label:has(input:focus-visible), .auto-chips label:has(input:focus-visible) span { outline:2px solid var(--ui-primary); outline-offset:2px; }
+.auto-brief { margin:14px 0 4px; padding:10px 12px; border-radius:var(--ui-radius); background:var(--ui-hover); border-left:4px solid var(--ui-primary); }
+.auto-brief small { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ui-muted); }
+.auto-brief p { margin:3px 0 0; font-size:13px; line-height:1.45; color:var(--ui-ink); }
+.auto-more { margin-top:10px; }
+.auto-more summary { cursor:pointer; font-size:12px; padding:4px 0; }
+.auto-more .auto-chips { margin:6px 0; }

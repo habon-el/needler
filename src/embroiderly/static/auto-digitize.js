@@ -12,6 +12,21 @@ function autoReviewNote(found,result){
   'The download is blocked until the problem above is fixed.':
   `The file checks passed; check ${found===1?'it':'them'} on a sample sew-out.`);
 }
+/* Taps instead of a blank box: what it goes on, size, look. Same keys as GOES_ON and SIZES
+   in auto_digitize.py; typed words win over a tap. */
+const AUTO_ICON=d=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+const AUTO_GOES_ON=[
+ ['t_shirt','T-shirt','M8 3 3 6l2 4 2-1v12h10V9l2 1 2-4-5-3c0 2-1.5 3-4 3S8 5 8 3z'],
+ ['polo','Polo','M8 3 3 6l2 4 2-1v12h10V9l2 1 2-4-5-3-4 3zM12 6v5'],
+ ['hoodie','Hoodie','M8 4c0-1 8-1 8 0l4 3-2 4-2-1v11H8V10l-2 1-2-4zM9 4c0 3 1.5 5 3 5s3-2 3-5'],
+ ['cap','Cap','M4 15c0-5 3.5-8 8-8s8 3 8 8zM4 15h17l-1 2H5zM12 7V5'],
+ ['jacket','Jacket','M8 3 4 6v15h7V8l1-3 1 3v13h7V6l-4-3M12 8v13'],
+ ['bag','Bag','M5 8h14l-1 13H6zM9 8V6a3 3 0 0 1 6 0v2'],
+ ['towel','Towel','M6 4h12v16H6zM6 8h12M6 16h12'],
+ ['','Not sure','M9 9a3 3 0 1 1 4 2.8c-.7.3-1 .8-1 1.5V14M12 17.5v.5']];
+const AUTO_SIZES=[['small','Small','chest, cap · 70 mm'],['medium','Medium','front · 100 mm'],['large','Large','back · 200 mm']];
+const AUTO_LOOKS=[['simple','Simple','fewer colours'],['balanced','Balanced',''],['detailed','Detailed','small parts kept']];
+const AUTO_EXAMPLES=['Keep the background','Only 3 colours','Black lines only','Make the text bold'];
 if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', () => {
  'use strict';
  const $=id=>document.getElementById(id), studio=window.embroideryStudio;
@@ -27,29 +42,49 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
 
  const panel=node('section','','auto-panel');panel.id='autoDigitize';panel.hidden=true;panel.setAttribute('aria-labelledby','autoTitle');
  panel.innerHTML=`<h1 id="autoTitle">Digitize for me</h1>
- <p class="muted">It looks at your picture, chooses the settings, makes the stitches and checks them. If a check fails it adjusts and tries again. You review the result before downloading.</p>
- <label for="autoRequest">Anything it should know? <span class="muted">(optional)</span></label>
- <textarea id="autoRequest" placeholder="For example: cap front, 6 cm wide, 3 colours"></textarea>
- <p id="autoRequestLong" class="auto-problem" hidden></p>
- <p class="muted">It understands sizes (mm, cm, inches; wide or tall), a number of colours, and “line art”, “black lines” or “logo”.</p>
- <label for="autoDetail">Detail</label>
- <div class="auto-detail"><span class="muted">Fewer</span><input type="range" id="autoDetail" min="1" max="5" step="1" value="3"><span class="muted">More</span></div>
- <label class="auto-claude"><input type="checkbox" id="autoOutline"> <span>Add a dark outline around each colour</span></label>
+ <p class="muted">Three taps and it does the rest: settings, stitches and checks. You see the result before downloading.</p>
+ <fieldset class="auto-q"><legend><b>1</b> What is it going on?</legend><div class="auto-cards" id="autoGoesOn">${AUTO_GOES_ON.map(([v,t,d],i)=>
+  `<label><input type="radio" name="autoGoesOn" value="${v}"${i===AUTO_GOES_ON.length-1?' checked':''}>${AUTO_ICON(d)}<span>${t}</span></label>`).join('')}</div></fieldset>
+ <fieldset class="auto-q"><legend><b>2</b> How big?</legend><div class="auto-seg" id="autoSize">${AUTO_SIZES.map(([v,t,n])=>
+  `<label><input type="radio" name="autoSize" value="${v}"><span>${t}<small>${n}</small></span></label>`).join('')}</div></fieldset>
+ <fieldset class="auto-q"><legend><b>3</b> Which look?</legend><div class="auto-seg" id="autoLook">${AUTO_LOOKS.map(([v,t,n])=>
+  `<label><input type="radio" name="autoLook" value="${v}"${v==='balanced'?' checked':''}><span>${t}${n?`<small>${n}</small>`:''}</span></label>`).join('')}</div>
+  <div class="auto-chips"><label><input type="checkbox" id="autoOutline"><span>Dark outline</span></label><label><input type="checkbox" id="autoPuff"><span>3D puff</span></label></div></fieldset>
+ <div class="auto-brief" aria-live="polite"><small>What you will get</small><p id="autoBrief">Reading your picture…</p></div>
+ <details class="auto-more"><summary>Anything else? <span class="muted">(optional)</span></summary>
+ <div class="auto-chips" id="autoExamples">${AUTO_EXAMPLES.map(t=>`<button type="button">${t}</button>`).join('')}</div>
+ <textarea id="autoRequest" aria-label="Anything else" placeholder="In your own words, for example: 6 cm wide, keep the white star"></textarea>
+ <p id="autoRequestLong" class="auto-problem" hidden></p></details>
  <label class="auto-claude" id="autoClaudeRow" hidden><input type="checkbox" id="autoClaude"> <span><strong>Let Claude decide</strong> (AI). It looks at your picture and at each result, like a human digitizer. Costs about 5–40 cents per design from your Claude credit. <span id="autoClaudeSpend"></span></span></label>
  <div class="auto-actions"><button type="button" id="autoStart" class="primary">Start</button><button type="button" id="autoClose">Back</button></div>
  <ol id="autoSteps" aria-live="polite"></ol>
  <div id="autoResult" hidden></div>`;
  inspector.prepend(panel);
  const steps=$('autoSteps'),result=$('autoResult'),start=$('autoStart');
+ const picked=group=>panel.querySelector(`input[name=${group}]:checked`)?.value||'';
+ const choicesNow=()=>({request:$('autoRequest').value,goes_on:picked('autoGoesOn'),size:picked('autoSize'),
+  look:picked('autoLook'),outlines:$('autoOutline').checked,puff:$('autoPuff').checked});
+ // The brief follows every tap; the server reads the picture, so it costs nothing.
+ let briefTimer=0;
+ const updateBrief=()=>{clearTimeout(briefTimer);briefTimer=setTimeout(()=>fetch(api+'/brief',{method:'POST',
+  headers:{'Content-Type':'application/json'},body:JSON.stringify(choicesNow())}).then(r=>r.json())
+  .then(b=>{if(b.brief)$('autoBrief').textContent=b.brief}).catch(()=>{}),250)};
+ panel.addEventListener('change',updateBrief);
  $('autoRequest').oninput=()=>{
   const n=$('autoRequest').value.length,warn=$('autoRequestLong');warn.hidden=n<=AUTO_REQUEST_LIMIT;
   warn.textContent=`Too long: ${n.toLocaleString()} characters. Only the first ${AUTO_REQUEST_LIMIT.toLocaleString()} are read; shorten it.`;
+  updateBrief();
+ };
+ for(const b of $('autoExamples').children)b.onclick=()=>{
+  const box=$('autoRequest'),text=box.value.trim();
+  if(!text.toLowerCase().includes(b.textContent.toLowerCase()))box.value=(text?text.replace(/[.\s]*$/,'. '):'')+b.textContent+'.';
+  box.oninput();box.focus();
  };
  const cover=node('div','','auto-cover');cover.hidden=true;cover.innerHTML='<div><strong>Digitizing…</strong><span></span></div>';
  document.querySelector('.panels')?.append(cover);
  const hideOthers=on=>{for(const child of inspector.children)if(child!==panel)child.classList.toggle('auto-hidden',on)};
 
- function show(){panel.hidden=false;hideOthers(true);inspector.scrollTop=0;$('autoRequest').focus()}
+ function show(){panel.hidden=false;hideOthers(true);inspector.scrollTop=0;updateBrief();panel.querySelector('input[name=autoGoesOn]:checked')?.focus()}
  function close(){if(running)return;panel.hidden=true;hideOthers(false);open.focus()}
  open.onclick=show;$('autoClose').onclick=close;
 
@@ -94,8 +129,7 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
   for(let waited=0;studio.isBusy()&&waited<600000;waited+=500){
    cover.querySelector('span').textContent='Waiting for the current preparation to finish…';await pause(500);
   }
-  const response=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request:$('autoRequest').value,use_claude:$('autoClaude').checked,
-   outlines:$('autoOutline').checked,detail:Number($('autoDetail').value)})}).catch(()=>null);
+  const response=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...choicesNow(),use_claude:$('autoClaude').checked})}).catch(()=>null);
   if(!response||!response.ok&&response.status!==202){
    const body=await response?.json().catch(()=>({}))||{};
    running=false;start.disabled=false;$('autoClose').disabled=false;cover.hidden=true;

@@ -21,7 +21,7 @@ const elements = {}, listeners = {};
 function el(id) {
   const e = {id, hidden: false, disabled: false, checked: false, value: '', textContent: '', dataset: {}, children: [],
     classList: {toggle() {}}, style: {}, title: '', type: '', className: '', innerHTML: '',
-    setAttribute() {}, focus() {}, append(...c) { this.children.push(...c) }, prepend(...c) { this.children.unshift(...c) },
+    setAttribute() {}, focus() {}, addEventListener() {}, append(...c) { this.children.push(...c) }, prepend(...c) { this.children.unshift(...c) },
     replaceChildren(...c) { this.children = c }, insertBefore(c) { this.children.push(c) },
     querySelector() { return elements[id + ' span'] || (elements[id + ' span'] = el(id + ' span')) }};
   return e;
@@ -37,6 +37,7 @@ global.document = {
   querySelector: q => $(q), addEventListener: (k, f) => { listeners[k] = f },
 };
 global.fetch = async (url, init = {}) => {
+  if (url.endsWith('/brief')) return {json: async () => ({brief: 'Flat-colour artwork.'})};
   if (init.method === 'POST') { posts++; state = 'running'; return {ok: false, status: 202, json: async () => ({})} }
   if (url.includes('claude')) return {json: async () => ({available: false})};
   const job = state === 'running' ? {state, steps: [{at: 1, text: 'Looked at the picture.'}]} :

@@ -209,6 +209,10 @@ instructions are typed by hand, so they fall behind every new feature.
 | 22 | Coverage: satin joins widened over bare fabric, gap columns on picture satin, bare-patch check for lettering (reported, not blocking); small text keeps gaps wider than 0.4 mm; Compare stitches without the stale typing preview | ✓ 2026-10-29 |
 | 23 | Round 3, AI messages: see "Session 23 notes" below | ✓ 2026-10-30: requests up to 1000 characters, warned past that; Claude's notes, plan and summary cut at a sentence end; 3D review note worded from the export result (checks passed / download blocked); colour art with black outlines no longer called an ink drawing; the plan lists only the colours sewn; source picture untinted in Compare and Review; the result names who chose the settings (Claude and its model, or the built-in rules) |
 | 24 | Round 4, export proof: see "Session 24 notes" below | ✓ 2026-10-30: written DST and PES read back after every generation and measured against the design (size, stitches over empty fabric, bare parts of filled areas, real fill row spacing), sewn size against canvas and asked size said when they differ; area satin kept inside thin outlines (a copy of the flaming basketball now passes the file check; the original picture was not available); block-font bare corners stay reported (corner wedges too narrow to tie off; needs square column ends) |
+| 25 | Easy Digitize for me: tap choices (what it goes on, size, look) instead of a blank box; a plain brief of what will be made, shown before Start; example wishes to tap | ✓ 2026-10-30: three taps (what it goes on: 7 garments or not sure, sets the fabric preset; size small 70 / medium 100 / large 200 mm wide; look simple / balanced / detailed, with dark outline and 3D puff chips) replace the blank box and the Detail slider; typed words win over a tap; a "What you will get" line read from the picture updates with each tap (rules, no Claude cost); the box moved under "Anything else?" with four example wishes |
+| 26 | Digitize for me never shows a broken result: a part one pixel wide that cannot sew is painted over and the run retried, not failed 4 times | |
+| 27 | Pick from 2–3 versions (cleaner, balanced, more detail); the pick guides the next try (costs 2–3× Claude credit with Claude on) | |
+| 28 | Open from 24: block-font square column ends, then the bare-patch check blocks; export read-back for lettering and photo stitch | |
 
 ### Session 23 notes (AI messages; found testing a flaming basketball, 2026-10-29)
 - The request is cut at 300 characters with no warning: `static/auto-digitize.js` textarea `maxlength="300"` and `auto_digitize.py` `request_text[:300]`. Raise the limit and warn the person when it is still too long.
@@ -224,6 +228,12 @@ instructions are typed by hand, so they fall behind every new feature.
 - Re-check the basketball crossing (5 stitches over empty fabric, first at command 2246, x 14.2 mm, y −27.8 mm).
 - Fine spaces between fill rows: measure real row spacing in the stitches, apart from the preview's thread width and lighting.
 - Open from session 22: block fonts (anton, bungee, alfa_slab_one, bowlby_one, sniglet) still show bare square corners, so the bare-patch check only reports; decide whether to fix them and then make it block. A 0.46 mm wedge in Damion "m" at 15.8 mm may stay bare (no room for its ties).
+
+### Session 25 notes (easy Digitize for me; asked 2026-10-30)
+- Goal: someone who has never digitized and cannot write a good request gets the same result as an expert. Needler reads the picture first; the person answers a few taps; the text box is optional.
+- Taps: what it goes on (sets the fabric preset: underlay, density, pull), size (small, medium, large), look (simple, balanced, detailed) and two extras (dark outline, 3D puff).
+- The brief: one plain line built from the picture and the taps ("A logo, 4 colours, background left out, about 90 mm wide, for a T-shirt"), updated as the taps change, sent to Claude with the request. Built by rules, so it costs no Claude credit.
+- Example wishes add a sentence to the box with one tap.
 
 Sessions after 12 are estimates; if a row runs long, it moves to the next session and the rows below shift.
 

@@ -25,6 +25,12 @@ KINDS = {
     'logo': 'Flat-colour artwork (logo, badge or clip art)',
     'photo': 'Photo or shaded artwork',
 }
+# The panel's taps. What it goes on picks the fabric preset (underlay, density, pull).
+GOES_ON = {'t_shirt': ('a T-shirt', 'stretch_knit'), 'polo': ('a polo', 'pique'), 'hoodie': ('a hoodie', 'fleece'),
+           'cap': ('a cap', 'cap'), 'jacket': ('a jacket', 'nylon'), 'bag': ('a bag', 'twill'),
+           'towel': ('a towel', 'towel')}
+# Size taps: sewn width in mm (left chest or cap front, front, back).
+SIZES = {'small': 70, 'medium': 100, 'large': 200}
 
 
 def classify(image, max_side=384):
@@ -154,6 +160,63 @@ def parse_request(text):
             wish['kind'] = kind
             break
     return wish
+
+
+def taps(body):
+    """The panel's choices as a wish: what it goes on, size, look, outline, puff, Detail."""
+    wish = {}
+    if body.get('outlines') is True:
+        wish['outlines'] = True
+    if body.get('puff') is True:
+        wish['puff'] = True
+    if body.get('detail') in (1, 2, 4, 5):
+        wish['floor_mm2'] = DETAIL_FLOOR_MM2[body['detail']]
+    look = {'simple': 'less', 'detailed': 'more'}.get(body.get('look'))
+    if look:
+        wish['detail'] = look
+    if body.get('goes_on') in GOES_ON:
+        wish['fabric'] = GOES_ON[body['goes_on']][1]
+    if body.get('size') in SIZES:
+        wish['width_mm'] = float(SIZES[body['size']])
+    return wish
+
+
+def wish_for(request_text, choices):
+    # Typed words are more exact than a tap ("6 cm wide" over Small), so they win.
+    return {**(choices or {}), **parse_request(request_text)}
+
+
+def brief(kind, facts, wish, image_size, saved):
+    """One plain line saying what will be made, from the picture and the taps (no AI, no cost)."""
+    options = plan(kind, facts, wish, image_size, saved)
+    w, h = image_size
+    if wish.get('kind'):
+        what = KINDS[wish['kind']]
+    elif facts.get('object_photo'):
+        what = 'Photo of one object'
+    else:
+        what = KINDS[kind].split(' (')[0]
+    parts = [what]
+    if options.get('photo_style') == 'one_colour':
+        parts.append('one thread colour')
+    elif kind in ('logo', 'photo'):
+        parts.append(f"{options['count']} thread colours")
+    if facts.get('background') and kind == 'logo' and not wish.get('keep_background'):
+        parts.append('plain background left out')
+    width = options['height_mm'] * w / h
+    parts.append(f'about {width:.0f} × {options["height_mm"]:.0f} mm')
+    if options.get('outlines'):
+        parts.append('dark outline around each colour')
+    if options.get('puff'):
+        parts.append('raised 3D puff')
+    if wish.get('detail') == 'more':
+        parts.append('small details kept')
+    elif wish.get('detail') == 'less':
+        parts.append('simplified')
+    garment = next((name for name, fabric in GOES_ON.values() if fabric == options.get('fabric_preset')), None)
+    if garment:
+        parts.append(f'stitches set for {garment}')
+    return ', '.join(parts) + '.'
 
 
 def plan(kind, facts, wish, image_size, saved):
@@ -426,7 +489,7 @@ class AutoDigitizer:
             with Image.open(path) as image:
                 kind, facts = classify(image)
                 size = image.size
-            wish = {**parse_request(job['request']), **job.get('choices', {})}
+            wish = wish_for(job['request'], job.get('choices'))
             if wish.get('kind'):
                 self._log(job, f"You asked for {KINDS[wish['kind']].lower()}.")
                 kind = wish['kind']
@@ -592,19 +655,30 @@ def register_auto_digitize(app, root):
     @app.post('/api/auto-digitize/<name>')
     def auto_digitize_start(name):
         body = request.get_json(silent=True) or {}
-        # Panel controls: outline checkbox and Detail slider (1 fewer … 5 more; 3 keeps the default).
-        choices = {}
-        if body.get('outlines') is True:
-            choices['outlines'] = True
-        if body.get('detail') in (1, 2, 4, 5):
-            choices['floor_mm2'] = DETAIL_FLOOR_MM2[body['detail']]
         try:
-            job = runner.start(name, str(body.get('request', '')), body.get('use_claude') is True, choices)
+            job = runner.start(name, str(body.get('request', '')), body.get('use_claude') is True, taps(body))
         except FileNotFoundError:
             abort(404)
         except (RuntimeError, ValueError) as error:
             return jsonify(error=str(error)), 409
         return jsonify(job), 202
+
+    @app.post('/api/auto-digitize/<name>/brief')
+    def auto_digitize_brief(name):
+        # What Start would make, said before it runs; read from the picture, so it costs nothing.
+        body = request.get_json(silent=True) or {}
+        path = runner.uploads / Path(name).name
+        if not path.is_file():
+            abort(404)
+        with Image.open(path) as image:
+            kind, facts = classify(image)
+            size = image.size
+        wish = wish_for(str(body.get('request', ''))[:REQUEST_LIMIT], taps(body))
+        if wish.get('kind'):
+            kind = wish['kind']
+        saved_file = runner.decisions / (path.name + '.preparation.json')
+        saved = json.loads(saved_file.read_text()) if saved_file.is_file() else {}
+        return jsonify(brief=brief(kind, facts, wish, size, saved))
 
     @app.get('/api/auto-digitize/<name>')
     def auto_digitize_status(name):
