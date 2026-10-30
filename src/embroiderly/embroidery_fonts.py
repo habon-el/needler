@@ -7,6 +7,7 @@ kerning, then writes one SVG group per glyph whose paths are satin columns
 """
 from functools import lru_cache
 import hashlib
+import itertools
 import math
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -192,6 +193,153 @@ def cap_height(key):
     return bottom-top
 
 
+def _outline_between(ring, p, q, limit):
+    """The outline's corner points between two points on it, the short way round; None when that
+    way is longer than limit (the points are not neighbours on the outline)."""
+    from shapely.geometry import Point
+    length, s, t = ring.length, ring.project(Point(p)), ring.project(Point(q))
+    forward = (t-s) % length
+    if min(forward, length-forward) > limit:
+        return None
+    coords, marks, at = list(ring.coords), [], 0.0
+    for u, v in zip(coords, coords[1:]):
+        marks.append((at, u))
+        at += math.dist(u, v)
+    def ahead(start, run):
+        return [c for m, c in sorted(((m-start) % length, c) for m, c in marks) if 1e-9 < m < run-1e-9]
+    return ahead(s, forward) if forward <= length-forward else ahead(t, length-forward)[::-1]
+
+
+def _hug(columns, shape, tol, parts=('inner', 'corners', 'ends')):
+    """Main columns whose rails follow the letter's outline. The tracer's rails cut square
+    corners at an angle and its open columns end a little short of a square terminal, leaving
+    bare triangles and strips on block letters (bowlby_one F, anton Z, alfa_slab_one L). Outline
+    corners beside a rail are added to it, paired with the nearer point of the other rail (the
+    satin fans into the corner); an open end gets cross-sections out to the outline (a square
+    end, or a fan round a rounded one)."""
+    from shapely.geometry import LineString, Point
+    rings = [r for piece in polygons(shape) for r in (piece.exterior, *piece.interiors)]
+    def ring_of(*points):
+        for ring in rings:
+            if all(ring.distance(Point(p)) <= tol for p in points):
+                return ring
+        return None
+    def corners(rail, other):
+        rail, other = list(rail), list(other)
+        # An inner corner the rail cuts through the letter (often a fan pivot repeated): points off
+        # the outline whose neighbours lie on it, close round, move onto the outline between those
+        # neighbours (the corner step below then adds the corner itself).
+        off = [ring_of(p) is None and 'inner' in parts for p in rail]
+        i = 1
+        while i < len(rail)-1:
+            if not off[i]:
+                i += 1
+                continue
+            j = i
+            while j < len(rail)-1 and off[j]:
+                j += 1
+            p, q = rail[i-1], rail[j]
+            ring = ring_of(p, q) if not off[j] and math.dist(p, q) > tol else None
+            through = sum(math.dist(u, v) for u, v in zip(rail[i-1:j], rail[i:j+1]))
+            between = _outline_between(ring, p, q, 1.5*through) if ring else None
+            if between is not None:
+                if between:
+                    # Fan round the corner itself, as a digitizer pivots a satin turn.
+                    chord = LineString([p, q])
+                    rail[i:j] = [max(between, key=lambda c: chord.distance(Point(c)))]*(j-i)
+                else:
+                    # A straight outline: onto it, in order along it (a rail doubling back twists the ribbon).
+                    edge = LineString([p, q])
+                    at = list(itertools.accumulate((edge.project(Point(x)) for x in rail[i:j]), max))
+                    rail[i:j] = [tuple(edge.interpolate(t).coords[0]) for t in at]
+            i = j
+        out_a, out_b = [rail[0]], [other[0]]
+        for i in range(len(rail)-1):
+            p, q = rail[i], rail[i+1]
+            ring = ring_of(p, q) if math.dist(p, q) > tol else None
+            between = _outline_between(ring, p, q, 2*math.dist(p, q)) if ring else None
+            chord = LineString([p, q])
+            # Only where the straight rail cuts across the letter (an outer corner left bare); round a
+            # counter's corner it runs outside already and a corner point would only swing the underlay.
+            if between and not shape.contains(Point((p[0]+q[0])/2, (p[1]+q[1])/2)):
+                between = None
+            for c in (c for c in (between or () if 'corners' in parts else ()) if chord.distance(Point(c)) > tol):
+                out_a.append(c)
+                out_b.append(other[i] if math.dist(c, p) <= math.dist(c, q) else other[i+1])
+            out_a.append(q)
+            out_b.append(other[i+1])
+        return out_a, out_b
+    def cap(a, b):
+        """Cross-sections from the end section (a[-1], b[-1]) out to the outline."""
+        if len(a) < 2:
+            return a, b
+        ring = ring_of(a[-1], b[-1])
+        end = ((a[-1][0]+b[-1][0])/2, (a[-1][1]+b[-1][1])/2)
+        before = ((a[-2][0]+b[-2][0])/2, (a[-2][1]+b[-2][1])/2)
+        out = (end[0]-before[0], end[1]-before[1])
+        span = math.hypot(*out)
+        between = _outline_between(ring, a[-1], b[-1], 3*math.dist(a[-1], b[-1])) if ring and span > 1e-9 else None
+        beyond = [c for c in between or () if ((c[0]-end[0])*out[0]+(c[1]-end[1])*out[1])/span > tol]
+        if not beyond:
+            return a, b
+        a, b = list(a), list(b)
+        if len(beyond) == 1:
+            # A slanted end: one corner past the end section; fan into it from the nearer rail.
+            c = beyond[0]
+            if math.dist(c, a[-1]) <= math.dist(c, b[-1]):
+                a.append(c), b.append(b[-1])
+            else:
+                a.append(a[-1]), b.append(c)
+            return a, b
+        for i in range((len(beyond)+1)//2):
+            p, q = beyond[i], beyond[-1-i]
+            if math.dist(p, q) > tol:
+                a.append(p)
+                b.append(q)
+        return a, b
+    from shapely.geometry import Polygon
+    zone = shape.buffer(tol/6)  # a quarter raster pixel: at 40 mm letters still under 0.03 mm
+    def outside(a, b):
+        """The stitch lines that leave the letter: the cross-sections, the diagonals between them,
+        the rails and the underlay's walks inset between them (two outline points on an inward
+        curve, joined straight, cut across the notch between them; a fan into a corner can swing
+        an inset walk across a counter's corner). None for a twisted ribbon."""
+        if not Polygon(list(a)+list(b)[::-1]).is_valid:
+            return None
+        steps = [(p, q) for p, q in zip(a, b)] + [(q, p2) for q, p2 in zip(b, a[1:])] + [(p, q2) for p, q2 in zip(a, b[1:])] \
+            + list(zip(a, a[1:])) + list(zip(b, b[1:]))
+        for t in (.03, .08, .2, .5, .8, .92, .97):
+            inset = [(p[0]+(q[0]-p[0])*t, p[1]+(q[1]-p[1])*t) for p, q in zip(a, b)]
+            steps += list(zip(inset, inset[1:]))
+        key = lambda p: (round(p[0], 6), round(p[1], 6))
+        return {(key(p), key(q)) for p, q in steps
+                if not zone.contains(LineString([p, q]) if math.dist(p, q) > 1e-9 else Point(p))}
+    def sewable(a, b, before):
+        # No stitch line leaves the letter that did not already (the tracer's own rails can graze it).
+        now = outside(a, b)
+        return now is not None and now <= before
+    def ends(a, b):
+        if 'ends' not in parts:
+            return a, b
+        a, b = cap(a, b)
+        a, b = cap(a[::-1], b[::-1])
+        return a[::-1], b[::-1]
+    hugged = []
+    for a, b, closed, width in columns:
+        if closed is not None and len(a) == len(b) >= 2:
+            # The fullest change that still sews inside the letter: corners and ends, ends only, none.
+            ra, rb = list(a), list(b)
+            if 'corners' in parts or 'inner' in parts:
+                ra, rb = corners(ra, rb)
+                rb, ra = corners(rb, ra)
+            tries = [ends(ra, rb) if not closed else (ra, rb)] + ([ends(list(a), list(b))] if not closed else [])
+            before = outside(list(a), list(b)) or set()
+            a, b = next(((ta, tb) for ta, tb in tries if sewable(ta, tb, before)), (a, b))
+            a, b = tuple(map(tuple, a)), tuple(map(tuple, b))
+        hugged.append((a, b, closed, width))
+    return hugged
+
+
 def _across(shape):
     """How wide a shape is at its widest place: the largest circle inside it."""
     from shapely.ops import polylabel
@@ -213,6 +361,7 @@ def gap_cover(path, char):
     columns, _, shape = glyph_columns(path, char)
     if not columns:
         return ()
+    columns = _hug(columns, shape, 1.5/RESOLUTION)
     def ribbon(a, b, closed):
         polygon = Polygon(a, [b]) if closed else Polygon(list(a)+list(b)[::-1])
         return polygon if polygon.is_valid else polygon.buffer(0)

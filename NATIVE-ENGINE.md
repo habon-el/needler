@@ -1224,3 +1224,23 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - A pick (`/api/auto-digitize/<name>/pick`) makes that version again with its kept settings;
   the engine cache makes this about a second. The look is stored in the job's choices as
   `picked_detail`, which `wish_for` puts over the first words and taps; later changes still win.
+
+## Block letters' satin follows the outline (added 2026-10-30)
+
+- `embroidery_fonts._hug` (called by `gap_cover`, so every font's sewn columns) fixes three ways
+  the tracer's rails left bare fabric on block letters: outline corners a rail cut at an angle are
+  added to it (only where the straight rail ran inside the letter), a run of rail points pivoting
+  inside the letter at an inner corner fans round the outline's corner itself (or, on a straight
+  outline, moves onto it in order), and an open column's end gets cross-sections out to the
+  outline (a square end, a fan round a rounded or slanted one). `_outline_between` gives the
+  outline's corner points between two rail points, the short way round.
+- A changed column is kept only if no stitch line leaves the letter that did not before: its
+  cross-sections, the diagonals between them, the rails and the underlay walks inset between them
+  (a fan into a counter's corner swung a contour underlay across a B's bowl; two outline points
+  on an inward curve joined straight cut across Pacifico r's notch). Otherwise the ends alone,
+  else the column as traced.
+- Coverage check (`lettering_coverage.bare_patches`, real pipeline), letters with bare parts,
+  before → after: Anton 12 mm 7 → 2, 20 mm 26 → 10; Bungee 12 mm 1 → 0, 20 mm 45 → 11; Alfa Slab
+  One 12 mm 7 → 4; Sniglet 12 mm 11 → 4, 20 mm 41 → 18; Bowlby One none. What is left is mostly
+  where the safety rule keeps the traced column (diagonal strokes M, V, W, Z; split-satin
+  numerals). The check still reports rather than blocks.
