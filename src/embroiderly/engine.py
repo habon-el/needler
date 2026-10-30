@@ -809,6 +809,15 @@ def digitize(source, directory, height_mm=100, colours=None):
         'trim_count':sum(s['t']=='trim' for s in steps),'engine':ENGINE_NAME,'objects':objects,
         'origin_mm':display_origin,'height_mm':height_mm,'palette_format':'PES v6 custom RGB','generation_mode':'verified thread recolour' if recoloured else 'full generation'}
     if settings.get('colour_knockouts'):payload['colour_knockout_routing']={'extra_cuts':knockout_cuts,'machine_files_verified':['PES','DST'],'boundary_allowance_pixels':1}
+    # The written DST and PES read back from disk and measured against the design: sewn size,
+    # stitches over empty fabric, bare parts of filled areas, real fill row spacing (export_proof.py).
+    from .export_proof import proof
+    try:
+        payload['export_proof']=proof(directory,gate,scale,origin,
+                                      (np.asarray(piece_origin)-np.asarray(piece_layout['origin_mm'])).tolist() if piece_layout else (0.,0.),
+                                      (width*scale,height_mm))
+    except Exception as error:  # A report: it never blocks the files it describes.
+        payload['export_proof']=dict(error=str(error)[:200],notes=[])
     payload['spacing_repair']=written.extras.get('spacing_repair',{})
     payload['generation_policy']=generation_policy
     payload['repair_report']=repair_report

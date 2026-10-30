@@ -1153,3 +1153,44 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - The request is read up to `REQUEST_LIMIT` (1000) characters; past it the panel warns and the steps
   say how much was read. The result's `decided_by` names Claude and the model that answered
   (`response.model`, which a server-side fallback may change), or the built-in rules.
+
+## Export proof (added 2026-10-30)
+
+- `export_proof.proof` reads the written `design.pes` and `design.dst` back from disk after every
+  generation (`engine.digitize`, stored as `export_proof` in playback) and sets them against
+  `design.svg` (its own origin, moved by the pieces' shift): per file the stitch count, sewn width
+  and height and stitches over empty fabric (`export_findings.inspect` with the release context,
+  counted rather than raised: the gate still blocks the download); the design's drawn size; the
+  closed areas' (tatami, satin, step, contour, wave, …; not open fills, appliqué or lines) parts no
+  sewn thread covers, wider than 0.4 mm (stitches drawn 0.4 mm wide on a 0.1 mm raster, at most
+  6 M cells); and for straight-row fills (tatami, step, feathered) the real row spacing: the
+  commonest stitch direction in the area's thread, rows grouped by offset across, each row's
+  nearest neighbour that runs beside it for 0.5 mm. A row gap counts as a space when it is more
+  than 0.2 mm over the asked spacing and its middle line lies bare (not under another thread) for
+  0.5 mm. `notes` says, in plain sentences, only what differs: PES and DST sizes, sewn against drawn
+  size, sewn height against the canvas height (with the canvas for that design height), crossings,
+  bare parts, row spaces. The studio adds the notes to the stitch status line, and the Thread
+  appearance help gives the measured row spacing (a preview strand narrower than it shows
+  hairlines between rows that the sewn thread fills). It is a report: an error in it never
+  blocks the files.
+- Digitize for me measures the sewn size from the written DST (the preview's steps only when
+  the files were not measured) and, when the person asked for a width or height and the files
+  sew more than 3 % off it, says so (`auto_digitize.size_differs`).
+- Area satin stays inside its shape: the tracer works on a raster of fixed size (0.75 em at
+  420 px per em), so on a long thin area, such as the black outline round a picture's flames
+  (70 mm), one raster pixel is 0.2 mm, and columns ended that far outside the outline in sharp
+  valleys. `stitch_engine._rails_inside` moves such rail points in along their cross-section onto
+  the edge (nearest edge point when the section misses the shape) before the satin and its pull
+  compensation are made; precomputed columns (puff) are unchanged. A copy of the flaming
+  basketball (orange ball, black seams, three flames with black outlines, white background
+  removed by colour) stopped at the colour-removal routing ("A stitch lands inside a removed
+  area"); now it generates and passes the file check. The person's own picture was not
+  available, so its exact crossing (command 2246, x 14.2, y −27.8 mm) is not re-run.
+- Block fonts' bare corners (session 22) stay a report: the bare parts are the triangles
+  between a column's angled end and a square corner (alfa_slab_one L and q, sniglet Z and M from
+  6 mm capitals, anton Z and bowlby_one F from 8 mm) and thin bands past a terminal (bungee Y,
+  from 12 mm); none in these fonts at 4 mm but bowlby_one j. `gap_cover`
+  finds wedge columns for the triangles, but they taper to a point, so `_wedge` cannot keep
+  0.65 mm ends for the tie-in and tie-off and leaves them out; the bands are under a quarter
+  stroke. Covering them needs the tracer to end columns on the terminal edge (square ends) for
+  every font, and every font checked again at every size, so the check does not block yet.

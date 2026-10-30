@@ -270,6 +270,16 @@ def adjust(options, kind, issues, attempt, least=2, detail=None):
     return None
 
 
+def size_differs(wish, result):
+    """The size asked for and the size the files sew, when they differ by more than 3 %."""
+    notes = []
+    for key, label in (('width_mm', 'wide'), ('height_mm', 'high')):
+        target, actual = (wish or {}).get(key), result.get(key)
+        if target and actual is not None and abs(actual - target) / target > .03:
+            notes.append(f'You asked for {target:g} mm {label}; the files sew {actual:g} mm {label}.')
+    return notes
+
+
 def size_fit(wish, result, options):
     """Scale the canvas so the sewn design matches a requested width or height."""
     for key, label in (('width_mm', 'width'), ('height_mm', 'height')):
@@ -359,13 +369,16 @@ class AutoDigitizer:
         if response.status_code != 200:
             return dict(error=body.get('error') or f'Generation failed ({response.status_code}).'), options
         playback, report = body.get('playback') or {}, body.get('report') or {}
-        # Size of the sewn design itself, not the canvas with its empty margins.
+        # Size of the sewn design itself, not the canvas with its empty margins: as the written
+        # DST sews it (export_proof.py), or from the preview when the files were not measured.
         sewn = [s for s in playback.get('steps', []) if s['t'] == 'stitch'] or [dict(x=0, y=0)]
         xs, ys = [s['x'] for s in sewn], [s['y'] for s in sewn]
+        proof = playback.get('export_proof') or {}
         result = dict(stitches=playback.get('stitch_count', 0), trims=playback.get('trim_count', 0),
                       # Thread colours sewn; a thread used twice counts once.
                       colours=len({c.lower() for c in playback.get('colors', [])}), prepared=body.get('prepared_name'),
-                      width_mm=round(max(xs) - min(xs), 1), height_mm=round(max(ys) - min(ys), 1),
+                      width_mm=proof.get('width_mm', round(max(xs) - min(xs), 1)),
+                      height_mm=proof.get('height_mm', round(max(ys) - min(ys), 1)),
                       puff=playback.get('puff'))
         if keep_playback:
             result['playback'] = playback
@@ -542,7 +555,8 @@ class AutoDigitizer:
                              problem=best.get('error') or best.get('gate'),
                              problem_detail=(best.get('gate_detail') or {}).get('text'),
                              # The error or file check is already the problem above.
-                             issues=[i['text'] for i in assess(best) if i['kind'] not in ('error', 'gate')],
+                             issues=[i['text'] for i in assess(best) if i['kind'] not in ('error', 'gate')]
+                             + ([] if best.get('error') else size_differs(wish, best)),
                              decided_by=job.get('decided_by'))
         if best.get('options', {}).get('puff') and not best.get('puff') and not best.get('error'):
             job['result']['issues'].append('3D puff was asked for, but no part is wide enough to hold the foam (3–6 mm, or 2–6 mm with 2 mm foam) at this size, so it is sewn flat. '

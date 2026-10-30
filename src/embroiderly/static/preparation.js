@@ -60,6 +60,10 @@ function transport(){
   $('activeThread').style.borderLeft='12px solid '+hex;$('activeThread').style.paddingLeft='8px';
  }else{$('activeThread').textContent='Update stitches to preview thread order.';$('activeThread').style.borderLeft='none'}
 }
+/* The written DST and PES read back and measured (export_proof.py): only what differs from the design. */
+function proofText(){const proof=playback?.export_proof,rows=(proof?.rows||[]).filter(r=>!r.gaps);
+ $('rowSpacingNote').textContent=rows.length?` Fill rows in the written file are ${Math.max(...rows.map(r=>r.measured_mm)).toFixed(2)} mm apart; a narrower strand here shows hairlines between them that the sewn thread fills.`:'';
+ return proof?.notes?.length?' '+proof.notes.join(' '):'';}
 function configurePlayback(result){
  stitchLayer.reset();threadAt=new Uint32Array(playback.steps.length+1);stitchBounds=null;
  routeReport=window.RouteReview.analyze(playback);routeFlag=-1;$('routeWarning').textContent='';
@@ -347,7 +351,7 @@ async function requestPreview(action,pieceCommand=null,restoreOptions=null){
    window.dispatchEvent(new Event('studio:cleanup-needed'));
    return false;
   }
-  if(result.playback){colourPreviewPlan=null;colourPreviewMap={};playback=result.playback;playback.origin_mm=playback.origin_mm||[0,0];$('stitchLink').href=workspaceStitches;$('stitchLink').hidden=false;$('stitchStatus').textContent=playback.stitch_count+' stitches · '+playback.trim_count+' trims · '+playback.colors.length+' thread blocks. Actual written paths; sew-out still required.';configurePlayback(result);if(action==='digitize')$('fitStitches').onclick()}
+  if(result.playback){colourPreviewPlan=null;colourPreviewMap={};playback=result.playback;playback.origin_mm=playback.origin_mm||[0,0];$('stitchLink').href=workspaceStitches;$('stitchLink').hidden=false;$('stitchStatus').textContent=playback.stitch_count+' stitches · '+playback.trim_count+' trims · '+playback.colors.length+' thread blocks. Actual written paths; sew-out still required.'+proofText();configurePlayback(result);if(action==='digitize')$('fitStitches').onclick()}
   draw();status((result.piece_blocked?'Piece saved; check its warning before generating stitches. ':action==='save'?'Settings and prepared artwork saved. ':action==='digitize'?'Stitches generated from this prepared artwork. ':'Preview ready. ')+(result.report.below_floor_after?'Some small details need checking.':'Review your subject before making stitches.'));
   const styleCount=(result.report.stitch_regions?.areas||[]).filter(a=>a.style_notice).length;if(styleCount)status($('status').textContent+' '+styleCount+' stitch-style notices below the canvas.');
   if(action==='save')window.dispatchEvent(new Event('studio:saved'));
@@ -497,7 +501,7 @@ canvases.forEach((canvas,i)=>{
 });
 new ResizeObserver(draw).observe(document.querySelector('.panels'));
 selectTool('box');setView('original');
-original.onload=()=>{width=original.naturalWidth;height=original.naturalHeight;sample.width=width;sample.height=height;sampleCtx.drawImage(original,0,0);syncControls();if(config.previous){playback=config.previous;configurePlayback({simulation:config.simulation});$('stitchLink').href=workspaceStitches;$('stitchLink').hidden=false;$('stitchStatus').textContent=playback.stitch_count+' saved stitches · '+playback.trim_count+' trims. Actual written paths; sew-out still required.'}if(openStitches||playback)setView('stitched');draw();requestPreview()};
+original.onload=()=>{width=original.naturalWidth;height=original.naturalHeight;sample.width=width;sample.height=height;sampleCtx.drawImage(original,0,0);syncControls();if(config.previous){playback=config.previous;configurePlayback({simulation:config.simulation});$('stitchLink').href=workspaceStitches;$('stitchLink').hidden=false;$('stitchStatus').textContent=playback.stitch_count+' saved stitches · '+playback.trim_count+' trims. Actual written paths; sew-out still required.'+proofText()}if(openStitches||playback)setView('stitched');draw();requestPreview()};
 
 function updateHealth(){
  if(nativeMode)return; // Native checks have different, explicit coverage limits.
