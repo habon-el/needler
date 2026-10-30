@@ -176,14 +176,49 @@ class Block:
         self.stop_before = False
 
 
+RAIL_SLACK_MM = .02   # a rail point this close outside the shape is on its edge
+
+
+def _rails_inside(a, b, shape):
+    """Rail points the tracer left outside the shape, moved in along their cross-section
+    onto its edge (or to the nearest edge point when the section misses the shape). The
+    tracer works on a raster of a fixed size, so on a long outline (60 mm) one raster pixel
+    is 0.2 mm: a column could end that far over the fabric beside the shape, past the
+    removed background of a cut-out (written-file check: stitches cross empty areas).
+    Pull compensation is added after this and stays as it was."""
+    from shapely.geometry import Point
+    from shapely.ops import nearest_points
+    from shapely.prepared import prep
+    zone = prep(shape.buffer(RAIL_SLACK_MM))
+    rails = [list(a), list(b)]
+    for side, rail in enumerate(rails):
+        other = rails[1-side]
+        for i, p in enumerate(rail):
+            if zone.contains(Point(p)):
+                continue
+            moved = None
+            if i < len(other) and len(a) == len(b):
+                hit = shape.intersection(LineString([p, other[i]]))
+                ends = [xy for g in getattr(hit, 'geoms', [hit]) if not g.is_empty for xy in g.coords]
+                if ends:
+                    moved = min(ends, key=lambda xy: math.dist(xy, p))
+            if moved is None:
+                moved = nearest_points(shape.boundary, Point(p))[0].coords[0]
+            rail[i] = (float(moved[0]), float(moved[1]))
+    return rails[0], rails[1]
+
+
 def _satin_area(shape, spacing, pull, min_len, walk=True, columns=None, puff=False, join=True, pull_percent=0.0):
     """Narrow or small areas as satin columns along their centre lines (the way
     small shapes and lettering are digitized), joined by inside travel. Flat
     columns take underlay and spacing from their width (automatic)."""
     from .satin_font import area_columns
     runs = []
+    traced = columns is None
     for a, b, closed, width in (columns if columns is not None else area_columns(shape)):
         a, b = list(a), list(b)
+        if traced:
+            a, b = _rails_inside(a, b, shape)
         try:
             points = satin([(a, closed), (b, closed)], spacing, pull, indexed=len(a) == len(b), puff=puff,
                            outline=shape if puff else None, underlay='auto' if walk else None,
