@@ -54,13 +54,14 @@ function autoComposer(id,label,placeholder,send){
   'language-not-supported':'Speech typing does not support this language here. Type instead.',
   'no-speech':'Nothing was heard. Press Speak and talk a little closer to the microphone.'};
  // Chrome ends listening by itself after a pause; keep going until Stop is pressed.
- let recognition=null,wanted=false,quickEnds=0,said='';
- const off=()=>{wanted=false;recognition=null;mic.classList.remove('on');mic.setAttribute('aria-pressed','false');listening.hidden=true;
-  mic.querySelector('span').textContent='Speak'};
+ let recognition=null,wanted=false,starting=false,quickEnds=0,said='',since=0,heardAudio=0;
+ const off=()=>{wanted=false;starting=false;recognition=null;clearTimeout(heardAudio);mic.classList.remove('on');
+  mic.setAttribute('aria-pressed','false');listening.hidden=true;mic.querySelector('span').textContent='Speak'};
  function listen(){
   const started=Date.now(),before=said;
   recognition=new Listen();recognition.lang=navigator.language||'en-US';
   recognition.continuous=true;recognition.interimResults=true;
+  recognition.onaudiostart=()=>clearTimeout(heardAudio);
   recognition.onresult=e=>{
    const heard=[...e.results].map(r=>r[0].transcript).join('').trim();
    said=(before&&heard?before+' ':before)+heard;field.value=said;field.dispatchEvent(new Event('input'));quickEnds=0;
@@ -73,21 +74,32 @@ function autoComposer(id,label,placeholder,send){
    // Ending at once again and again means the browser cannot listen here.
    quickEnds=Date.now()-started<1500?quickEnds+1:0;
    if(quickEnds>=3){off();tell('Listening stops as soon as it starts. Check that the microphone works in Windows sound settings and that no other app is using it.');return}
-   try{listen()}catch{off()}
+   try{listen()}catch{off();tell('Listening stopped and could not start again. Press Speak to go on, or type instead.')}
   };
   recognition.start();
  }
  mic.onclick=async()=>{
+  // A second click while starting, or a double click, must not stop it at once.
+  if(starting||wanted&&Date.now()-since<700)return;
   if(wanted){wanted=false;recognition?.stop();off();field.focus();return}
   tell('');
+  // The browser gives the microphone only to pages opened at localhost or 127.0.0.1 (or https).
+  if(window.isSecureContext===false){
+   tell(`Speech typing needs Needler opened at http://127.0.0.1:${location.port||80} or http://localhost:${location.port||80} on this computer; at ${location.host} the browser keeps the microphone off. Type instead, or open that address.`);
+   return;
+  }
+  starting=true;mic.querySelector('span').textContent='Starting…';
   // Ask for the microphone first: this shows the browser's permission prompt and finds a missing microphone.
   if(navigator.mediaDevices?.getUserMedia){
    try{(await navigator.mediaDevices.getUserMedia({audio:true})).getTracks().forEach(t=>t.stop())}
-   catch(error){tell(REASONS[error.name==='NotFoundError'?'audio-capture':error.name==='NotAllowedError'?'not-allowed':'']||
+   catch(error){off();tell(REASONS[error.name==='NotFoundError'?'audio-capture':error.name==='NotAllowedError'?'not-allowed':'']||
     `The microphone could not be opened (${error.name}). Check it in Windows sound settings, or type instead.`);return}
   }
-  wanted=true;quickEnds=0;said=field.value.trim();
+  starting=false;wanted=true;quickEnds=0;said=field.value.trim();since=Date.now();
   try{listen()}catch{off();tell('Speech typing could not start. Reload the page and press Speak again, or type instead.');return}
+  // Listening that never reaches the microphone is said too, not left looking busy.
+  heardAudio=setTimeout(()=>{if(wanted){recognition?.abort?.();off();
+   tell('The microphone did not start. Check that it is switched on and chosen in Windows sound settings, and that no other app is using it.')}},5000);
   mic.classList.add('on');mic.setAttribute('aria-pressed','true');mic.querySelector('span').textContent='Stop';listening.hidden=false;
  };
  return box;

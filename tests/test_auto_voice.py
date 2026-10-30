@@ -25,6 +25,7 @@ global.document = {createElement: el, documentElement: {lang: 'en'}, addEventLis
 let made = [], micResult = 'ok';
 class Fake { constructor() { made.push(this) } start() { this.started = true } stop() { this.onend && this.onend() } }
 global.window = {SpeechRecognition: Fake};
+Object.defineProperty(globalThis, 'isSecureContext', {configurable: true, get: () => window.isSecureContext});
 Object.defineProperty(globalThis, 'navigator', {configurable: true, value: {language: 'en-GB', mediaDevices: {getUserMedia: async () => {
   if (micResult !== 'ok') { const e = new Error(micResult); e.name = micResult; throw e }
   return {getTracks: () => [{stop() {}}]};
@@ -63,6 +64,20 @@ const tick = () => new Promise(r => setImmediate(r));
   await mic.onclick();
   report.nomic = why4.hidden ? '' : why4.textContent; report.nomicStarted = made.length;
   report.firstWhyHidden = why.hidden;
+  // 5. A double click starts it and leaves it listening.
+  made = []; micResult = 'ok'; box = make(); mic = box.querySelector('.auto-composer-bar').children[0];
+  const first = mic.onclick(); mic.onclick(); await first; await mic.onclick();
+  report.doubleClick = mic.querySelector('span').textContent; report.doubleClickStarts = made.length;
+  // 6. Listening that never reaches the microphone is said after 5 s.
+  await new Promise(r => setTimeout(r, 5100));
+  const why6 = box.children.find(c => c.className === 'auto-voice-problem');
+  report.noAudio = why6.hidden ? '' : why6.textContent; report.noAudioLabel = mic.querySelector('span').textContent;
+  // 7. Opened at another computer's address: the browser keeps the microphone off; said, not tried.
+  made = []; window.isSecureContext = false; global.location = {port: '5077', host: '192.168.1.20:5077'};
+  box = make(); mic = box.querySelector('.auto-composer-bar').children[0];
+  const why7 = box.children.find(c => c.className === 'auto-voice-problem');
+  await mic.onclick();
+  report.insecure = why7.hidden ? '' : why7.textContent; report.insecureStarts = made.length;
   console.log(JSON.stringify(report));
   process.exit(0);
 })();
@@ -82,3 +97,7 @@ def test_speak_keeps_listening_until_stop_and_says_why_it_stops(tmp_path):
     assert 'speech service could not be reached' in report['network'] and report['networkLabel'] == 'Speak'
     assert 'stops as soon as it starts' in report['quick'] and report['quickTries'] == 3
     assert 'No microphone was found' in report['nomic'] and report['nomicStarted'] == 0
+    assert report['doubleClick'] == 'Stop' and report['doubleClickStarts'] == 1
+    assert 'microphone did not start' in report['noAudio'] and report['noAudioLabel'] == 'Speak'
+    assert 'http://127.0.0.1:5077' in report['insecure'] and '192.168.1.20:5077' in report['insecure']
+    assert report['insecureStarts'] == 0
