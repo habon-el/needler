@@ -25,7 +25,7 @@ const AUTO_GOES_ON=[
  ['towel','Towel','M6 4h12v16H6zM6 8h12M6 16h12'],
  ['','Not sure','M9 9a3 3 0 1 1 4 2.8c-.7.3-1 .8-1 1.5V14M12 17.5v.5']];
 const AUTO_SIZES=[['small','Small','chest, cap · 70 mm'],['medium','Medium','front · 100 mm'],['large','Large','back · 200 mm']];
-const AUTO_LOOKS=[['simple','Simple','fewer colours'],['balanced','Balanced',''],['detailed','Detailed','small parts kept']];
+const AUTO_LOOKS=[['simple','Simple','fewer small parts'],['balanced','Balanced',''],['detailed','Detailed','small parts kept']];
 const AUTO_EXAMPLES=['Keep the background','Only 3 colours','Black lines only','Make the text bold'];
 // Ready-made changes under a result; the person may also say or type their own.
 const AUTO_CHANGES=['Remove the background','Fewer colours','Make it bigger','Add a dark outline','More detail'];

@@ -365,8 +365,10 @@ def plan(kind, facts, wish, image_size, saved):
             options['count'] = min(8, int(options.get('count', 4))+1)
     elif wish.get('detail') == 'less' and kind in ('logo', 'photo'):
         options['floor_mm2'] = DETAIL_FLOOR_MM2[2]
-        if not wish.get('colours'):
-            options['count'] = max(2, int(options.get('count', 4))-1)
+        # Simpler means fewer small parts. A thread is dropped only from 5 colours up, where it is
+        # usually a shade; with fewer, each is a whole shape (a badge's star merged into its circle).
+        if not wish.get('colours') and int(options.get('count', 4)) >= 5:
+            options['count'] = int(options['count'])-1
     if wish.get('floor_mm2') and kind in ('logo', 'photo'):
         # The Detail slider: the smallest colour area kept (a details slider).
         options['floor_mm2'] = wish['floor_mm2']
@@ -513,7 +515,7 @@ def unsewable(parts, prepared=None):
 
 
 # Pick from 2–3 versions: key, name, the look's wish detail (plan), what it means.
-VERSIONS = (('cleaner', 'Cleaner', 'less', 'simpler, fewer colours'), ('balanced', 'Balanced', '', 'the usual balance'),
+VERSIONS = (('cleaner', 'Cleaner', 'less', 'simpler, fewer small parts'), ('balanced', 'Balanced', '', 'the usual balance'),
             ('more', 'More detail', 'more', 'small parts and more colours kept'))
 
 

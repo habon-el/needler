@@ -7,10 +7,21 @@ import subprocess
 import time
 
 import pytest
+from PIL import ImageDraw
 
 from embroiderly.auto_digitize import AutoDigitizer, classify, plan, version_options, wish_for
 from embroiderly.web import create_app
 from test_auto_digitize import _Block, _Usage, _wait, badge
+
+
+def crest(size=(400, 300)):
+    """Five thread colours on white. With five or more, Cleaner drops one (a shade); with fewer
+    each colour is a whole shape and stays (the badge's star)."""
+    image = badge(size)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((20, 20, 70, 280), fill='#c81e1e')
+    draw.rectangle((330, 20, 380, 280), fill='#2e8b3a')
+    return image
 from test_auto_digitize_start import HARNESS, SCRIPT
 
 
@@ -23,8 +34,13 @@ def test_each_version_changes_only_its_look():
     balanced, _ = version_options(kind, facts, wish, image.size, {}, options, '')
     more, wish_m = version_options(kind, facts, wish, image.size, {}, options, 'more')
     assert balanced == options and wish_c['detail'] == 'less' and wish_m['detail'] == 'more'
-    assert cleaner['count'] < options['count'] < more['count']
-    assert cleaner['floor_mm2'] > more['floor_mm2']
+    # Cleaner keeps the badge's 3 colours: each is a whole shape (its star is not merged away).
+    assert cleaner['count'] == options['count'] < more['count']
+    assert cleaner['floor_mm2'] > options.get('floor_mm2', 1.0) > more['floor_mm2']
+    # From 5 colours up a thread is dropped: there it is usually a shade.
+    many = {**facts, 'thread_colours': 6}
+    six = plan(kind, many, wish, image.size, {})
+    assert version_options(kind, many, wish, image.size, {}, six, 'less')[0]['count'] == 5
     # What the run decided (background left out, size, fabric) stays in every version.
     for version in (cleaner, more):
         assert version['colour_knockouts'] == options['colour_knockouts']
@@ -63,15 +79,15 @@ def _fake_attempts(monkeypatch, gate_for=None, calls=None):
 
 def test_only_versions_that_pass_are_offered_and_twins_are_shown_once(tmp_path, monkeypatch):
     calls = []
-    _fake_attempts(monkeypatch, gate_for=2, calls=calls)
+    _fake_attempts(monkeypatch, gate_for=4, calls=calls)
     app = create_app(tmp_path)
-    badge().save(tmp_path / 'work/uploads/badge.png')
+    crest().save(tmp_path / 'work/uploads/badge.png')
     client = app.test_client()
     assert client.post('/api/auto-digitize/badge.png', json={'versions': True, 'look': 'detailed'}).status_code == 202
     job = _wait(client, 'badge.png')
     assert job['state'] == 'done', job
     shown = {v['key']: v for v in job['result']['versions']}
-    # Cleaner (2 colours) failed the file check: named, not offered, and said plainly.
+    # Cleaner (4 colours) failed the file check: named, not offered, and said plainly.
     assert shown['cleaner']['ok'] is False and 'cross empty areas' in shown['cleaner']['problem']
     assert 'cleaner' not in job['version_settings']
     assert any(s['text'] == 'Cleaner version did not pass the file checks, so it is not offered.' for s in job['steps'])
@@ -80,7 +96,7 @@ def test_only_versions_that_pass_are_offered_and_twins_are_shown_once(tmp_path, 
     assert job['choices']['picked_detail'] == 'more'
     # Every version is shown in the same order with its facts.
     assert [v['key'] for v in job['result']['versions'] if not v.get('same_as')] == ['cleaner', 'balanced', 'more']
-    assert shown['balanced']['ok'] and shown['balanced']['stitches'] == 3000
+    assert shown['balanced']['ok'] and shown['balanced']['stitches'] == 5000
     # A pick of a version that failed is refused; the one kept already needs no work.
     assert client.post('/api/auto-digitize/badge.png/pick', json={'version': 'cleaner'}).status_code == 400
     assert client.post('/api/auto-digitize/badge.png/pick', json={'version': 'more'}).status_code == 200
@@ -89,12 +105,12 @@ def test_only_versions_that_pass_are_offered_and_twins_are_shown_once(tmp_path, 
 
 def test_versions_that_sew_the_same_stitches_are_shown_once(tmp_path, monkeypatch):
     _fake_attempts(monkeypatch)
-    # Balanced (3 colours) and More detail (4) sew alike when only 3 can be sewn: one card, said plainly.
+    # Balanced (5 colours) and More detail (6) sew alike when only 5 can be sewn: one card, said plainly.
     original = AutoDigitizer._attempt
     monkeypatch.setattr(AutoDigitizer, '_attempt', lambda self, path, options, *a, **k: original(
-        self, path, {**options, 'count': min(3, options['count'])}, *a, **k))
+        self, path, {**options, 'count': min(5, options['count'])}, *a, **k))
     app = create_app(tmp_path)
-    badge().save(tmp_path / 'work/uploads/badge.png')
+    crest().save(tmp_path / 'work/uploads/badge.png')
     client = app.test_client()
     client.post('/api/auto-digitize/badge.png', json={'versions': True})
     job = _wait(client, 'badge.png')
@@ -105,7 +121,7 @@ def test_versions_that_sew_the_same_stitches_are_shown_once(tmp_path, monkeypatc
 
 def test_picking_a_version_keeps_it_and_change_it_builds_on_it(tmp_path):
     app = create_app(tmp_path)
-    badge().save(tmp_path / 'work/uploads/badge.png')
+    crest().save(tmp_path / 'work/uploads/badge.png')
     client = app.test_client()
     assert client.post('/api/auto-digitize/badge.png', json={'versions': True, 'size': 'small'}).status_code == 202
     job = _wait(client, 'badge.png')
@@ -159,7 +175,7 @@ def test_with_claude_each_version_is_asked_for_and_the_cost_adds_up(tmp_path, mo
     client.post('/api/auto-digitize/badge.png', json={'versions': True, 'use_claude': True, 'request': 'for a cap'})
     job = _wait(client, 'badge.png')
     assert job['state'] == 'done', job
-    assert fake.requests == ['for a cap\nMake the Cleaner version: simpler, fewer colours.',
+    assert fake.requests == ['for a cap\nMake the Cleaner version: simpler, fewer small parts.',
                              'for a cap\nMake the More detail version: small parts and more colours kept.',
                              'for a cap\nMake the Balanced version: the usual balance.']
     spent = json.loads((tmp_path / 'work/decisions/claude-spend.json').read_text())['usd']

@@ -34,7 +34,7 @@ def test_the_brief_says_what_will_be_made_in_plain_words():
     kind, facts = classify(badge())
     text = brief(kind, facts, wish_for('', taps(dict(goes_on='t_shirt', size='small', look='simple', outlines=True))),
                  (400, 300), {})
-    assert text.startswith('Flat-colour artwork, 2 thread colours, plain background left out, about 70 × 52 mm')
+    assert text.startswith('Flat-colour artwork, 3 thread colours, plain background left out, about 70 × 52 mm')
     assert 'dark outline' in text and 'simplified' in text and text.endswith('stitches set for a T-shirt.')
     # Nothing tapped: the picture's own choices and the saved size.
     plain = brief(kind, facts, {}, (400, 300), {'height_mm': 60})
