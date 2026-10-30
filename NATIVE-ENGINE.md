@@ -1194,3 +1194,19 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
   0.65 mm ends for the tie-in and tie-off and leaves them out; the bands are under a quarter
   stroke. Covering them needs the tracer to end columns on the terminal edge (square ends) for
   every font, and every font checked again at every size, so the check does not block yet.
+
+## Tiny parts that cannot sew in Digitize for me (added 2026-10-30)
+
+- A part with no fillable area and under 1 mm long (`fill_coverage.missing_boundaries`) blocks
+  generation. `AutoDigitizer._attempt` drops the cleanup items over it, or paints each such part
+  with the commonest sewn colour around it in the prepared picture (`_paint_specks`), and erases
+  a lone part with nothing sewn around it; up to 4 rounds per attempt, under preparation's 500
+  edits. The paint is a polygon over the part's exact pixel box. It used to be a round brush
+  centred on the box's half-pixel middle, which `preparation.points` rounds to the even pixel,
+  so a one-pixel speck at an odd x and odd y was never covered: the error stayed and, with the
+  background left out by colour (cleanup off), the next attempts' higher floor changed nothing,
+  so all 4 failed. The colour now comes from the prepared (thread) colours, not the source's
+  anti-aliased pixels.
+- What was cleaned is said in plain words in the steps and the result (`cleaned_note`). When a
+  part still blocks, the message names it by colour word, hex, size and place in the picture
+  (`unsewable`) instead of image bounds.

@@ -183,6 +183,7 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
    ...(r.tools_used?.length?[node('p','Tools used: '+r.tools_used.join(', '),'muted')]:[]),
    ...(r.decided_by?[node('p','Settings chosen by '+r.decided_by+'.','muted')]:[]),
    ...((r.check||[]).map(t=>node('p','Check: '+t,'auto-note'))),
+   ...(r.cleaned?[node('p',r.cleaned,'auto-note')]:[]),
    ...(r.problem?[node('p',r.problem_detail||r.problem,'auto-problem')]:[]),
    ...((r.issues||[]).map(t=>node('p',t,'auto-problem'))),
    node('p',(r.problem?'Check it in 3D. The download is blocked until the problem above is fixed.':'Check it in 3D, then use Save and download.')+' A sample sew-out is still needed.'+(r.claude_usd!=null?` Claude cost for this design: $${Number(r.claude_usd).toFixed(2)}.`:''),'muted'));

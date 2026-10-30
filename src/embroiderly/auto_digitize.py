@@ -462,6 +462,51 @@ def size_fit(wish, result, options):
     return None
 
 
+def _rgb(hexcode):
+    return tuple(int(hexcode[i:i+2], 16) for i in (1, 3, 5))
+
+
+def _picture(data_url):
+    """The prepared picture an /artwork preview returns (a PNG data URL), as RGBA pixels."""
+    if not isinstance(data_url, str) or ',' not in data_url:
+        return None
+    import base64
+    import io
+    with Image.open(io.BytesIO(base64.b64decode(data_url.split(',', 1)[1]))) as image:
+        return np.asarray(image.convert('RGBA'))
+
+
+def cleaned_note(count, left_out=0):
+    """What was cleaned so the design sews, for the person."""
+    many = count > 1
+    note = (f"Cleaned {count} tiny part{'s' if many else ''} under 1 mm that the needle cannot sew: "
+            f"{'they were' if many else 'it was'} painted with the colour around {'them' if many else 'it'}")
+    if left_out:
+        note += f" ({left_out} with nothing sewn around {'them' if left_out > 1 else 'it'} left out)"
+    return note + '.'
+
+
+def unsewable(parts, prepared=None):
+    """In plain words, which tiny part still cannot be sewn and why."""
+    if not parts:
+        return None
+    part = parts[0]
+    rgb = np.array(_rgb(part['colour']))
+    word = min(COLOUR_WORDS, key=lambda k: np.abs(rgb - COLOUR_WORDS[k]).sum())
+    x0, y0, x1, y1 = part['bounds']
+    rgba = _picture(prepared)
+    where = ''
+    if rgba is not None:
+        h, w = rgba.shape[:2]
+        across = ('left', 'middle', 'right')[min(2, int(3*(x0+x1)/2/w))]
+        down = ('top', 'middle', 'bottom')[min(2, int(3*(y0+y1)/2/h))]
+        place = ' '.join(p for p in (down, across) if p != 'middle') or 'middle'
+        where = f', near the {place}'
+    more = f' and {len(parts)-1} more like it' if len(parts) > 1 else ''
+    return (f"A tiny {word} part ({part['colour']}, {part['width_mm']:.1f} × {part['height_mm']:.1f} mm{where}){more} "
+            "is too small for the needle to sew, and painting it with the colour around it did not clear it. Paint over it or erase it on the Subject step, or make the design bigger.")
+
+
 class AutoDigitizer:
     def __init__(self, app, root):
         self.app, self.root = app, Path(root)
@@ -516,13 +561,16 @@ class AutoDigitizer:
                 if item['decision'] == 'pending':
                     decisions[item['id']] = 'drop' if max(item['width_mm'], item['height_mm']) < drop_below else 'keep'
             options = {**options, 'cleanup_decisions': decisions}
-        for _ in range(3):
+        cleaned, left_out = set(), 0
+        for _ in range(4):
             # Details the fill converter cannot sew (often hatching one pixel wide) block the
             # whole colour design. Merge exactly those into their neighbours and retry.
             if 'Stitching would leave out' not in (body.get('error') or ''):
                 break
-            report = (client.post(url, json=dict(options=options, subject_confirmed=True)).get_json(silent=True) or {}).get('report') or {}
-            blockers = [b['bounds'] for b in report.get('generation_blockers', [])]
+            preview = client.post(url, json=dict(options=options, subject_confirmed=True)).get_json(silent=True) or {}
+            report = preview.get('report') or {}
+            parts = report.get('generation_blockers', [])
+            blockers = [b['bounds'] for b in parts]
             decisions = dict(options.get('cleanup_decisions', {}))
             changed = [item['id'] for item in report.get('cleanup_review', [])
                        if decisions.get(item['id']) != 'drop' and any(
@@ -535,14 +583,22 @@ class AutoDigitizer:
                 # Not a cleanup item (e.g. left by smoothing): paint it with the colour around it.
                 # Photos on a plain background leave many one-pixel specks along the edge;
                 # stay under preparation's 500 paint strokes.
-                paint = self._paint_specks(path, blockers)[:max(0, 480-len(options.get('edits', [])))]
+                paint = self._paint_specks(preview.get('image'), parts)[:max(0, 480-len(options.get('edits', [])))]
                 if not paint:
                     break
+                left_out += sum(e['kind'] == 'erase' for e in paint)
                 options = {**options, 'edits': [*options.get('edits', []), *paint]}
+            cleaned |= {tuple(b) for b in blockers}
             response = client.post(url, json=dict(options=options, digitize=True, subject_confirmed=True))
             body = response.get_json(silent=True) or {}
         if response.status_code != 200:
-            return dict(error=body.get('error') or f'Generation failed ({response.status_code}).'), options
+            error = body.get('error') or f'Generation failed ({response.status_code}).'
+            if 'Stitching would leave out' in error:
+                # Say which part is left and why, from the picture as it is now.
+                preview = client.post(url, json=dict(options=options, subject_confirmed=True)).get_json(silent=True) or {}
+                parts = (preview.get('report') or {}).get('generation_blockers') or []
+                error = unsewable(parts, preview.get('image')) or error
+            return dict(error=error), options
         playback, report = body.get('playback') or {}, body.get('report') or {}
         # Size of the sewn design itself, not the canvas with its empty margins: as the written
         # DST sews it (export_proof.py), or from the preview when the files were not measured.
@@ -555,6 +611,8 @@ class AutoDigitizer:
                       width_mm=proof.get('width_mm', round(max(xs) - min(xs), 1)),
                       height_mm=proof.get('height_mm', round(max(ys) - min(ys), 1)),
                       puff=playback.get('puff'))
+        if cleaned:
+            result.update(cleaned=len(cleaned), left_out=left_out)
         if keep_playback:
             result['playback'] = playback
         from .release_gate import checked_bytes, ReleaseError
@@ -579,21 +637,27 @@ class AutoDigitizer:
             operation['restore_parts'] = list(dict.fromkeys([*operation.get('restore_parts', []), *ids]))
         return len(ids)
 
-    def _paint_specks(self, path, boxes, limit=200):
-        """Paint edits giving each tiny unsewable detail the commonest colour just around it."""
-        # Blocker boxes are in the working picture (at most 768 px), like every edit.
-        from .preparation import load_image
-        rgb = np.asarray(load_image(path).convert('RGB'))
-        h, w = rgb.shape[:2]
+    def _paint_specks(self, prepared, parts, limit=200):
+        """Edits for each tiny unsewable part: paint it with the commonest sewn colour just
+        around it, or leave it out when nothing around it is sewn (a lone dot)."""
+        # Part boxes are in the prepared picture (the working size, at most 768 px), like every edit.
+        rgba = _picture(prepared)
+        if rgba is None:
+            return []
+        h, w = rgba.shape[:2]
         edits = []
-        for x0, y0, x1, y1 in boxes[:limit]:
-            if (x1-x0) * (y1-y0) > 16:
-                continue
-            ring = rgb[max(0, y0-3):min(h, y1+3), max(0, x0-3):min(w, x1+3)].reshape(-1, 3)
-            values, counts = np.unique(ring, axis=0, return_counts=True)
-            colour = '#%02x%02x%02x' % tuple(int(v) for v in values[counts.argmax()])
-            edits.append(dict(kind='paint', colour=colour, radius=max(1, (max(x1-x0, y1-y0)+1)//2),
-                              points=[[min(w-1, (x0+x1)/2), min(h-1, (y0+y1)/2)]], auto=True))
+        for part in parts[:limit]:
+            x0, y0, x1, y1 = part['bounds']
+            ring = rgba[max(0, y0-3):min(h, y1+3), max(0, x0-3):min(w, x1+3)].reshape(-1, 4)
+            ring = ring[(ring[:, 3] > 127) & (ring[:, :3] != _rgb(part['colour'])).any(axis=1), :3]
+            # Exactly the part's pixels' box. A round brush centred on the half pixel (x0+x1)/2
+            # was rounded to the next even pixel, so a speck at odd x and y was never covered.
+            edit = dict(kind='erase', shape='polygon', radius=1, auto=True,
+                        points=[[x0, y0], [x1-1, y0], [x1-1, y1-1], [x0, y1-1]])
+            if len(ring):
+                values, counts = np.unique(ring, axis=0, return_counts=True)
+                edit.update(kind='paint', colour='#%02x%02x%02x' % tuple(int(v) for v in values[counts.argmax()]))
+            edits.append(edit)
         return edits
 
     def _run(self, path, job):
@@ -707,6 +771,8 @@ class AutoDigitizer:
             result, options = self._attempt(path, options, .8 if number == 1 else 1.5)
             result.update(options=options, kind=kind, number=number)
             attempts.append(result)
+            if result.get('cleaned'):
+                self._log(job, f'Attempt {number}: ' + cleaned_note(result['cleaned'], result.get('left_out', 0)))
             issues = assess(result)
             fit = size_fit(wish, result, options) if not result.get('error') and fits < 2 else None
             if not issues and fit:
@@ -738,7 +804,7 @@ class AutoDigitizer:
             self._log(job, f"Restoring attempt {best['number']}, the one to keep.")
             restored, _ = self._attempt(path, best['options'], 1.5)
             best = {**restored, 'kind': best['kind'], 'number': best['number'], 'options': best['options'],
-                    'plan': best.get('plan')}
+                    'plan': best.get('plan'), 'cleaned': best.get('cleaned'), 'left_out': best.get('left_out')}
         ok = not best.get('error') and not best.get('gate')
         job['result'] = dict(ok=ok, kind=best.get('kind', kind), facts=facts, attempts=len(attempts),
                              stitches=best.get('stitches'), trims=best.get('trims'), colours=best.get('colours'),
@@ -749,6 +815,8 @@ class AutoDigitizer:
                              issues=[i['text'] for i in assess(best) if i['kind'] not in ('error', 'gate')]
                              + ([] if best.get('error') else size_differs(wish, best)),
                              decided_by=job.get('decided_by'))
+        if best.get('cleaned') and ok:
+            job['result']['cleaned'] = cleaned_note(best['cleaned'], best.get('left_out', 0))
         if best.get('options', {}).get('puff') and not best.get('puff') and not best.get('error'):
             job['result']['issues'].append('3D puff was asked for, but no part is wide enough to hold the foam (3–6 mm, or 2–6 mm with 2 mm foam) at this size, so it is sewn flat. '
                                            'Try another size, 2 mm foam, or puff bold lettering instead.')
