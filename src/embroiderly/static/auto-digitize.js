@@ -133,6 +133,7 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
  <div id="autoRequestBox"></div>
  <p id="autoRequestLong" class="auto-problem" hidden></p></div>
  <label class="auto-claude" id="autoClaudeRow" hidden><input type="checkbox" id="autoClaude"> <span><strong>Let Claude decide</strong> (AI). It looks at your picture and at each result, like a human digitizer. Costs about 5–40 cents per design from your Claude credit. <span id="autoClaudeSpend"></span></span></label>
+ <div class="auto-chips auto-versions-ask"><label><input type="checkbox" id="autoVersions" checked><span id="autoVersionsText">Show me 3 versions to pick from</span></label></div>
  <div class="auto-actions"><button type="button" id="autoStart" class="primary">Start</button><button type="button" id="autoClose">Back</button></div>
  <ol id="autoSteps" aria-live="polite"></ol>
  <div id="autoResult" hidden></div>`;
@@ -173,9 +174,11 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
   const last=job.steps?.[job.steps.length-1];cover.querySelector('span').textContent=last?last.text:'Starting…';
   if(job.state==='running'){result.hidden=true;return}
   const r=job.result||{};result.hidden=false;result.dataset.state=job.state;
+  const versions=r.versions?.filter(v=>!v.same_as)||[];
   const facts=r.stitches?`${r.width_mm} × ${r.height_mm} mm · ${Number(r.stitches).toLocaleString()} stitches · ${r.trims} cut${r.trims===1?'':'s'} · ${r.colours} colour${r.colours===1?'':'s'}`:'';
   result.replaceChildren(
    node('strong',job.state==='done'?'Ready to review':job.state==='needs_review'?'Made, but needs your review':'Could not finish'),
+   ...(versions.length>1?[versionPicker(r,versions)]:[]),
    ...(facts?[node('p',facts)]:[]),
    ...(r.summary?[node('p',r.summary,'auto-summary')]:[]),
    ...(r.request?[node('p','Your request: '+r.request,'auto-summary')]:[]),
@@ -189,6 +192,43 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
    node('p',(r.problem?'Check it in 3D. The download is blocked until the problem above is fixed.':'Check it in 3D, then use Save and download.')+' A sample sew-out is still needed.'+(r.claude_usd!=null?` Claude cost for this design: $${Number(r.claude_usd).toFixed(2)}.`:''),'muted'));
   if(r.stitches){const b=node('button','Show the result');b.type='button';b.className='primary';b.onclick=()=>{location.href=location.pathname+'?view=stitched&auto=1'};result.append(b)}
   if(r.stitches&&job.state!=='running')result.after(changeSection(job));
+ }
+ /* Pick from 2–3 versions: small stitch pictures with their facts. Only versions that passed the
+    file checks can be picked; the pick becomes the kept result. */
+ function versionPicker(r,versions){
+  const box=node('div','','auto-versions');
+  const offered=versions.filter(v=>v.ok);
+  box.append(node('p',offered.length>1?'Pick the one you like':'Only one version passed the file checks','auto-versions-title'));
+  const grid=node('div','','auto-version-grid');
+  for(const v of versions){
+   const card=node('button','','auto-version');card.type='button';card.disabled=!v.ok;
+   const kept=v.key===r.picked;card.setAttribute('aria-pressed',String(kept));if(kept)card.classList.add('kept');
+   if(v.preview){const img=document.createElement('img');img.src=v.preview;img.alt=`Stitches of the ${v.label} version`;card.append(img)}
+   else card.append(node('span',v.ok?'':'Not made','auto-version-none'));
+   card.append(node('strong',v.label));
+   if(v.ok)card.append(node('small',`${v.width_mm} × ${v.height_mm} mm`),node('small',`${Number(v.stitches).toLocaleString()} stitches`),
+    node('small',`${v.colours} colour${v.colours===1?'':'s'} · ${v.trims} cut${v.trims===1?'':'s'}`),
+    node('span',kept?'✓ Kept':'✓ File checks passed','auto-version-check'));
+   else card.append(node('span','Could not be made: it did not pass the file checks.','auto-version-fail'));
+   if(v.ok&&!kept)card.onclick=()=>pick(v);
+   grid.append(card);
+  }
+  box.append(grid);
+  for(const v of r.versions.filter(v=>v.same_as))box.append(node('p',`${v.label} came out the same as ${versions.find(o=>o.key===v.same_as)?.label||'another version'}, so it is shown once.`,'muted'));
+  box.append(node('p','Your pick is what Show the result opens and what Change it builds on.','muted'));
+  return box;
+ }
+ async function pick(v){
+  if(running)return;
+  running=true;start.disabled=true;$('autoClose').disabled=true;cover.hidden=false;
+  cover.querySelector('span').textContent=`Keeping the ${v.label} version…`;
+  const response=await fetch(api+'/pick',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:v.key})}).catch(()=>null);
+  if(!response||!response.ok){
+   const body=await response?.json().catch(()=>({}))||{};
+   running=false;start.disabled=false;$('autoClose').disabled=false;cover.hidden=true;
+   result.append(node('p',body.error||'Could not keep that version. Is Needler still running?','auto-problem'));return;
+  }
+  document.getElementById('autoChangeSection')?.remove();clearTimeout(timer);poll();
  }
  /* Change it: say or type what to change; Needler says what it understood and shows it,
     and only after "Do it" makes that change, keeping the rest. */
@@ -269,7 +309,8 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
   for(let waited=0;studio.isBusy()&&waited<600000;waited+=500){
    cover.querySelector('span').textContent='Waiting for the current preparation to finish…';await pause(500);
   }
-  const response=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...choicesNow(),use_claude:$('autoClaude').checked})}).catch(()=>null);
+  const response=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...choicesNow(),
+   use_claude:$('autoClaude').checked,versions:$('autoVersions').checked})}).catch(()=>null);
   if(!response||!response.ok&&response.status!==202){
    const body=await response?.json().catch(()=>({}))||{};
    running=false;start.disabled=false;$('autoClose').disabled=false;cover.hidden=true;
@@ -283,7 +324,11 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
   $('autoClaudeRow').hidden=false;
   $('autoClaudeSpend').textContent=`Used so far: $${info.spent_usd.toFixed(2)} of Needler's $${info.total_limit_usd.toFixed(2)} limit.`;
   try{$('autoClaude').checked=localStorage.getItem('needler.autoClaude')==='true'}catch{}
-  $('autoClaude').onchange=()=>{try{localStorage.setItem('needler.autoClaude',String($('autoClaude').checked))}catch{}};
+  // 3 versions with Claude cost 3 times its credit: off when Claude is turned on, and priced when chosen.
+  const priceVersions=turnedOn=>{const claude=$('autoClaude').checked;if(turnedOn)$('autoVersions').checked=!claude;
+   $('autoVersionsText').textContent=claude?'Show me 3 versions (about 3× the Claude cost, 15–120 cents)':'Show me 3 versions to pick from'};
+  priceVersions(true);
+  $('autoClaude').onchange=()=>{try{localStorage.setItem('needler.autoClaude',String($('autoClaude').checked))}catch{}priceVersions(true)};
  }).catch(()=>{});
 
  // After "Show the result": the page reloads with the new stitches; reopen the report and the 3D view.

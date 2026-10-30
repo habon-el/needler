@@ -110,3 +110,22 @@
 .auto-voice-problem { margin:0; padding:6px 12px 8px; font-size:12px; line-height:1.45; color:var(--ui-ink);
   border-top:1px solid var(--ui-line); border-left:3px solid var(--ui-danger); }
 .auto-voice-problem[hidden] { display:none; }
+/* Pick from 2–3 versions: the ask before Start, and small stitch pictures in the result. */
+.auto-versions-ask { margin:12px 0 0; }
+.auto-versions { margin:8px 0 4px; }
+#autoResult .auto-versions-title { font-size:13px; font-weight:650; margin:4px 0 8px; }
+.auto-version-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:6px; }
+#autoResult .auto-version { display:flex; flex-direction:column; align-items:stretch; gap:1px; width:auto; min-height:0; margin:0;
+  padding:5px 5px 7px; text-align:left; cursor:pointer; border:1px solid var(--ui-line); border-radius:var(--ui-radius);
+  background:var(--ui-surface); color:var(--ui-ink); font-weight:400; }
+#autoResult .auto-version:hover:not(:disabled) { background:var(--ui-hover); border-color:var(--ui-primary); }
+#autoResult .auto-version.kept { border-color:var(--ui-primary); box-shadow:inset 0 0 0 1px var(--ui-primary); cursor:default; }
+#autoResult .auto-version:disabled { cursor:default; opacity:.7; border-style:dashed; }
+.auto-version img, .auto-version-none { display:block; width:100%; aspect-ratio:1; object-fit:contain; border-radius:4px;
+  background:#c2baa8; margin-bottom:4px; }
+.auto-version-none { display:grid; place-items:center; font-size:11px; color:var(--ui-muted); background:var(--ui-hover); }
+.auto-version strong { font-size:12px; }
+.auto-version small { font-size:10.5px; color:var(--ui-muted); line-height:1.35; font-variant-numeric:tabular-nums; }
+.auto-version-check { margin-top:3px; font-size:10.5px; font-weight:650; color:var(--ui-primary); }
+.auto-version-fail { margin-top:3px; font-size:10.5px; line-height:1.35; color:var(--ui-ink); border-left:3px solid var(--ui-danger); padding-left:5px; }
+#autoResult .auto-versions p.muted { font-size:11px; margin:6px 0 0; }

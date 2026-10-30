@@ -203,6 +203,11 @@ def wish_for(request_text, choices, changes=(), base_width=None):
     # change ("Change it" under a result) wins over what came before it.
     wish = {**(choices or {}), **parse_request(request_text)}
     wish.pop('scale', None)
+    picked = wish.pop('picked_detail', None)
+    if picked is not None:
+        # A version picked from 2–3 (Cleaner, Balanced, More detail) wins over the first words and taps.
+        wish.pop('detail', None)
+        wish.update({'detail': picked} if picked else {})
     for text in changes:
         wish = merge_change(wish, parse_request(text), base_width)
     return wish
@@ -507,13 +512,46 @@ def unsewable(parts, prepared=None):
             "is too small for the needle to sew, and painting it with the colour around it did not clear it. Paint over it or erase it on the Subject step, or make the design bigger.")
 
 
+# Pick from 2–3 versions: key, name, the look's wish detail (plan), what it means.
+VERSIONS = (('cleaner', 'Cleaner', 'less', 'simpler, fewer colours'), ('balanced', 'Balanced', '', 'the usual balance'),
+            ('more', 'More detail', 'more', 'small parts and more colours kept'))
+
+
+def version_options(kind, facts, wish, size, saved, options, detail):
+    """One version's first settings: the run's own settings (background, cut-out, size) with only
+    what plan() changes for that look. Returns (options, wish)."""
+    wish_v = {k: v for k, v in wish.items() if k != 'detail'}
+    if detail:
+        wish_v['detail'] = detail
+    base, own = plan(kind, facts, wish, size, saved), plan(kind, facts, wish_v, size, saved)
+    out = {k: v for k, v in options.items() if not (k in base and k not in own)}
+    out.update({k: v for k, v in own.items() if base.get(k) != v})
+    return out, wish_v
+
+
+def thumbnail(playback, side=240):
+    """A small picture of the sewn stitches on fabric (finished.py), as a JPEG data URL."""
+    import base64
+    import io
+    from .finished import render_finished
+    sewn = [s for s in playback.get('steps', []) if s['t'] == 'stitch'] or [dict(x=0, y=0)]
+    extent = max(max(s['x'] for s in sewn) - min(s['x'] for s in sewn), max(s['y'] for s in sewn) - min(s['y'] for s in sewn))
+    # Drawn at twice the size, then shrunk; a fuller thread so fills read as fills this small.
+    image = render_finished({**playback, 'thread_width_mm': max(.4, playback.get('thread_width_mm', .22))},
+                            pixels_per_mm=2 * side / (extent + 10))
+    image.thumbnail((side, side), Image.Resampling.LANCZOS)
+    buffer = io.BytesIO()
+    image.save(buffer, 'JPEG', quality=85)
+    return 'data:image/jpeg;base64,' + base64.b64encode(buffer.getvalue()).decode()
+
+
 class AutoDigitizer:
     def __init__(self, app, root):
         self.app, self.root = app, Path(root)
         self.uploads, self.decisions = self.root / 'work' / 'uploads', self.root / 'work' / 'decisions'
         self.jobs, self.lock = {}, threading.Lock()
 
-    def start(self, name, request_text='', use_claude=False, choices=None, changes=(), base_width=None):
+    def start(self, name, request_text='', use_claude=False, choices=None, changes=(), base_width=None, versions=False):
         path = self.uploads / Path(name).name
         if not path.is_file():
             raise FileNotFoundError(name)
@@ -528,7 +566,7 @@ class AutoDigitizer:
             # Claude and the result read the first request and every change after it, in order.
             job = dict(state='running', steps=[], request='\n'.join([original] * bool(original) + [f'Then: {c}' for c in changes]),
                        original=original, changes=changes, base_width=base_width, started=time.time(),
-                       result=None, use_claude=bool(use_claude), choices=choices or {})
+                       result=None, use_claude=bool(use_claude), choices=choices or {}, versions=bool(versions))
             self.jobs[path.name] = job
             if len(request_text) > REQUEST_LIMIT:
                 self._log(job, f'Your request is {len(request_text):,} characters; only the first '
@@ -722,6 +760,10 @@ class AutoDigitizer:
                     if kept:
                         self._log(job, f"Keeping {kept} part{'s' if kept > 1 else ''} of that colour inside the design "
                                        "(a cloud in a sky, say); they are sewn, not left out.")
+            if job.get('versions'):
+                # Pick from 2–3 versions (_versions): each is made like this one run, with its own look.
+                self._versions(job, path, kind, facts, wish, options, size, saved)
+                return
             attempts, finish = [], None
             if job.get('use_claude'):
                 from . import auto_claude
@@ -843,6 +885,159 @@ class AutoDigitizer:
         self._log(job, 'Done. Review it in 3D, then approve and download.' if ok else
                   'Finished with a problem it could not fix automatically. See the note below.')
 
+    def _versions(self, job, path, kind, facts, wish, options, size, saved):
+        """Make Cleaner, Balanced and More detail one after another, each with the same attempts and
+        checks as one run, and offer only those that pass the file checks. The one matching the
+        person's look is made last, so it is the kept result until they pick another."""
+        default = {'less': 'cleaner', 'more': 'more'}.get(wish.get('detail'), 'balanced')
+        order = sorted(VERSIONS, key=lambda v: v[0] == default)
+        made, same, spent, total = [], {}, None, 0
+        for number, (key, label, detail, meaning) in enumerate(order, 1):
+            first, wish_v = version_options(kind, facts, wish, size, saved, options, detail)
+            twin = next((v for v in made if v['first'] == first), None)
+            if twin:
+                same[key] = twin['key']
+                self._log(job, f"{label} would come out the same as {twin['label']} for this picture, so it is made once.")
+                continue
+            self._log(job, f'{label} version ({number} of {len(order)}): {meaning}…')
+            attempts, finish, decided_by = self._version_attempts(job, path, kind, facts, wish_v, first, label, meaning)
+            if job.get('claude_usd') is not None:
+                spent = (spent or 0) + job.pop('claude_usd')
+            total += len(attempts)
+            chosen = next((a for a in attempts if finish and a['number'] == finish.get('attempt') and not a.get('error')), None)
+            best = chosen or min(attempts, key=lambda a: score(a, wish_v))
+            if best is not attempts[-1] and not best.get('error'):
+                # The last attempt is what is on disk; put this version's best back to draw it.
+                self._log(job, f"Restoring attempt {best['number']}, the best of this version.")
+                restored, _ = self._attempt(path, best['options'], 1.5)
+                best = {**restored, 'kind': best['kind'], 'number': best['number'], 'options': best['options']}
+            version = dict(key=key, label=label, detail=detail, first=first, kind=best.get('kind', kind),
+                           options=best.get('options'), number=best.get('number'), decided_by=decided_by,
+                           summary=(finish or {}).get('summary'), wish=wish_v, best=best,
+                           ok=not best.get('error') and not best.get('gate'))
+            made.append(version)
+            if not version['ok']:
+                self._log(job, f'{label} version did not pass the file checks, so it is not offered.')
+                continue
+            try:
+                playback = self.root / 'work' / 'inkstitch-preview' / Path(best['prepared']).stem / 'playback.json'
+                version['preview'] = thumbnail(json.loads(playback.read_text()))
+            except (OSError, ValueError, KeyError, TypeError):
+                pass   # no picture; its facts still show
+            self._log(job, f"{label} version: {best['stitches']:,} stitches, {best['colours']} colours, "
+                           f"{best['trims']} cut{'' if best['trims'] == 1 else 's'}. File checks passed.")
+        if spent is not None:
+            job['claude_usd'] = round(spent, 4)
+        on_disk, sewn = made[-1], lambda v: tuple(v['best'].get(k) for k in ('stitches', 'trims', 'colours', 'width_mm', 'height_mm'))
+        for version in [v for v in made if v['ok'] and v['key'] != default]:
+            # Different settings can sew the very same stitches (a picture with few colours): show it once.
+            twin = next((v for v in made if v is not version and v['ok'] and sewn(v) == sewn(version)), None)
+            if twin:
+                made.remove(version)
+                same[version['key']] = twin['key']
+                self._log(job, f"{version['label']} came out the same as {twin['label']}, so it is shown once.")
+        made.sort(key=lambda v: [k for k, *_ in VERSIONS].index(v['key']))
+        offered = [v for v in made if v['ok']]
+        keep = next((v for v in offered if v['key'] == same.get(default, default)), None) or \
+            next((v for v in offered if v['key'] == 'balanced'), None) or (offered or [None])[0] or \
+            min(made, key=lambda v: score(v['best'], v['wish']))
+        if keep is not on_disk and not keep['best'].get('error'):
+            self._log(job, f"Putting back the {keep['label']} version to keep.")
+            restored, _ = self._attempt(path, keep['options'], 1.5)
+            keep['best'] = {**restored, 'kind': keep['kind'], 'number': keep['number'], 'options': keep['options']}
+        if len(offered) > 1:
+            self._log(job, f"{len(offered)} versions passed the file checks; pick the one you like. "
+                           f"The {keep['label']} version is kept until you do.")
+        job['decided_by'] = keep['decided_by']
+        self._finish(job, path, keep['kind'], facts, keep['wish'], [keep['best']], None)
+        job['choices'] = {**job.get('choices', {}), 'picked_detail': keep['detail']}
+        job['version_settings'] = {v['key']: {k: v[k] for k in ('options', 'kind', 'detail', 'decided_by', 'label')}
+                                   for v in offered}
+        job['result'].update(attempts=total, picked=keep['key'], summary=keep['summary'] or job['result'].get('summary'),
+                             versions=[self._shown(v) for v in made] + [
+                                 dict(key=k, label=next(v[1] for v in VERSIONS if v[0] == k), same_as=same.get(t, t))
+                                 for k, t in same.items()])
+
+    @staticmethod
+    def _shown(version):
+        """What the panel shows of a version: its name, facts, picture and whether it passed."""
+        from .auto_claude import clip
+        best = version['best']
+        shown = dict(key=version['key'], label=version['label'], ok=version['ok'], preview=version.get('preview'),
+                     **{k: best.get(k) for k in ('stitches', 'trims', 'colours', 'width_mm', 'height_mm')})
+        if not version['ok']:
+            shown['problem'] = clip(best.get('error') or best.get('gate'), 200)
+        return shown
+
+    def _version_attempts(self, job, path, kind, facts, wish, options, label, meaning):
+        """One version's attempts, by Claude when it is on (falling back to the rules), as in _run."""
+        if job.get('use_claude'):
+            from . import auto_claude
+            request = job['request']
+            # Claude reads which version this is; the person's own words stay first.
+            job['request'] = '\n'.join([request] * bool(request) + [f'Make the {label} version: {meaning}.'])
+            try:
+                drop = iter([.8] + [1.5] * 10)
+                attempts, finish = auto_claude.run(job, path, kind, facts, wish, options,
+                                                   lambda o: self._attempt(path, o, next(drop), True),
+                                                   lambda text: self._log(job, text))
+            except Exception as error:  # Claude unavailable: the rules still work offline.
+                self._log(job, f'Claude could not help ({auto_claude.clip(error, 200)}). Switching to the built-in rules.')
+                attempts, finish = [], None
+            finally:
+                job['request'] = request
+            for attempt in attempts:
+                attempt.pop('playback', None)
+            if [a for a in attempts if not a.get('error')]:
+                return attempts, finish, f"Claude ({job.get('claude_model')}), Anthropic's AI"
+        return self._rules(job, path, kind, wish, options), None, "Needler's built-in rules (no AI)"
+
+    def pick(self, name, key):
+        """Keep another version: make it again so it becomes the result Show the result opens and
+        Change it builds on. Returns the job, running, or as it was when that one is already kept."""
+        path = self.uploads / Path(name).name
+        with self.lock:
+            job = self.status(path.name)
+            if not job or not (job.get('result') or {}).get('versions'):
+                raise LookupError('Make the versions first.')
+            if job['state'] == 'running':
+                raise RuntimeError('Digitize for me is already working on this design.')
+            setting = (job.get('version_settings') or {}).get(key)
+            if not setting:
+                raise ValueError('That version did not pass the file checks, so it cannot be kept.')
+            if job['result'].get('picked') == key:
+                return job
+            job['state'] = 'running'
+            self.jobs[path.name] = job
+            self._log(job, f"Keeping the {setting['label']} version…")
+        threading.Thread(target=self._keep, args=(path, job, key, setting), daemon=True).start()
+        return job
+
+    def _keep(self, path, job, key, setting):
+        result = job['result']
+        try:
+            attempt, options = self._attempt(path, setting['options'], 1.5)
+            attempt.update(options=options, kind=setting['kind'], number=1)
+            job['choices'] = {**job.get('choices', {}), 'picked_detail': setting['detail']}
+            wish = wish_for(job.get('original', job['request']), job['choices'], job.get('changes', ()), job.get('base_width'))
+            job['decided_by'] = setting['decided_by']
+            # Its Claude cost is already counted, and what it taught was recorded when it was made.
+            usd = job.pop('claude_usd', None)
+            self._finish(job, path, setting['kind'], result.get('facts') or {}, wish, [attempt], None)
+            if usd is not None:
+                job['claude_usd'] = job['result']['claude_usd'] = usd
+            job['result'].update(attempts=result.get('attempts'), picked=key, versions=result['versions'])
+        except Exception as error:  # Report, never crash the server thread.
+            job['state'] = 'failed'
+            job['result'] = {**result, 'ok': False, 'problem': str(error)}
+            self._log(job, 'Stopped: ' + str(error))
+        finally:
+            job['finished'] = time.time()
+            stored = self.decisions / (path.name + '.auto.json')
+            temp = stored.with_suffix('.tmp')
+            temp.write_text(json.dumps(job, default=str))
+            temp.replace(stored)
+
 
 def register_auto_digitize(app, root):
     from flask import abort, jsonify, request
@@ -852,7 +1047,8 @@ def register_auto_digitize(app, root):
     def auto_digitize_start(name):
         body = request.get_json(silent=True) or {}
         try:
-            job = runner.start(name, str(body.get('request', '')), body.get('use_claude') is True, taps(body))
+            job = runner.start(name, str(body.get('request', '')), body.get('use_claude') is True, taps(body),
+                               versions=body.get('versions') is True)
         except FileNotFoundError:
             abort(404)
         except (RuntimeError, ValueError) as error:
@@ -913,6 +1109,17 @@ def register_auto_digitize(app, root):
         except (RuntimeError, ValueError) as error:
             return jsonify(error=str(error)), 409
         return jsonify(started), 202
+
+    @app.post('/api/auto-digitize/<name>/pick')
+    def auto_digitize_pick(name):
+        # Keep one of the versions; it becomes the result and the look for later changes.
+        try:
+            job = runner.pick(name, str((request.get_json(silent=True) or {}).get('version', '')))
+        except (LookupError, RuntimeError) as error:
+            return jsonify(error=str(error)), 409
+        except ValueError as error:
+            return jsonify(error=str(error)), 400
+        return jsonify(job), 202 if job['state'] == 'running' else 200
 
     @app.get('/api/auto-digitize/<name>')
     def auto_digitize_status(name):

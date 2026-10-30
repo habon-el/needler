@@ -1210,3 +1210,17 @@ Feature-by-feature roadmap: `FEATURE-ROADMAP.md`.
 - What was cleaned is said in plain words in the steps and the result (`cleaned_note`). When a
   part still blocks, the message names it by colour word, hex, size and place in the picture
   (`unsewable`) instead of image bounds.
+
+## Pick from 2–3 versions (added 2026-10-30)
+- Digitize for me with "Show me 3 versions" (`AutoDigitizer._versions`) runs the usual pipeline
+  once per look: `version_options` takes the run's settings (background removal, cut-out, size,
+  fabric) and lays over them only what `plan()` changes for wish detail `less` / none / `more`;
+  each version then goes through `_rules` (or Claude, one run per version) and the same file
+  checks. The look matching the person's tap is made last, so it is the one on disk when the
+  run ends. Versions whose first settings are equal, or whose sewn facts (stitches, cuts,
+  colours, size) are equal, are made or shown once. Previews come from the written
+  `playback.json` drawn by `finished.render_finished` (thread drawn 0.4 mm wide so fills read at
+  240 px).
+- A pick (`/api/auto-digitize/<name>/pick`) makes that version again with its kept settings;
+  the engine cache makes this about a second. The look is stored in the job's choices as
+  `picked_detail`, which `wish_for` puts over the first words and taps; later changes still win.
