@@ -62,6 +62,47 @@
 .auto-brief { margin:14px 0 4px; padding:10px 12px; border-radius:var(--ui-radius); background:var(--ui-hover); border-left:4px solid var(--ui-primary); }
 .auto-brief small { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ui-muted); }
 .auto-brief p { margin:3px 0 0; font-size:13px; line-height:1.45; color:var(--ui-ink); }
-.auto-more { margin-top:10px; }
-.auto-more summary { cursor:pointer; font-size:12px; padding:4px 0; }
-.auto-more .auto-chips { margin:6px 0; }
+/* Prompt box: words, a microphone and (under a result) a round send button in one rounded frame. */
+.auto-say { margin-top:16px; }
+.auto-say h2, .auto-change h2 { font-size:13px; margin:0 0 6px; }
+.auto-say h2 .muted { font-weight:400; }
+.auto-composer { margin-top:8px; border:1px solid var(--ui-line); border-radius:12px; background:var(--ui-surface);
+  transition:border-color .15s, box-shadow .15s; }
+.auto-composer:focus-within { border-color:var(--ui-primary); box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-primary) 18%,transparent); }
+.auto-panel .auto-composer textarea { display:block; border:0; background:transparent; min-height:52px; padding:10px 12px 4px;
+  font-size:13px; line-height:1.45; resize:vertical; outline:0; }
+.auto-composer-bar { display:flex; align-items:center; gap:8px; padding:4px 6px 6px 8px; min-height:34px; }
+.auto-composer-bar .auto-send { margin-left:auto; }
+.auto-mic { display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:0 12px 0 10px; border-radius:999px;
+  font-size:12px; border:1px solid var(--ui-line); background:var(--ui-surface); color:var(--ui-ink); cursor:pointer; }
+.auto-mic svg, .auto-send svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.auto-mic:hover { background:var(--ui-hover); }
+.auto-mic.on { background:var(--ui-danger); border-color:var(--ui-danger); color:var(--ui-surface); }
+.auto-send { display:grid; place-items:center; width:32px; height:32px; min-height:0; padding:0; border-radius:50%;
+  background:var(--ui-primary); border:1px solid var(--ui-primary); color:var(--ui-surface); cursor:pointer; }
+.auto-send:hover { background:var(--ui-ink); }
+.auto-send:disabled { opacity:.5; }
+.auto-listening { display:inline-flex; align-items:center; gap:3px; font-size:11px; color:var(--ui-danger); }
+.auto-listening[hidden] { display:none; }
+.auto-listening i { width:3px; height:12px; border-radius:2px; background:var(--ui-danger); }
+@media(prefers-reduced-motion:no-preference) {
+  .auto-mic.on { animation:auto-pulse 1.4s ease-out infinite; }
+  .auto-listening i { animation:auto-bar .9s ease-in-out infinite; }
+  .auto-listening i:nth-child(2) { animation-delay:.15s; } .auto-listening i:nth-child(3) { animation-delay:.3s; }
+}
+@keyframes auto-pulse { 0% { box-shadow:0 0 0 0 color-mix(in srgb,var(--ui-danger) 45%,transparent); } 100% { box-shadow:0 0 0 10px transparent; } }
+@keyframes auto-bar { 0%,100% { transform:scaleY(.35); } 50% { transform:scaleY(1); } }
+/* Change it, under a result. */
+.auto-change { margin-top:12px; padding:12px; border:1px solid var(--ui-line); border-radius:var(--ui-radius); background:var(--ui-background); }
+.auto-change > p { font-size:12px; margin:0 0 4px; }
+.auto-understood { margin-top:10px; padding:10px 12px; border-radius:var(--ui-radius); background:var(--ui-surface);
+  border:1px solid var(--ui-line); border-left:4px solid var(--ui-primary); font-size:12px; }
+.auto-understood ul { margin:6px 0; padding-left:18px; line-height:1.5; }
+.auto-understood figure { margin:8px 0; }
+.auto-understood img { display:block; width:100%; max-height:260px; object-fit:contain; border-radius:6px; border:1px solid var(--ui-line); }
+.auto-understood figcaption { font-size:11px; color:var(--ui-muted); margin-top:4px; }
+.auto-understood .auto-actions button { flex:1; min-height:36px; }
+/* The one main action in each step stands out (Start, Show the result, Do it). */
+.auto-panel #autoStart, #autoResult button.primary, .auto-understood button.primary, .auto-panel .auto-send, .auto-change .auto-send {
+  background:var(--ui-primary); border-color:var(--ui-primary); color:var(--ui-surface); font-weight:650; }
+.auto-panel #autoStart:hover:not(:disabled), #autoResult button.primary:hover, .auto-understood button.primary:hover { background:var(--ui-ink); }

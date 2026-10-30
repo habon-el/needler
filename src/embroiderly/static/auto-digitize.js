@@ -27,6 +27,41 @@ const AUTO_GOES_ON=[
 const AUTO_SIZES=[['small','Small','chest, cap · 70 mm'],['medium','Medium','front · 100 mm'],['large','Large','back · 200 mm']];
 const AUTO_LOOKS=[['simple','Simple','fewer colours'],['balanced','Balanced',''],['detailed','Detailed','small parts kept']];
 const AUTO_EXAMPLES=['Keep the background','Only 3 colours','Black lines only','Make the text bold'];
+// Ready-made changes under a result; the person may also say or type their own.
+const AUTO_CHANGES=['Remove the background','Fewer colours','Make it bigger','Add a dark outline','More detail'];
+const AUTO_MIC='M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3';
+const AUTO_SEND='M12 19V5M5 12l7-7 7 7';
+/* A prompt box: the words, and a microphone underneath when the browser can listen. Speech lands
+   in the box to read and correct; nothing is sent until the panel's own button is pressed. */
+function autoComposer(id,label,placeholder,send){
+ const box=document.createElement('div');box.className='auto-composer';
+ box.innerHTML=`<textarea id="${id}" rows="2" aria-label="${label}" placeholder="${placeholder}"></textarea>
+ <div class="auto-composer-bar"><span class="auto-listening" hidden aria-live="polite"><i></i><i></i><i></i> Listening… speak now</span>
+ ${send?`<button type="button" class="auto-send" aria-label="${send}" title="${send}">${AUTO_ICON(AUTO_SEND)}</button>`:''}</div>`;
+ const field=box.querySelector('textarea'),bar=box.querySelector('.auto-composer-bar');
+ const Listen=typeof window!=='undefined'&&(window.SpeechRecognition||window.webkitSpeechRecognition);
+ if(!Listen)return box;
+ const mic=document.createElement('button');mic.type='button';mic.className='auto-mic';mic.setAttribute('aria-pressed','false');
+ mic.innerHTML=AUTO_ICON(AUTO_MIC)+'<span>Speak</span>';mic.title='Say it instead of typing';bar.prepend(mic);
+ const listening=box.querySelector('.auto-listening');
+ let recognition=null;
+ const done=label=>{recognition=null;mic.classList.remove('on');mic.setAttribute('aria-pressed','false');listening.hidden=true;
+  mic.querySelector('span').textContent=label||'Speak';if(label)setTimeout(()=>{if(!recognition)mic.querySelector('span').textContent='Speak'},3000)};
+ mic.onclick=()=>{
+  if(recognition){recognition.stop();return}
+  recognition=new Listen();recognition.lang=document.documentElement.lang||navigator.language||'en-US';
+  recognition.continuous=true;recognition.interimResults=true;
+  const before=field.value.trim()?field.value.trim()+' ':'';
+  recognition.onresult=e=>{field.value=before+[...e.results].map(r=>r[0].transcript).join('').trim();field.dispatchEvent(new Event('input'))};
+  recognition.onerror=e=>{const blocked=e.error==='not-allowed'||e.error==='service-not-allowed';
+   if(blocked)mic.title='Allow the microphone for this page in the address bar, then try again.';
+   done(blocked?'Mic blocked':e.error==='no-speech'?'Nothing heard':'')};
+  recognition.onend=()=>{if(recognition)done();field.focus()};
+  try{recognition.start()}catch{done();return}
+  mic.classList.add('on');mic.setAttribute('aria-pressed','true');mic.querySelector('span').textContent='Stop';listening.hidden=false;
+ };
+ return box;
+}
 if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', () => {
  'use strict';
  const $=id=>document.getElementById(id), studio=window.embroideryStudio;
@@ -51,15 +86,17 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
   `<label><input type="radio" name="autoLook" value="${v}"${v==='balanced'?' checked':''}><span>${t}${n?`<small>${n}</small>`:''}</span></label>`).join('')}</div>
   <div class="auto-chips"><label><input type="checkbox" id="autoOutline"><span>Dark outline</span></label><label><input type="checkbox" id="autoPuff"><span>3D puff</span></label></div></fieldset>
  <div class="auto-brief" aria-live="polite"><small>What you will get</small><p id="autoBrief">Reading your picture…</p></div>
- <details class="auto-more"><summary>Anything else? <span class="muted">(optional)</span></summary>
+ <div class="auto-say"><h2>Or say it in your own words <span class="muted">(optional)</span></h2>
  <div class="auto-chips" id="autoExamples">${AUTO_EXAMPLES.map(t=>`<button type="button">${t}</button>`).join('')}</div>
- <textarea id="autoRequest" aria-label="Anything else" placeholder="In your own words, for example: 6 cm wide, keep the white star"></textarea>
- <p id="autoRequestLong" class="auto-problem" hidden></p></details>
+ <div id="autoRequestBox"></div>
+ <p id="autoRequestLong" class="auto-problem" hidden></p></div>
  <label class="auto-claude" id="autoClaudeRow" hidden><input type="checkbox" id="autoClaude"> <span><strong>Let Claude decide</strong> (AI). It looks at your picture and at each result, like a human digitizer. Costs about 5–40 cents per design from your Claude credit. <span id="autoClaudeSpend"></span></span></label>
  <div class="auto-actions"><button type="button" id="autoStart" class="primary">Start</button><button type="button" id="autoClose">Back</button></div>
  <ol id="autoSteps" aria-live="polite"></ol>
  <div id="autoResult" hidden></div>`;
  inspector.prepend(panel);
+ $('autoRequestBox').replaceWith(autoComposer('autoRequest','Your own words',
+  'Type or speak: “6 cm wide, remove the white background, keep only the ball on fire”'));
  const steps=$('autoSteps'),result=$('autoResult'),start=$('autoStart');
  const picked=group=>panel.querySelector(`input[name=${group}]:checked`)?.value||'';
  const choicesNow=()=>({request:$('autoRequest').value,goes_on:picked('autoGoesOn'),size:picked('autoSize'),
@@ -108,6 +145,65 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
    ...((r.issues||[]).map(t=>node('p',t,'auto-problem'))),
    node('p',(r.problem?'Check it in 3D. The download is blocked until the problem above is fixed.':'Check it in 3D, then use Save and download.')+' A sample sew-out is still needed.'+(r.claude_usd!=null?` Claude cost for this design: $${Number(r.claude_usd).toFixed(2)}.`:''),'muted'));
   if(r.stitches){const b=node('button','Show the result');b.type='button';b.className='primary';b.onclick=()=>{location.href=location.pathname+'?view=stitched&auto=1'};result.append(b)}
+  if(r.stitches&&job.state!=='running')result.after(changeSection(job));
+ }
+ /* Change it: say or type what to change; Needler says what it understood and shows it,
+    and only after "Do it" makes that change, keeping the rest. */
+ function changeSection(job){
+  document.getElementById('autoChangeSection')?.remove();
+  const section=node('section','','auto-change');section.id='autoChangeSection';
+  section.innerHTML=`<h2>Change it</h2><p class="muted">Say or type what to change. Only that changes; the rest stays.</p>
+   <div class="auto-chips">${AUTO_CHANGES.map(t=>`<button type="button">${t}</button>`).join('')}</div>`;
+  const composer=autoComposer('autoChange','What to change','For example: remove the white background, keep only the ball on fire','See the change');
+  section.append(composer);
+  const answer=node('div','','auto-understood');answer.hidden=true;section.append(answer);
+  const field=composer.querySelector('textarea'),send=composer.querySelector('.auto-send');
+  if(job.changes?.length)section.querySelector('p').textContent=`Changes so far: ${job.changes.join(' · ')}. Say what else to change.`;
+  for(const b of section.querySelectorAll('.auto-chips button'))b.onclick=()=>{field.value=b.textContent;ask()};
+  field.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask()}});
+  send.onclick=ask;
+  async function ask(){
+   const text=field.value.trim();if(!text){field.focus();return}
+   send.disabled=true;answer.hidden=false;answer.replaceChildren(node('p','Reading what you asked…','muted'));
+   const reply=await fetch(api+'/change',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})})
+    .then(r=>r.ok?r.json():null).catch(()=>null);
+   send.disabled=false;
+   if(!reply){answer.replaceChildren(node('p','Could not read that. Is Needler still running?','auto-problem'));return}
+   const claude=$('autoClaude').checked&&!$('autoClaudeRow').hidden;
+   const parts=[];
+   if(reply.understood.length){
+    parts.push(node('strong','Here is what I will change'));
+    const ul=node('ul');ul.append(...reply.understood.map(t=>node('li',t)));parts.push(ul);
+   }else parts.push(node('p',claude?'Needler’s own rules do not cover this, so Claude will read it and decide when you press Do it.':
+    'I did not find a change I can make from that. Try words like “remove the white background”, “5 colours”, “bigger” or “add an outline”, or turn on Let Claude decide.','auto-note'));
+   if(reply.preview){
+    const figure=node('figure');const img=document.createElement('img');img.src=reply.preview;img.alt='The picture with the part to leave out shown as a checkerboard';
+    figure.append(img,node('figcaption','Checkerboard: left out, not sewn. Everything else is stitched.'));parts.push(figure);
+   }
+   if(reply.understood.length||claude){
+    const row=node('div','','auto-actions');
+    const go=node('button','Do it','primary');go.type='button';
+    const no=node('button','Not that');no.type='button';
+    no.onclick=()=>{answer.hidden=true;field.focus();field.select()};
+    go.onclick=()=>apply(text,go);
+    row.append(go,no);parts.push(row);
+   }
+   answer.replaceChildren(...parts);
+  }
+  async function apply(text,go){
+   if(running)return;
+   go.disabled=true;running=true;start.disabled=true;$('autoClose').disabled=true;cover.hidden=false;
+   cover.querySelector('span').textContent='Making your change…';
+   const response=await fetch(api+'/change/apply',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text,use_claude:$('autoClaude').checked})}).catch(()=>null);
+   if(!response||response.status!==202){
+    const body=await response?.json().catch(()=>({}))||{};
+    running=false;start.disabled=false;$('autoClose').disabled=false;cover.hidden=true;go.disabled=false;
+    answer.append(node('p',body.error||'Could not start the change. Is Needler still running?','auto-problem'));return;
+   }
+   section.remove();steps.replaceChildren();result.hidden=true;clearTimeout(timer);poll();
+  }
+  return section;
  }
  async function poll(){
   let job;
@@ -124,7 +220,8 @@ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded', (
   if(running)return;
   running=true;start.disabled=true;$('autoClose').disabled=true;cover.hidden=false;
   // An earlier result goes at once, so Start always visibly starts.
-  steps.replaceChildren();result.hidden=true;result.replaceChildren();cover.querySelector('span').textContent='Starting…';
+  steps.replaceChildren();result.hidden=true;result.replaceChildren();document.getElementById('autoChangeSection')?.remove();
+  cover.querySelector('span').textContent='Starting…';
   // After opening a result the page is still preparing it: wait for that instead of refusing.
   for(let waited=0;studio.isBusy()&&waited<600000;waited+=500){
    cover.querySelector('span').textContent='Waiting for the current preparation to finish…';await pause(500);

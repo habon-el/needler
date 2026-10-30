@@ -21,7 +21,7 @@ const elements = {}, listeners = {};
 function el(id) {
   const e = {id, hidden: false, disabled: false, checked: false, value: '', textContent: '', dataset: {}, children: [],
     classList: {toggle() {}}, style: {}, title: '', type: '', className: '', innerHTML: '',
-    setAttribute() {}, focus() {}, addEventListener() {}, append(...c) { this.children.push(...c) }, prepend(...c) { this.children.unshift(...c) },
+    setAttribute() {}, focus() {}, addEventListener() {}, after() {}, remove() {}, replaceWith() {}, append(...c) { this.children.push(...c) }, prepend(...c) { this.children.unshift(...c) },
     replaceChildren(...c) { this.children = c }, insertBefore(c) { this.children.push(c) },
     querySelector() { return elements[id + ' span'] || (elements[id + ' span'] = el(id + ' span')) }};
   return e;

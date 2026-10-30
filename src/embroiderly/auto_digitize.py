@@ -31,6 +31,11 @@ GOES_ON = {'t_shirt': ('a T-shirt', 'stretch_knit'), 'polo': ('a polo', 'pique')
            'towel': ('a towel', 'towel')}
 # Size taps: sewn width in mm (left chest or cap front, front, back).
 SIZES = {'small': 70, 'medium': 100, 'large': 200}
+# Colour words a person may name in "remove the white background".
+COLOUR_WORDS = {'white': (255, 255, 255), 'black': (0, 0, 0), 'grey': (128, 128, 128), 'gray': (128, 128, 128),
+                'red': (200, 30, 30), 'orange': (240, 130, 30), 'yellow': (245, 215, 40), 'green': (40, 150, 60),
+                'blue': (30, 80, 200), 'purple': (120, 50, 160), 'pink': (240, 130, 180), 'brown': (110, 70, 40)}
+REMOVE = r'\b(remove|delete|erase|drop|cut|without|no|lose|get rid of|leave out|take out|take off)\b'
 
 
 def classify(image, max_side=384):
@@ -150,6 +155,18 @@ def parse_request(text):
             r'\b(remove|delete|erase|drop|cut|without|no|lose|get rid of|leave out|take out|take off)\b.{0,25}back ?ground'
             r'|back ?ground.{0,10}\b(removed|off|out|gone)\b', text):
         wish['keep_background'] = True
+    elif re.search(REMOVE + r'.{0,25}back ?ground|back ?ground.{0,10}\b(removed|off|out|gone)\b'
+                   r'|\b(keep|stitch|sew|want) (only|just)\b|\bonly (keep|stitch|sew)\b', text):
+        # "Keep only the basketball on fire": the subject stays, the background is left out.
+        wish['remove_background'] = True
+        words = '|'.join(COLOUR_WORDS)
+        named = re.search(REMOVE + rf'\s+(?:the\s+|all\s+)?({words})\b', text) or re.search(rf'\b({words})\s+back ?ground', text)
+        if named:
+            wish['remove_colour'] = named.group(named.lastindex)
+    if re.search(r'\b(bigger|larger)\b', text) and not ('width_mm' in wish or 'height_mm' in wish):
+        wish['scale'] = 1.25
+    elif re.search(r'\bsmaller\b', text) and not ('width_mm' in wish or 'height_mm' in wish):
+        wish['scale'] = .8
     if re.search(r'\bpuff|\bfoam|\b3d\b|raised', text):
         wish['puff'] = True
         match = re.search(r'(\d(?:[.,]\d)?)\s*mm\s*foam', text)
@@ -181,9 +198,100 @@ def taps(body):
     return wish
 
 
-def wish_for(request_text, choices):
-    # Typed words are more exact than a tap ("6 cm wide" over Small), so they win.
-    return {**(choices or {}), **parse_request(request_text)}
+def wish_for(request_text, choices, changes=(), base_width=None):
+    # Typed words are more exact than a tap ("6 cm wide" over Small), so they win; each later
+    # change ("Change it" under a result) wins over what came before it.
+    wish = {**(choices or {}), **parse_request(request_text)}
+    wish.pop('scale', None)
+    for text in changes:
+        wish = merge_change(wish, parse_request(text), base_width)
+    return wish
+
+
+def merge_change(wish, change, base_width=None):
+    wish, change = dict(wish), dict(change)
+    if change.get('remove_background'):
+        wish.pop('keep_background', None)
+        wish.pop('remove_colour', None)
+    if change.get('keep_background'):
+        wish.pop('remove_background', None)
+        wish.pop('remove_colour', None)
+    if 'width_mm' in change or 'height_mm' in change:
+        wish.pop('width_mm', None)
+        wish.pop('height_mm', None)
+    scale = change.pop('scale', None)
+    if scale and base_width:
+        wish.pop('height_mm', None)
+        wish['width_mm'] = round(base_width * scale, 1)
+    return {**wish, **change}
+
+
+def understood(old, new):
+    """What a change will do, one plain sentence per setting it changes."""
+    said = []
+    if new.get('remove_background') and not old.get('remove_background'):
+        said.append(f"Leave out the {new.get('remove_colour', 'plain')} background and keep only the subject.")
+    if new.get('keep_background') and not old.get('keep_background'):
+        said.append('Stitch the background too.')
+    if new.get('width_mm') and new.get('width_mm') != old.get('width_mm'):
+        said.append(f"Make it about {new['width_mm']:.0f} mm wide.")
+    if new.get('height_mm') and new.get('height_mm') != old.get('height_mm'):
+        said.append(f"Make it about {new['height_mm']:.0f} mm high.")
+    if new.get('colours') and new.get('colours') != old.get('colours'):
+        said.append(f"Use {new['colours']} thread colours.")
+    if new.get('fabric') and new.get('fabric') != old.get('fabric'):
+        name = next((n for n, f in GOES_ON.values() if f == new['fabric']), new['fabric'].replace('_', ' '))
+        said.append(f'Set the stitches for {name}.')
+    if new.get('detail') and new.get('detail') != old.get('detail'):
+        said.append('Keep more small details.' if new['detail'] == 'more' else 'Simplify: fewer small parts and colours.')
+    if new.get('outlines') and not old.get('outlines'):
+        said.append('Add a dark outline around each colour.')
+    if new.get('puff') and not old.get('puff'):
+        said.append('Make it raised 3D puff.')
+    if new.get('kind') and new.get('kind') != old.get('kind'):
+        said.append(f"Sew it as {KINDS[new['kind']].lower()}.")
+    return said
+
+
+def named_removal(image, name):
+    """A colour removal for the picture's own colour nearest the one named ("white")."""
+    from .colour_knockout import defaults
+    small = image.convert('RGB')
+    small.thumbnail((256, 256))
+    quant = small.quantize(12, method=Image.Quantize.MEDIANCUT)
+    counts = np.bincount(np.asarray(quant).ravel(), minlength=12) / np.asarray(quant).size
+    palette = np.array((quant.getpalette()[:36] + [0] * 36)[:36], np.float32).reshape(12, 3)
+    target = np.array(COLOUR_WORDS[name], np.float32)
+    used = [i for i in range(12) if counts[i] >= .01] or list(range(12))
+    best = min(used, key=lambda i: float(np.linalg.norm(palette[i] - target)))
+    seed = defaults()
+    return dict(colour='#%02x%02x%02x' % tuple(int(v) for v in palette[best]), scope='everywhere',
+                tolerance=seed['default_delta_e'], cleanup=True, minimum_area_mm2=seed['minimum_area_mm2'],
+                close_radius_mm=seed['close_radius_mm'], restore_parts=[])
+
+
+def removal_preview(image, operation, max_side=360):
+    """The picture with the background that would be left out shown as a checkerboard: the
+    removal colour's parts that touch the edge (parts inside the subject are kept, as
+    _keep_inside does). Returns (PNG data URL, share of the picture left out)."""
+    import base64
+    import io
+    import cv2
+    from .colour_knockout import colour_match, hex_rgb
+    small = image.convert('RGB')
+    small.thumbnail((max_side, max_side))
+    rgb = np.asarray(small)
+    matched = colour_match(rgb, np.ones(rgb.shape[:2], bool), hex_rgb(operation['colour']), operation['tolerance'])[0]
+    _, labels = cv2.connectedComponents(matched.astype(np.uint8), connectivity=8)
+    edge = np.unique(np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]]))
+    removed = np.isin(labels, edge[edge > 0])
+    yy, xx = np.indices(removed.shape)
+    checker = np.where((yy // 8 + xx // 8) % 2 == 0, 232, 205).astype(np.uint8)
+    shown = rgb.copy()
+    shown[removed] = checker[removed][:, None]
+    buffer = io.BytesIO()
+    Image.fromarray(shown).save(buffer, 'PNG')
+    return 'data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode(), float(removed.mean())
 
 
 def brief(kind, facts, wish, image_size, saved):
@@ -360,7 +468,7 @@ class AutoDigitizer:
         self.uploads, self.decisions = self.root / 'work' / 'uploads', self.root / 'work' / 'decisions'
         self.jobs, self.lock = {}, threading.Lock()
 
-    def start(self, name, request_text='', use_claude=False, choices=None):
+    def start(self, name, request_text='', use_claude=False, choices=None, changes=(), base_width=None):
         path = self.uploads / Path(name).name
         if not path.is_file():
             raise FileNotFoundError(name)
@@ -370,7 +478,11 @@ class AutoDigitizer:
             job = self.jobs.get(path.name)
             if job and job['state'] == 'running':
                 raise RuntimeError('Digitize for me is already working on this design.')
-            job = dict(state='running', steps=[], request=request_text[:REQUEST_LIMIT], started=time.time(),
+            changes = [c[:REQUEST_LIMIT] for c in changes]
+            original = request_text[:REQUEST_LIMIT]
+            # Claude and the result read the first request and every change after it, in order.
+            job = dict(state='running', steps=[], request='\n'.join([original] * bool(original) + [f'Then: {c}' for c in changes]),
+                       original=original, changes=changes, base_width=base_width, started=time.time(),
                        result=None, use_claude=bool(use_claude), choices=choices or {})
             self.jobs[path.name] = job
             if len(request_text) > REQUEST_LIMIT:
@@ -489,7 +601,8 @@ class AutoDigitizer:
             with Image.open(path) as image:
                 kind, facts = classify(image)
                 size = image.size
-            wish = wish_for(job['request'], job.get('choices'))
+            wish = wish_for(job.get('original', job['request']), job.get('choices'), job.get('changes', ()),
+                            job.get('base_width'))
             if wish.get('kind'):
                 self._log(job, f"You asked for {KINDS[wish['kind']].lower()}.")
                 kind = wish['kind']
@@ -509,12 +622,27 @@ class AutoDigitizer:
             saved_file = self.decisions / (path.name + '.preparation.json')
             saved = json.loads(saved_file.read_text()) if saved_file.is_file() else {}
             options = plan(kind, facts, wish, size, saved)
-            if kind == 'logo' and not wish.get('keep_background') and not options.get('colour_knockouts'):
+            if wish.get('remove_colour') and not wish.get('keep_background'):
+                # The person named the colour to leave out: use it, whatever the picture's kind.
+                from .colour_knockout import proposal_patch
+                with Image.open(path) as image:
+                    patch = proposal_patch(image, options, named_removal(image, wish['remove_colour']))
+                options.update(patch)
+                if kind in ('line_art', 'ink'):
+                    kind = 'logo'
+                    options.update(line_art=False, ink_only=False, count=facts.get('thread_colours', 4))
+                self._log(job, f"Leaving out the {wish['remove_colour']} background ({patch['colour_knockouts'][-1]['colour']}), "
+                               'as you asked; the subject stays.')
+                kept = self._keep_inside(path, options)
+                if kept:
+                    self._log(job, f"Keeping {kept} part{'s' if kept > 1 else ''} of that colour inside the subject; they are sewn.")
+            elif kind in ('logo', 'photo') and not wish.get('keep_background') and not options.get('colour_knockouts') \
+                    and (kind == 'logo' or wish.get('remove_background')):
                 # Colour roles: a plain border colour is background (omitted), not a thread.
                 from .colour_knockout import proposal_patch
                 with Image.open(path) as image:
                     patch = proposal_patch(image, options)
-                if facts.get('object_photo'):
+                if facts.get('object_photo') or (kind == 'photo' and not patch):
                     # A photo's edge blends into the background, so removing that colour leaves
                     # specks along it and in the highlights. Cut the object out by shape instead
                     # (the Subject step's cut-out).
@@ -679,6 +807,44 @@ def register_auto_digitize(app, root):
         saved_file = runner.decisions / (path.name + '.preparation.json')
         saved = json.loads(saved_file.read_text()) if saved_file.is_file() else {}
         return jsonify(brief=brief(kind, facts, wish, size, saved))
+
+    def _change(name, body):
+        job = runner.status(name)
+        if not job or not (job.get('result') or {}).get('stitches'):
+            abort(409, 'Make a design first; then say what to change.')
+        text = str(body.get('text', '')).strip()[:REQUEST_LIMIT]
+        base = (job.get('result') or {}).get('width_mm')
+        old = wish_for(job.get('original', job.get('request', '')), job.get('choices'), job.get('changes', ()),
+                       job.get('base_width'))
+        return job, text, base, old, merge_change(old, parse_request(text), base)
+
+    @app.post('/api/auto-digitize/<name>/change')
+    def auto_digitize_change(name):
+        # Say what a typed or spoken change will do, and show it, before anything is made.
+        _, text, _, old, new = _change(name, request.get_json(silent=True) or {})
+        said = understood(old, new)
+        preview = None
+        if new.get('remove_background') and not new.get('keep_background') and said:
+            from .colour_knockout import propose_background
+            with Image.open(runner.uploads / Path(name).name) as image:
+                operation = named_removal(image, new['remove_colour']) if new.get('remove_colour') else propose_background(image)
+                if operation:
+                    preview, share = removal_preview(image, operation)
+                    said[0] = said[0].replace('background', f'background ({share:.0%} of the picture)', 1)
+        return jsonify(understood=said, preview=preview, text=text)
+
+    @app.post('/api/auto-digitize/<name>/change/apply')
+    def auto_digitize_change_apply(name):
+        body = request.get_json(silent=True) or {}
+        job, text, base, _, _ = _change(name, body)
+        if not text:
+            return jsonify(error='Say or type what to change.'), 400
+        try:
+            started = runner.start(name, job.get('original', job.get('request', '')), body.get('use_claude') is True,
+                                   job.get('choices'), [*job.get('changes', []), text], job.get('base_width') or base)
+        except (RuntimeError, ValueError) as error:
+            return jsonify(error=str(error)), 409
+        return jsonify(started), 202
 
     @app.get('/api/auto-digitize/<name>')
     def auto_digitize_status(name):
